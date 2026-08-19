@@ -5,7 +5,11 @@ from dataclasses import asdict
 import json
 from pathlib import Path
 
-from .contamination import ProbeObservation, evaluate_contamination
+from .contamination import (
+    ProbeObservation,
+    aggregate_contamination,
+    evaluate_contamination,
+)
 from .formal import bind_formal_freeze, initialize_formal_run, seal_formal_capsules
 from .evaluation_io import read_evaluation_cells, write_decision_once
 from .freeze import check_freeze, write_report
@@ -27,6 +31,7 @@ from .state import PromotionStateMachine
 from .store import export_sft, export_training_datasets
 from .toy import make_tasks, run_training_smoke
 from .vertical_slice import run_vertical_slice, write_vertical_slice_report
+from .trusted_producer import run_trusted_process
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -65,6 +70,12 @@ def _parser() -> argparse.ArgumentParser:
     contamination.add_argument("--observations", type=Path, required=True)
     contamination.add_argument("--expected-model", action="append", required=True)
     contamination.add_argument("--output", type=Path, required=True)
+    contamination_all = commands.add_parser("audit-contamination-aggregate")
+    contamination_all.add_argument("--observations", type=Path, required=True)
+    contamination_all.add_argument("--selected-strata", type=Path, required=True)
+    contamination_all.add_argument("--expected-model", action="append", required=True)
+    contamination_all.add_argument("--reserve-by-stratum", type=Path)
+    contamination_all.add_argument("--output", type=Path, required=True)
     ledger = commands.add_parser("ledger-check")
     ledger.add_argument("--ledger", type=Path, required=True)
     promote = commands.add_parser("promotion-decision")
@@ -81,7 +92,17 @@ def _parser() -> argparse.ArgumentParser:
     vertical.add_argument("--manifest", type=Path, required=True)
     vertical.add_argument("--public-root", type=Path, required=True)
     vertical.add_argument("--sealed-root", type=Path, required=True)
+    vertical.add_argument("--trust-key", type=Path, required=True)
     vertical.add_argument("--output", type=Path, required=True)
+    producer = commands.add_parser("produce-trusted-receipt")
+    producer.add_argument("--stage", choices=("generation", "execution", "evaluation"), required=True)
+    producer.add_argument("--capsule-digest", required=True)
+    producer.add_argument("--proposal-digest", default="")
+    producer.add_argument("--container-digest", required=True)
+    producer.add_argument("--trust-key", type=Path, required=True)
+    producer.add_argument("--runtime-mode", choices=("docker", "local_test"), default="docker")
+    producer.add_argument("--output", type=Path, required=True)
+    producer.add_argument("command_args", nargs=argparse.REMAINDER)
     export = commands.add_parser("export-sft")
     export.add_argument("--library", type=Path, required=True)
     export.add_argument("--output", type=Path, required=True)
@@ -198,6 +219,37 @@ def main(argv: list[str] | None = None) -> int:
         args.output.write_text(serialized)
         print(serialized, end="")
         return 0 if report.passed else 2
+    if args.command == "audit-contamination-aggregate":
+        observations: list[ProbeObservation] = []
+        for line_number, line in enumerate(args.observations.read_text().splitlines(), 1):
+            if not line.strip():
+                continue
+            try:
+                observations.append(ProbeObservation(**json.loads(line)))
+            except (TypeError, json.JSONDecodeError) as error:
+                raise ValueError(f"invalid contamination row at line {line_number}") from error
+        selected = json.loads(args.selected_strata.read_text())
+        reserve = (
+            json.loads(args.reserve_by_stratum.read_text())
+            if args.reserve_by_stratum is not None
+            else {}
+        )
+        report = aggregate_contamination(
+            tuple(observations),
+            selected_strata={str(k): str(v) for k, v in selected.items()},
+            expected_models=frozenset(args.expected_model),
+            reserve_by_stratum={
+                str(k): tuple(str(item) for item in value)
+                for k, value in reserve.items()
+            },
+        )
+        serialized = json.dumps(asdict(report), indent=2, sort_keys=True) + "\n"
+        if args.output.exists() and args.output.read_text() != serialized:
+            raise FileExistsError(f"refusing to replace aggregate contamination audit: {args.output}")
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(serialized)
+        print(serialized, end="")
+        return 0 if report.passed else 2
     if args.command == "ledger-check":
         entries = RunLedger(args.ledger).validate()
         print(
@@ -218,6 +270,8 @@ def main(argv: list[str] | None = None) -> int:
             "evaluator_digest",
             "contamination_audit_digest",
             "base_checkpoint_digest",
+            "base_group_digest",
+            "freeze_bindings_digest",
         }
         missing = required_bindings - set(bindings)
         if missing or any(not bindings[key] for key in required_bindings):
@@ -229,7 +283,7 @@ def main(argv: list[str] | None = None) -> int:
             ledger_value,
             maximum_attempts=int(config["evolution"]["maximum_promotion_attempts"]),
             frozen_bindings={key: str(bindings[key]) for key in required_bindings},
-            initial_champion_digest=str(bindings["base_checkpoint_digest"]),
+            initial_champion_group_digest=str(bindings["base_group_digest"]),
         )
         if args.command == "promotion-decision":
             candidate = read_evaluation_cells(args.candidate)
@@ -280,10 +334,27 @@ def main(argv: list[str] | None = None) -> int:
             args.manifest,
             public_root=args.public_root,
             sealed_root=args.sealed_root,
+            trust_key=args.trust_key.read_bytes(),
         )
         write_vertical_slice_report(args.output, report)
         print(json.dumps(asdict(report), indent=2, sort_keys=True))
         return 0 if report.passed else 2
+    if args.command == "produce-trusted-receipt":
+        command = tuple(args.command_args)
+        if command and command[0] == "--":
+            command = command[1:]
+        receipt = run_trusted_process(
+            stage=args.stage,
+            capsule_digest=args.capsule_digest,
+            proposal_digest=args.proposal_digest,
+            command=command,
+            container_digest=args.container_digest,
+            trust_key=args.trust_key.read_bytes(),
+            output_path=args.output,
+            runtime_mode=args.runtime_mode,
+        )
+        print(json.dumps(asdict(receipt), indent=2, sort_keys=True))
+        return 0 if receipt.exit_code == 0 else 2
     if args.command == "export-sft":
         print(export_sft(args.library, args.output))
         return 0

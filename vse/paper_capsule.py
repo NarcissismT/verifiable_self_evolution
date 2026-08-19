@@ -167,6 +167,12 @@ class PublicPaperCapsule:
     def digest(self) -> str:
         return content_hash(self.payload())
 
+    @property
+    def pre_review_digest(self) -> str:
+        value = self.payload()
+        value["semantic_leak_review_digest"] = ""
+        return content_hash(value)
+
 
 @dataclass(frozen=True)
 class SealedTarget:

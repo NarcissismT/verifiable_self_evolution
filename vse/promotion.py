@@ -41,6 +41,7 @@ class EvaluationCell:
     manifest_digest: str
     evaluator_digest: str
     contamination_audit_digest: str
+    training_recipe_digest: str = ""
 
     @property
     def key(self) -> tuple[str, int, int]:
@@ -153,8 +154,8 @@ class SplitDecision:
 class PromotionDecision:
     promoted: bool
     decision_kind: str
-    candidate_checkpoint_digest: str
-    champion_checkpoint_digest: str
+    candidate_group_digest: str
+    champion_group_digest: str
     manifest_digest: str
     evaluator_digest: str
     split_decisions: tuple[SplitDecision, ...]
@@ -204,6 +205,24 @@ def _single_value(name: str, cells: list[EvaluationCell], field: str) -> str:
     return next(iter(values))
 
 
+def _adapter_checkpoint_map(
+    name: str, cells: list[EvaluationCell]
+) -> dict[int, str]:
+    checkpoints: dict[int, set[str]] = {}
+    for cell in cells:
+        if not cell.checkpoint_digest:
+            raise ValueError(f"{name} cell has an empty adapter checkpoint digest")
+        checkpoints.setdefault(cell.adapter_seed, set()).add(cell.checkpoint_digest)
+    disagreements = {
+        seed: sorted(values) for seed, values in checkpoints.items() if len(values) != 1
+    }
+    if disagreements:
+        raise ValueError(
+            f"{name} cells disagree on adapter checkpoint digest: {disagreements}"
+        )
+    return {seed: next(iter(values)) for seed, values in checkpoints.items()}
+
+
 def _common_checks(
     candidate: list[EvaluationCell],
     champion: list[EvaluationCell],
@@ -215,7 +234,7 @@ def _common_checks(
     expected_contamination_digest: str | None = None,
     expected_reference_checkpoint_id: str | None = None,
     expected_reference_checkpoint_digest: str | None = None,
-) -> tuple[str, str, list[str]]:
+) -> tuple[str, str, str, str, list[str]]:
     if not candidate or not champion:
         raise ValueError("candidate and champion receipts are required")
     all_cells = candidate + champion
@@ -238,8 +257,16 @@ def _common_checks(
         raise ValueError("receipt evaluator digest does not match frozen evaluator")
     if expected_contamination_digest is not None and contamination_digest != expected_contamination_digest:
         raise ValueError("receipt contamination digest does not match frozen audit")
-    candidate_digest = _single_value("candidate", candidate, "checkpoint_digest")
-    champion_digest = _single_value("champion", champion, "checkpoint_digest")
+    candidate_digest = _single_value(
+        "candidate", candidate, "training_recipe_digest"
+    )
+    champion_digest = _single_value(
+        "champion", champion, "training_recipe_digest"
+    )
+    if not candidate_digest or not champion_digest:
+        raise ValueError("training recipe digest is required for both model groups")
+    _adapter_checkpoint_map("candidate", candidate)
+    champion_checkpoints = _adapter_checkpoint_map("champion", champion)
     failures: list[str] = []
     if candidate_digest == champion_digest:
         failures.append("candidate_is_champion")
@@ -249,10 +276,10 @@ def _common_checks(
             raise ValueError("final comparator is not the frozen base checkpoint")
     if (
         expected_reference_checkpoint_digest is not None
-        and champion_digest != expected_reference_checkpoint_digest
+        and set(champion_checkpoints.values()) != {expected_reference_checkpoint_digest}
     ):
         raise ValueError("final comparator digest is not the frozen base checkpoint")
-    return manifest_digest, evaluator_digest, failures
+    return manifest_digest, evaluator_digest, candidate_digest, champion_digest, failures
 
 
 def _make_split_decision(
@@ -433,7 +460,13 @@ def decide_promotion(
 ) -> PromotionDecision:
     candidate = list(candidate_cells)
     champion = list(champion_cells)
-    manifest_digest, evaluator_digest, failures = _common_checks(
+    (
+        manifest_digest,
+        evaluator_digest,
+        candidate_group_digest,
+        champion_group_digest,
+        failures,
+    ) = _common_checks(
         candidate,
         champion,
         phase="promotion",
@@ -495,8 +528,8 @@ def decide_promotion(
     return PromotionDecision(
         promoted=not failures,
         decision_kind="promotion",
-        candidate_checkpoint_digest=_single_value("candidate", candidate, "checkpoint_digest"),
-        champion_checkpoint_digest=_single_value("champion", champion, "checkpoint_digest"),
+        candidate_group_digest=candidate_group_digest,
+        champion_group_digest=champion_group_digest,
         manifest_digest=manifest_digest,
         evaluator_digest=evaluator_digest,
         split_decisions=(decision,),
@@ -512,7 +545,13 @@ def decide_final(
 ) -> PromotionDecision:
     candidate = list(candidate_cells)
     champion = list(champion_cells)
-    manifest_digest, evaluator_digest, failures = _common_checks(
+    (
+        manifest_digest,
+        evaluator_digest,
+        candidate_group_digest,
+        champion_group_digest,
+        failures,
+    ) = _common_checks(
         candidate,
         champion,
         phase="final",
@@ -572,8 +611,8 @@ def decide_final(
     return PromotionDecision(
         promoted=not failures,
         decision_kind="final",
-        candidate_checkpoint_digest=_single_value("candidate", candidate, "checkpoint_digest"),
-        champion_checkpoint_digest=_single_value("champion", champion, "checkpoint_digest"),
+        candidate_group_digest=candidate_group_digest,
+        champion_group_digest=champion_group_digest,
         manifest_digest=manifest_digest,
         evaluator_digest=evaluator_digest,
         split_decisions=(id_decision, ood_decision),

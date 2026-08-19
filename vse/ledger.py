@@ -26,10 +26,12 @@ class LedgerEntry:
 
 
 class RunLedger:
-    """Append-only, hash-chained run ledger.
+    """Hash-chained append-only run ledger.
 
     The ledger is deliberately a small file protocol so it can be copied into
-    an immutable artifact bundle and verified without a database service.
+    an artifact bundle and verified without a database service. The hash chain
+    detects local edits; an anchored head is required for external tamper
+    resistance.
     """
 
     def __init__(self, path: Path):
@@ -100,3 +102,27 @@ class RunLedger:
             os.fsync(handle.fileno())
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
             return entry
+
+    def anchor_head(self, *, event_type: str, freeze_bindings_digest: str) -> Path:
+        entries = self.validate()
+        if not entries:
+            raise ValueError("cannot anchor an empty ledger")
+        head = entries[-1]
+        anchor = {
+            "sequence": head.sequence,
+            "event_type": event_type,
+            "head_hash": head.entry_hash,
+            "freeze_bindings_digest": freeze_bindings_digest,
+        }
+        anchor["anchor_digest"] = content_hash(anchor)
+        path = self.path.parent / "anchors" / f"{head.sequence:06d}-{event_type}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        serialized = json.dumps(anchor, indent=2, sort_keys=True) + "\n"
+        if path.exists() and path.read_text() != serialized:
+            raise FileExistsError(f"refusing to replace ledger head anchor: {path}")
+        path.write_text(serialized)
+        # Keep a small latest-head pointer for validators; immutable snapshots
+        # remain in `ledger/anchors/` for every binding event.
+        latest = self.path.parent / "head_anchor.json"
+        latest.write_text(serialized)
+        return path

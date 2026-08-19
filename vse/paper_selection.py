@@ -65,6 +65,9 @@ class PaperSelection:
     assignments: dict[str, tuple[str, ...]]
     reserved_ids: tuple[str, ...] = ()
     cutoffs_utc: dict[str, str] = field(default_factory=dict)
+    strata_by_id: dict[str, str] = field(default_factory=dict)
+    excluded_ids: tuple[str, ...] = ()
+    replacement_history: tuple[dict[str, str], ...] = ()
     assignment_digest: str = ""
 
     def sealed(self) -> "PaperSelection":
@@ -154,6 +157,7 @@ def select_frozen_papers(
     sampling_seed: int,
     minimum_candidate_pool: int = 161,
     cutoff_days: int = 30,
+    reserve_minimum_by_stratum: dict[str, int] | None = None,
 ) -> PaperSelection:
     if len(candidates) < minimum_candidate_pool:
         raise ValueError(
@@ -199,6 +203,21 @@ def select_frozen_papers(
         sorted(item.paper_id for item in candidates if item.paper_id not in used)
     )
     selected_by_id = {item.paper_id: item for item in candidates}
+    reserve_minimum_by_stratum = {
+        str(key): int(value)
+        for key, value in (reserve_minimum_by_stratum or {}).items()
+    }
+    reserve_by_stratum: dict[str, int] = {}
+    for paper_id in reserve_ids:
+        reserve_by_stratum[selected_by_id[paper_id].stratum] = (
+            reserve_by_stratum.get(selected_by_id[paper_id].stratum, 0) + 1
+        )
+    for stratum, minimum in reserve_minimum_by_stratum.items():
+        if reserve_by_stratum.get(stratum, 0) < minimum:
+            raise ValueError(
+                f"reserve minimum is not met for {stratum}: "
+                f"{reserve_by_stratum.get(stratum, 0)} < {minimum}"
+            )
     all_frozen_ids = sorted(used | set(reserve_ids))
     return PaperSelection(
         sampling_seed=sampling_seed,
@@ -209,4 +228,56 @@ def select_frozen_papers(
             paper_id: selected_by_id[paper_id].capsule_cutoff_utc(cutoff_days)
             for paper_id in all_frozen_ids
         },
+        strata_by_id={paper_id: selected_by_id[paper_id].stratum for paper_id in all_frozen_ids},
+    ).sealed()
+
+
+def replace_from_reserve(
+    selection: PaperSelection,
+    *,
+    split: str,
+    failed_paper_id: str,
+    replacement_paper_id: str,
+) -> PaperSelection:
+    """Replace a failed paper without changing its frozen stratum or split quota."""
+    if failed_paper_id not in selection.assignments.get(split, ()):
+        raise ValueError(f"failed paper is not assigned to split={split}: {failed_paper_id}")
+    if replacement_paper_id not in selection.reserved_ids:
+        raise ValueError(f"replacement paper is not in sealed reserve: {replacement_paper_id}")
+    failed_stratum = selection.strata_by_id.get(failed_paper_id)
+    replacement_stratum = selection.strata_by_id.get(replacement_paper_id)
+    if not failed_stratum or failed_stratum != replacement_stratum:
+        raise ValueError("reserve replacement must preserve the paper stratum")
+    assignments = dict(selection.assignments)
+    assignments[split] = tuple(
+        sorted(
+            replacement_paper_id if paper_id == failed_paper_id else paper_id
+            for paper_id in assignments[split]
+        )
+    )
+    reserved = tuple(
+        paper_id
+        for paper_id in selection.reserved_ids
+        if paper_id != replacement_paper_id
+    )
+    cutoffs = dict(selection.cutoffs_utc)
+    strata = dict(selection.strata_by_id)
+    strata[replacement_paper_id] = failed_stratum
+    return PaperSelection(
+        sampling_seed=selection.sampling_seed,
+        candidate_pool_digest=selection.candidate_pool_digest,
+        assignments=assignments,
+        reserved_ids=reserved,
+        cutoffs_utc=cutoffs,
+        strata_by_id=strata,
+        excluded_ids=tuple(sorted(set(selection.excluded_ids) | {failed_paper_id})),
+        replacement_history=selection.replacement_history
+        + (
+            {
+                "split": split,
+                "failed_paper_id": failed_paper_id,
+                "replacement_paper_id": replacement_paper_id,
+                "stratum": failed_stratum,
+            },
+        ),
     ).sealed()

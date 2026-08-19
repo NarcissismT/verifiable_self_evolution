@@ -99,8 +99,8 @@
     "manifest_sampling": 20260819
   },
   "evolution": {
-    "maximum_generations": 3,
-    "maximum_promotion_attempts": 3,
+    "maximum_generations": 1,
+    "maximum_promotion_attempts": 1,
     "final_evaluation_runs": 1,
     "promotion_set_is_training_free": true,
     "final_sets_are_evaluation_only": true
@@ -118,8 +118,15 @@
     "official_code_window_days_after_target": 30,
     "later_versions_for_formal_scoring": false,
     "required_artifact_hashes": ["sha256", "git_commit"],
-    "candidate_pool_minimum": 161,
-    "reserve_policy": "all_eligible_unassigned_candidates_are_sealed_reserve"
+    "candidate_pool_minimum": 181,
+    "reserve_minimum_by_stratum": {
+      "constrained_safe_rl": 4,
+      "general_sum_equilibrium_marl": 4,
+      "bilevel_stackelberg_alignment_optimization": 4,
+      "ood_constrained_bilevel_differentiable_optimization": 4,
+      "ood_safe_control_learning_to_optimize": 4
+    },
+    "reserve_policy": "all_eligible_unassigned_candidates_are_sealed_reserve_with_same_stratum_replacement"
   },
   "contamination_audit": {
     "probe_count_per_paper": 12,
@@ -151,6 +158,26 @@
     "paper_level_bootstrap": true,
     "missing_paper_policy": "fail_closed",
     "capsule_replacement_policy": "only_from_sealed_reserve_before_generation"
+  },
+  "ood_shift_definitions": {
+    "ood_constrained_bilevel_differentiable_optimization": {
+      "shift_id": "objective_and_constraint_semantics",
+      "shifted_variables": ["objective_family", "constraint_geometry"],
+      "id_boundary": "standard bilevel or Stackelberg alignment objectives with public benchmark constraints",
+      "ood_boundary": "differentiable constrained bilevel objectives whose constraint geometry is absent from all ID and Dev tasks",
+      "rationale": "tests transfer across constraint and objective geometry rather than paper wording",
+      "dev_exposure": false,
+      "independent_review_required": true
+    },
+    "ood_safe_control_learning_to_optimize": {
+      "shift_id": "control_dynamics_and_safety_semantics",
+      "shifted_variables": ["dynamics", "safety_specification", "action_effect"],
+      "id_boundary": "static safe RL or general-sum MARL tasks without held-out control dynamics",
+      "ood_boundary": "learning-to-optimize control tasks with a distinct transition model and safety specification not present in Dev",
+      "rationale": "tests transfer to a different causal control mechanism under explicit safety constraints",
+      "dev_exposure": false,
+      "independent_review_required": true
+    }
   },
   "resource_budget": {
     "gpu_model": "A6000-48GB",

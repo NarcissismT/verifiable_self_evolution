@@ -8,7 +8,11 @@ import unittest
 import json
 
 from vse.candidate_pool import PoolMember, validate_candidate_pool
-from vse.contamination import ProbeObservation, evaluate_contamination
+from vse.contamination import (
+    ProbeObservation,
+    aggregate_contamination,
+    evaluate_contamination,
+)
 from vse.contracts import CandidateSource, Split, Task, TeacherPurpose
 from vse.model_provenance import ModelProvenance
 from vse.paper_capsule import (
@@ -28,7 +32,12 @@ from vse.promotion import (
     final_policy_from_config,
     promotion_policy_from_config,
 )
-from vse.paper_selection import PaperCandidate, eligible_candidates, select_frozen_papers
+from vse.paper_selection import (
+    PaperCandidate,
+    eligible_candidates,
+    replace_from_reserve,
+    select_frozen_papers,
+)
 from vse.proposal_io import parse_model_proposal
 from vse.registry import build_manifest
 from vse.runner import CodeRunner, RunnerConfig
@@ -47,6 +56,24 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual((promotion.promotion_id_tasks, promotion.promotion_ood_tasks), (8, 4))
         self.assertEqual((final.minimum_id_tasks, final.minimum_ood_tasks), (24, 16))
         self.assertEqual(final.minimum_id_vds_delta, 0.05)
+        self.assertEqual(config["evolution"]["maximum_generations"], 1)
+        self.assertEqual(config["evolution"]["maximum_promotion_attempts"], 1)
+        recursive = json.loads(
+            (Path(__file__).parents[1] / "configs" / "paper_rediscovery_recursive_v1.json").read_text()
+        )
+        causal = json.loads(
+            (Path(__file__).parents[1] / "configs" / "paper_rediscovery_causal_pilot_v0_2.json").read_text()
+        )
+        self.assertEqual(causal["maximum_generations"], 1)
+        self.assertEqual(causal["maximum_promotion_attempts"], 1)
+        self.assertEqual(causal["sample_plan"], {
+            "train": 30,
+            "dev": 9,
+            "pilot_eval": 12,
+            "adapter_seeds": [17, 29, 43],
+            "rollout_seeds": [101, 211, 307, 401],
+        })
+        self.assertEqual(recursive["maximum_generations"], 3)
 
     def test_capsule_target_identifier_leak_is_a_hard_failure(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -267,13 +294,15 @@ class ProtocolTests(unittest.TestCase):
                         (
                             EvaluationCell(
                                 checkpoint_id="candidate",
-                                checkpoint_digest="cand",
+                                checkpoint_digest=f"cand-adapter-{adapter_seed}",
+                                training_recipe_digest="candidate-recipe",
                                 vds_score=1.0,
                                 **common,
                             ),
                             EvaluationCell(
                                 checkpoint_id="champion",
-                                checkpoint_digest="champ",
+                                checkpoint_digest=f"champ-adapter-{adapter_seed}",
+                                training_recipe_digest="champion-recipe",
                                 vds_score=0.5,
                                 **common,
                             ),
@@ -339,6 +368,7 @@ class ProtocolTests(unittest.TestCase):
                             EvaluationCell(
                                 checkpoint_id="candidate",
                                 checkpoint_digest="candidate-digest",
+                                training_recipe_digest="candidate-recipe",
                                 vds_score=1.0 if split is Split.HELDOUT else 0.8,
                                 **common,
                             )
@@ -347,6 +377,7 @@ class ProtocolTests(unittest.TestCase):
                             EvaluationCell(
                                 checkpoint_id="champion",
                                 checkpoint_digest="champion-digest",
+                                training_recipe_digest="base-recipe",
                                 vds_score=0.5 if split is Split.HELDOUT else 0.8,
                                 **common,
                             )
@@ -393,6 +424,18 @@ class ProtocolTests(unittest.TestCase):
         )
         self.assertFalse(failed.passed)
         self.assertEqual(failed.excluded_models, ("7b",))
+        aggregate = aggregate_contamination(
+            tuple([contaminated, *rows[1:]]),
+            selected_strata={"paper": "constrained_safe_rl"},
+            expected_models=frozenset({"7b", "14b"}),
+            reserve_by_stratum={"constrained_safe_rl": ("reserve-paper",)},
+        )
+        self.assertFalse(aggregate.passed)
+        self.assertEqual(aggregate.failed_papers, ("paper",))
+        self.assertEqual(
+            aggregate.reserve_replacements_by_stratum["constrained_safe_rl"],
+            ("reserve-paper",),
+        )
 
     def test_frozen_paper_selection_is_disjoint_and_quota_exact(self) -> None:
         strata = (
@@ -460,12 +503,29 @@ class ProtocolTests(unittest.TestCase):
                 },
             },
             sampling_seed=7,
+            reserve_minimum_by_stratum={stratum: 4 for stratum in strata},
         )
         all_ids = [paper_id for split in selection.assignments.values() for paper_id in split]
         self.assertEqual(len(all_ids), len(set(all_ids)))
         self.assertEqual(len(selection.assignments["promotion"]), 12)
         self.assertEqual(len(selection.assignments["heldout"]), 24)
         self.assertEqual(len(selection.assignments["ood"]), 16)
+        failed_id = selection.assignments["train"][0]
+        failed_stratum = selection.strata_by_id[failed_id]
+        replacement_id = next(
+            paper_id
+            for paper_id in selection.reserved_ids
+            if selection.strata_by_id[paper_id] == failed_stratum
+        )
+        replaced = replace_from_reserve(
+            selection,
+            split="train",
+            failed_paper_id=failed_id,
+            replacement_paper_id=replacement_id,
+        )
+        self.assertIn(replacement_id, replaced.assignments["train"])
+        self.assertNotIn(failed_id, replaced.reserved_ids)
+        self.assertIn(failed_id, replaced.excluded_ids)
 
     def test_model_cannot_inject_proposal_identity_or_extra_fields(self) -> None:
         task = make_tasks({"train": 1, "dev": 1, "promotion": 1, "heldout": 1, "ood": 1})[0]

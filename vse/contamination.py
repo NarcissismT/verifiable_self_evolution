@@ -111,3 +111,85 @@ def evaluate_contamination(
         failures=tuple(sorted(set(failures))),
         observation_count=len(observations),
     ).sealed()
+
+
+@dataclass(frozen=True)
+class AggregateContaminationDecision:
+    selected_paper_count: int
+    expected_model_ids: tuple[str, ...]
+    expected_probe_count: int
+    expected_seed_count: int
+    passed: bool
+    paper_audits: dict[str, str]
+    failed_papers: tuple[str, ...]
+    reserve_replacements_by_stratum: dict[str, tuple[str, ...]]
+    failures: tuple[str, ...]
+    audit_digest: str = ""
+
+    def sealed(self) -> "AggregateContaminationDecision":
+        value = asdict(self)
+        value["audit_digest"] = ""
+        return AggregateContaminationDecision(
+            **{**asdict(self), "audit_digest": content_hash(value)}
+        )
+
+
+def aggregate_contamination(
+    observations: tuple[ProbeObservation, ...],
+    *,
+    selected_strata: dict[str, str],
+    expected_models: frozenset[str],
+    reserve_by_stratum: dict[str, tuple[str, ...]] | None = None,
+    probes_per_paper: int = 12,
+    seeds_per_probe: int = 3,
+) -> AggregateContaminationDecision:
+    """Audit every selected paper and route failures to same-stratum reserve."""
+    expected_ids = set(selected_strata)
+    actual_ids = {row.target_id for row in observations}
+    failures: list[str] = []
+    if actual_ids != expected_ids:
+        failures.append("selected_paper_grid_mismatch")
+    paper_audits: dict[str, str] = {}
+    failed: list[str] = []
+    reserve_by_stratum = reserve_by_stratum or {}
+    replacements: dict[str, tuple[str, ...]] = {}
+    for paper_id in sorted(expected_ids):
+        rows = tuple(row for row in observations if row.target_id == paper_id)
+        if not rows:
+            failures.append(f"missing_paper_audit:{paper_id}")
+            failed.append(paper_id)
+            continue
+        try:
+            decision = evaluate_contamination(
+                rows,
+                expected_models=expected_models,
+                probes_per_paper=probes_per_paper,
+                seeds_per_probe=seeds_per_probe,
+            )
+        except ValueError as error:
+            failures.append(f"paper_audit_error:{paper_id}:{type(error).__name__}")
+            failed.append(paper_id)
+            continue
+        paper_audits[paper_id] = decision.audit_digest
+        if not decision.passed:
+            failed.append(paper_id)
+            failures.extend(f"{paper_id}:{item}" for item in decision.failures)
+    for paper_id in failed:
+        stratum = selected_strata.get(paper_id, "")
+        candidates = tuple(reserve_by_stratum.get(stratum, ()))
+        if not candidates:
+            failures.append(f"no_same_stratum_reserve:{paper_id}:{stratum}")
+        replacements[stratum] = tuple(
+            sorted(set(replacements.get(stratum, ())) | set(candidates))
+        )
+    return AggregateContaminationDecision(
+        selected_paper_count=len(expected_ids),
+        expected_model_ids=tuple(sorted(expected_models)),
+        expected_probe_count=probes_per_paper,
+        expected_seed_count=seeds_per_probe,
+        passed=not failures,
+        paper_audits=paper_audits,
+        failed_papers=tuple(sorted(set(failed))),
+        reserve_replacements_by_stratum=replacements,
+        failures=tuple(sorted(set(failures))),
+    ).sealed()

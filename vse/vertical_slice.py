@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -8,6 +9,8 @@ from typing import Any
 
 from .hashing import content_hash
 from .paper_capsule import audit_capsule, capsule_from_mapping, sealed_target_from_mapping
+from .semantic_review import load_semantic_review
+from .trusted_producer import verify_trusted_receipt
 
 
 @dataclass(frozen=True)
@@ -51,15 +54,45 @@ def _load_bound_receipt(path: Path, capsule_digest: str, kind: str) -> dict[str,
     return value
 
 
+def _load_trusted_stage(
+    *,
+    public_root: Path,
+    stage_path: str,
+    capsule_digest: str,
+    stage: str,
+    expected_producer_digest: str | None,
+    allow_test_runtime: bool,
+    trust_key: bytes,
+) -> dict[str, Any]:
+    path = (public_root / stage_path).resolve()
+    path.relative_to(public_root.resolve())
+    value = json.loads(path.read_text())
+    producer = verify_trusted_receipt(value, trust_key=trust_key)
+    if producer.runtime_mode == "local_test" and not allow_test_runtime:
+        raise ValueError("local test runtime is not allowed for a real vertical slice")
+    if producer.stage != stage or producer.capsule_digest != capsule_digest:
+        raise ValueError(f"{stage} trusted producer binding mismatch")
+    if not expected_producer_digest:
+        raise ValueError(f"{stage} trusted producer digest is not frozen")
+    actual = content_hash(value)
+    if actual != expected_producer_digest:
+        raise ValueError(f"{stage} trusted producer digest mismatch")
+    return value
+
+
 def run_vertical_slice(
     manifest_path: Path,
     *,
     public_root: Path,
     sealed_root: Path,
+    trust_key: bytes,
 ) -> VerticalSliceReport:
     manifest = json.loads(manifest_path.read_text())
     cases = manifest.get("cases", [])
     failures: list[str] = []
+    trust_anchor_digest = hashlib.sha256(trust_key).hexdigest()
+    if manifest.get("trust_anchor_digest") != trust_anchor_digest:
+        failures.append("trust_anchor_digest_mismatch")
     if not 3 <= len(cases) <= 5:
         failures.append("vertical_slice_requires_3_to_5_cases")
     receipts: list[VerticalSliceCaseReceipt] = []
@@ -81,8 +114,11 @@ def run_vertical_slice(
             target = sealed_target_from_mapping(json.loads(target_path.read_text()))
             audit = audit_capsule(capsule, target, public_root, sealed_root)
             case_failures.extend(audit.failures)
+            review_path = (public_root / case["semantic_review_receipt"]).resolve()
+            review_path.relative_to(public_root.resolve())
+            load_semantic_review(review_path, capsule=capsule, target=target)
         except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as error:
-            case_failures.append(f"capsule_audit_error:{type(error).__name__}")
+            case_failures.append(f"capsule_or_semantic_review_error:{type(error).__name__}")
             audit = None
             capsule = None
         capsule_digest = capsule.digest if capsule is not None else ""
@@ -94,6 +130,38 @@ def run_vertical_slice(
                 stage_values[kind] = _load_bound_receipt(
                     receipt_path, capsule_digest, kind
                 )
+                producer_path = case.get(f"{kind}_producer_receipt")
+                if not producer_path:
+                    raise ValueError("trusted producer receipt path is missing")
+                producer = _load_trusted_stage(
+                    public_root=public_root,
+                    stage_path=str(producer_path),
+                    capsule_digest=capsule_digest,
+                    stage=kind,
+                    expected_producer_digest=case.get(f"{kind}_producer_receipt_digest"),
+                    allow_test_runtime=bool(manifest.get("trusted_test_runtime", False)),
+                    trust_key=trust_key,
+                )
+                if stage_values[kind].get("producer_receipt_digest") != content_hash(
+                    producer
+                ):
+                    case_failures.append(f"{kind}_producer_receipt_binding_mismatch")
+                if stage_values[kind].get("producer_execution_digest") != producer.get(
+                    "execution_digest"
+                ):
+                    case_failures.append(f"{kind}_producer_execution_binding_mismatch")
+                if stage_values[kind].get("producer_stdout_digest") != producer.get(
+                    "stdout_digest"
+                ):
+                    case_failures.append(f"{kind}_producer_output_binding_mismatch")
+                if stage_values[kind].get("runtime_container_digest") != producer.get(
+                    "container_digest"
+                ):
+                    case_failures.append(f"{kind}_producer_container_binding_mismatch")
+                if kind in {"generation", "execution"} and producer.get(
+                    "proposal_digest"
+                ) != stage_values[kind].get("proposal_digest"):
+                    case_failures.append(f"{kind}_producer_proposal_binding_mismatch")
             except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as error:
                 case_failures.append(f"{kind}_receipt_error:{type(error).__name__}")
         generation = stage_values.get("generation", {})
@@ -149,4 +217,3 @@ def write_vertical_slice_report(path: Path, report: VerticalSliceReport) -> None
     if path.exists() and path.read_text() != serialized:
         raise FileExistsError(f"refusing to replace vertical slice report: {path}")
     path.write_text(serialized)
-

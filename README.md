@@ -11,7 +11,7 @@ The quadratic configuration remains a control-plane smoke test only.
 The hardening status and remaining exit conditions are tracked in
 [`PROGRESS_V0_1_1.md`](PROGRESS_V0_1_1.md).
 
-The current milestone is `v0.1.1-protocol-hardening`. It deliberately stops
+The current milestone is `v0.1.2-pre-pilot-fix`. It deliberately stops
 before real QLoRA: the formal run is blocked until freeze artifacts and an
 independent 3-5 capsule vertical slice are complete. The causal one-generation
 pilot and later recursive study are separate configurations:
@@ -97,13 +97,19 @@ python -m vse.cli run-vertical-slice \
   --manifest pilot/vertical_slice_manifest.json \
   --public-root pilot/public \
   --sealed-root pilot/sealed \
+  --trust-key /sealed/keys/vse-receipt.key \
   --output runs/formal/vertical_slice_report.json
 ```
 
 `freeze-check` exits nonzero for pending implementation or artifact bindings.
-`run-vertical-slice` requires 3-5 independent pilot cases marked as excluded
-from every formal split; its receipts are not training data and do not support
-formal performance claims.
+`run-vertical-slice` requires 3-5 independent engineering cases marked as
+excluded from every formal split. It validates trusted producer and semantic
+review receipts; these cases are not training data and cannot estimate formal
+paper-level power.
+
+Real stage receipts must be produced through `produce-trusted-receipt` with a
+Docker command that contains `--network none`. The private trust key stays
+outside the public capsule; the manifest freezes only its SHA-256 digest.
 
 ## QLoRA handoff
 

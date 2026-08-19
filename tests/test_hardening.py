@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -24,6 +25,8 @@ from vse.paper_capsule import (
 from vse.store import export_sft
 from vse.toy import run_training_smoke
 from vse.vertical_slice import run_vertical_slice
+from vse.semantic_review import SemanticReviewReceipt
+from vse.trusted_producer import run_trusted_process
 
 
 REPO_ROOT = Path(__file__).parents[1]
@@ -66,6 +69,143 @@ class HardeningTests(unittest.TestCase):
             report.failures,
         )
         self.assertIn("final_sample_sizes_pending_power_confirmation", report.failures)
+
+    def test_freeze_bundle_ready_and_receipt_tampering_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            config = json.loads(
+                (REPO_ROOT / "configs" / "paper_rediscovery_v0_1.json").read_text()
+            )
+            config["freeze_readiness"] = {
+                "status": "formally_frozen_ready_to_launch",
+                "pending": [],
+            }
+            config["power"]["status"] = "confirmed_from_independent_pilot"
+            for split in ("heldout", "ood"):
+                config["split_constraints"][split] = {
+                    "exact": 24 if split == "heldout" else 16
+                }
+            for model in config["models"]:
+                model["checkpoint_file_hashes"] = {"weights": "sha256:model"}
+                model["tokenizer_file_hashes"] = {"tokenizer": "sha256:tokenizer"}
+            config["containers"]["train_image_digest"] = "sha256:train"
+            config["containers"]["evaluator_image_digest"] = "sha256:evaluator"
+            config["containers"]["trusted_evaluator_repository_commit"] = "commit"
+            for key, value in config["decoding"].items():
+                if value is None:
+                    config["decoding"][key] = 1
+            config_digest = content_hash(config)
+            (root / "config.json").parent.mkdir(parents=True, exist_ok=True)
+            (root / "config.json").write_text(
+                json.dumps({**config, "config_digest": config_digest}, sort_keys=True)
+            )
+            manifests = root / "manifests"
+            manifests.mkdir()
+            assignments: dict[str, list[str]] = {}
+            strata_by_id: dict[str, str] = {}
+            candidates_rows: list[dict] = []
+            task_entries: list[dict] = []
+            audit_rows: list[dict] = []
+            for split_name, split_quotas in config["selection_quotas"].items():
+                assignments[split_name] = []
+                for stratum, count in split_quotas.items():
+                    for index in range(count):
+                        paper_id = f"{split_name}-{stratum}-{index}"
+                        assignments[split_name].append(paper_id)
+                        strata_by_id[paper_id] = stratum
+                        candidates_rows.append({"paper_id": paper_id, "stratum": stratum})
+                        task_entries.append({"paper_id": paper_id, "split": split_name})
+                        audit = {
+                            "capsule_id": paper_id,
+                            "capsule_digest": f"capsule-{paper_id}",
+                            "passed": True,
+                            "failures": [],
+                        }
+                        audit["audit_digest"] = content_hash(audit)
+                        audit_rows.append(audit)
+            reserved_ids: list[str] = []
+            for stratum, count in config["capsule"]["reserve_minimum_by_stratum"].items():
+                for index in range(count):
+                    paper_id = f"reserve-{stratum}-{index}"
+                    reserved_ids.append(paper_id)
+                    strata_by_id[paper_id] = stratum
+                    candidates_rows.append({"paper_id": paper_id, "stratum": stratum})
+            selection = {
+                "assignments": assignments,
+                "reserved_ids": reserved_ids,
+                "strata_by_id": strata_by_id,
+                "assignment_digest": "",
+            }
+            selection["assignment_digest"] = content_hash(selection)
+            (manifests / "paper_selection.json").write_text(json.dumps(selection))
+            candidate_pool = {"candidates": candidates_rows, "candidate_pool_digest": ""}
+            candidate_pool["candidate_pool_digest"] = content_hash(candidate_pool)
+            (manifests / "candidate_pool.json").write_text(json.dumps(candidate_pool))
+            task_manifest = {"entries": task_entries, "task_manifest_digest": ""}
+            task_manifest["task_manifest_digest"] = content_hash(task_manifest)
+            (manifests / "capsule_task_manifest.json").write_text(json.dumps(task_manifest))
+            (manifests / "capsule_audits.jsonl").write_text(
+                "".join(json.dumps(row) + "\n" for row in audit_rows)
+            )
+            contamination = {"target_id": "aggregate", "passed": True, "audit_digest": ""}
+            contamination["audit_digest"] = content_hash(contamination)
+            evaluator = _sealed_receipt({"evaluator_digest": "evaluator"})
+            base = _sealed_receipt({"checkpoint_id": "base", "checkpoint_digest": "base-digest"})
+            power = _sealed_receipt({
+                "pilot_eval_n": 12,
+                "final_id_tasks": 24,
+                "final_ood_tasks": 16,
+                "target_power": 0.8,
+                "status": "confirmed_from_independent_pilot",
+                "covered_strata": sorted(
+                    {
+                        stratum
+                        for split in config["selection_quotas"].values()
+                        for stratum in split
+                    }
+                ),
+                "variance_strategy": "max_across_strata",
+            })
+            for name, value in (("contamination_receipt", contamination), ("trusted_evaluator_receipt", evaluator), ("base_checkpoint_receipt", base), ("power_receipt", power)):
+                (manifests / f"{name}.json").write_text(json.dumps(value))
+            rubric = {
+                "vds_components": sorted({"empirical", "hypothesis", "experiment", "novelty", "calibration"}),
+                "evaluator_digest": "evaluator",
+            }
+            (manifests / "human_review_rubric.json").write_text(json.dumps(rubric, sort_keys=True))
+            bindings = {
+                "config_digest": config_digest,
+                "paper_selection_digest": selection["assignment_digest"],
+                "candidate_pool_digest": candidate_pool["candidate_pool_digest"],
+                "task_manifest_digest": task_manifest["task_manifest_digest"],
+                "power_receipt_digest": power["receipt_digest"],
+                "rubric_digest": file_hash(manifests / "human_review_rubric.json"),
+                "evaluator_digest": "evaluator",
+                "contamination_audit_digest": contamination["audit_digest"],
+                "base_checkpoint_digest": "base-digest",
+                "base_group_digest": content_hash({"group_kind": "frozen_base", "checkpoint_digest": "base-digest"}),
+            }
+            bindings["freeze_bindings_digest"] = content_hash(bindings)
+            (manifests / "freeze_bindings.json").write_text(json.dumps(bindings))
+            ledger = RunLedger(root / "ledger" / "events.jsonl")
+            entry = ledger.append("freeze", {"ok": True}, bindings={"config": config_digest})
+            (root / "ledger" / "head_anchor.json").write_text(json.dumps({"head_hash": entry.entry_hash, "freeze_bindings_digest": bindings["freeze_bindings_digest"]}))
+            self.assertTrue(check_freeze(config, root).ready, check_freeze(config, root).failures)
+            mutations = (
+                (root / "config.json", "experiment_id", "tampered"),
+                (manifests / "power_receipt.json", "pilot_eval_n", 1),
+                (manifests / "trusted_evaluator_receipt.json", "evaluator_digest", "tampered"),
+                (manifests / "freeze_bindings.json", "config_digest", "tampered"),
+                (manifests / "human_review_rubric.json", "evaluator_digest", "tampered"),
+            )
+            for path, key, value in mutations:
+                with self.subTest(path=path.name, key=key):
+                    original = path.read_text()
+                    changed = json.loads(original)
+                    changed[key] = value
+                    path.write_text(json.dumps(changed))
+                    self.assertFalse(check_freeze(config, root).ready)
+                    path.write_text(original)
 
     def test_formal_init_freezes_all_five_splits_and_reserve(self) -> None:
         config = json.loads(
@@ -150,27 +290,27 @@ class HardeningTests(unittest.TestCase):
                 ledger,
                 maximum_attempts=3,
                 frozen_bindings={"config": "c", "manifest": "m"},
-                initial_champion_digest="base",
+                initial_champion_group_digest="base",
             )
             decision = PromotionDecision(
                 promoted=True,
                 decision_kind="promotion",
-                candidate_checkpoint_digest="candidate-1",
-                champion_checkpoint_digest="base",
+                candidate_group_digest="candidate-1",
+                champion_group_digest="base",
                 manifest_digest="m",
                 evaluator_digest="e",
                 split_decisions=(),
                 failures=(),
             ).sealed()
             state = machine.record_promotion(decision, promotion_attempt=1)
-            self.assertEqual(state.champion_checkpoint_digest, "candidate-1")
+            self.assertEqual(state.champion_group_digest, "candidate-1")
             with self.assertRaises(ValueError):
                 machine.record_promotion(decision, promotion_attempt=3)
             final = PromotionDecision(
                 promoted=True,
                 decision_kind="final",
-                candidate_checkpoint_digest="candidate-1",
-                champion_checkpoint_digest="base",
+                candidate_group_digest="candidate-1",
+                champion_group_digest="base",
                 manifest_digest="m",
                 evaluator_digest="e",
                 split_decisions=(),
@@ -200,6 +340,7 @@ class HardeningTests(unittest.TestCase):
     def test_three_case_vertical_slice_and_negative_gate(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             base = Path(raw)
+            trust_key = b"vse-test-trust-key-32-bytes-long!!"
             public = base / "public"
             sealed = base / "sealed"
             public.mkdir()
@@ -270,32 +411,87 @@ class HardeningTests(unittest.TestCase):
                     environment_lock_sha256=file_hash(environment),
                     allowed_tools=("python",),
                     target_commitment=target.commitment,
-                    semantic_leak_review_digest=f"review-{index}",
+                    semantic_leak_review_digest="",
                 )
+                review = SemanticReviewReceipt(
+                    capsule_digest=capsule.pre_review_digest,
+                    target_commitment=target.commitment,
+                    reviewer_id="independent-reviewer",
+                    evaluator_version="review-v1",
+                    independent=True,
+                    passed=True,
+                    categories=("semantic_leak",),
+                    findings=(),
+                ).sealed()
+                review_path = public_case / "semantic_review.json"
+                review_path.write_text(json.dumps(asdict(review), sort_keys=True))
+                capsule = replace(capsule, semantic_leak_review_digest=file_hash(review_path))
                 (public_case / "capsule.json").write_text(
                     json.dumps(capsule.payload(), sort_keys=True)
                 )
                 (sealed_case / "target.json").write_text(
                     json.dumps(asdict(target), sort_keys=True)
                 )
+                generation_producer = run_trusted_process(
+                    stage="generation",
+                    capsule_digest=capsule.digest,
+                    proposal_digest=f"proposal-{index}",
+                    command=("python", "-c", "pass"),
+                    container_digest="sha256:test-container",
+                    trust_key=trust_key,
+                )
+                generation_producer_path = public_case / "generation.producer.json"
+                generation_producer_path.write_text(json.dumps(asdict(generation_producer), sort_keys=True))
                 generation = _sealed_receipt({
                     "capsule_digest": capsule.digest,
                     "model_digest": "model",
                     "proposal_digest": f"proposal-{index}",
+                    "producer_receipt_digest": content_hash(asdict(generation_producer)),
+                    "producer_execution_digest": generation_producer.execution_digest,
+                    "producer_stdout_digest": generation_producer.stdout_digest,
+                    "runtime_container_digest": generation_producer.container_digest,
                 })
+                execution_producer = run_trusted_process(
+                    stage="execution",
+                    capsule_digest=capsule.digest,
+                    proposal_digest=f"proposal-{index}",
+                    command=("python", "-c", "pass"),
+                    container_digest="sha256:test-container",
+                    trust_key=trust_key,
+                )
+                execution_producer_path = public_case / "execution.producer.json"
+                execution_producer_path.write_text(json.dumps(asdict(execution_producer), sort_keys=True))
                 execution = _sealed_receipt({
                     "capsule_digest": capsule.digest,
                     "proposal_digest": f"proposal-{index}",
                     "network_policy": "none",
                     "container_digest": "container",
                     "execution_digest": f"execution-{index}",
+                    "producer_receipt_digest": content_hash(asdict(execution_producer)),
+                    "producer_execution_digest": execution_producer.execution_digest,
+                    "producer_stdout_digest": execution_producer.stdout_digest,
+                    "runtime_container_digest": execution_producer.container_digest,
                 })
+                evaluation_producer = run_trusted_process(
+                    stage="evaluation",
+                    capsule_digest=capsule.digest,
+                    proposal_digest=f"proposal-{index}",
+                    command=("python", "-c", "pass"),
+                    container_digest="sha256:test-container",
+                    trust_key=trust_key,
+                )
+                evaluation_producer_path = public_case / "evaluation.producer.json"
+                evaluation_producer_path.write_text(json.dumps(asdict(evaluation_producer), sort_keys=True))
                 evaluation = _sealed_receipt({
                     "capsule_digest": capsule.digest,
                     "execution_digest": f"execution-{index}",
                     "trusted_evaluator_digest": "evaluator",
                     "hard_pass": True,
                     "vds_score": 0.8,
+                    "producer_receipt_digest": content_hash(asdict(evaluation_producer)),
+                    "producer_execution_digest": evaluation_producer.execution_digest,
+                    "producer_stdout_digest": evaluation_producer.stdout_digest,
+                    "runtime_container_digest": evaluation_producer.container_digest,
                 })
                 for name, value in (
                     ("generation", generation),
@@ -309,13 +505,30 @@ class HardeningTests(unittest.TestCase):
                     "excluded_from_formal_splits": True,
                     "capsule_json": f"{case_id}/capsule.json",
                     "target_json": f"{case_id}/target.json",
+                    "semantic_review_receipt": f"{case_id}/semantic_review.json",
                     "generation_receipt": f"{case_id}/generation.json",
                     "execution_receipt": f"{case_id}/execution.json",
                     "evaluation_receipt": f"{case_id}/evaluation.json",
+                    "generation_producer_receipt": f"{case_id}/generation.producer.json",
+                    "execution_producer_receipt": f"{case_id}/execution.producer.json",
+                    "evaluation_producer_receipt": f"{case_id}/evaluation.producer.json",
+                    "generation_producer_receipt_digest": content_hash(asdict(generation_producer)),
+                    "execution_producer_receipt_digest": content_hash(asdict(execution_producer)),
+                    "evaluation_producer_receipt_digest": content_hash(asdict(evaluation_producer)),
                 })
             manifest = base / "manifest.json"
-            manifest.write_text(json.dumps({"pilot_id": "pilot", "cases": cases}))
-            report = run_vertical_slice(manifest, public_root=public, sealed_root=sealed)
+            manifest.write_text(json.dumps({
+                "pilot_id": "pilot",
+                "trusted_test_runtime": True,
+                "trust_anchor_digest": hashlib.sha256(trust_key).hexdigest(),
+                "cases": cases,
+            }))
+            report = run_vertical_slice(
+                manifest,
+                public_root=public,
+                sealed_root=sealed,
+                trust_key=trust_key,
+            )
             self.assertTrue(report.passed, report.failures)
 
             bad_path = public / "pilot-0" / "evaluation.json"
@@ -324,7 +537,12 @@ class HardeningTests(unittest.TestCase):
             bad["receipt_digest"] = ""
             bad["receipt_digest"] = content_hash(bad)
             bad_path.write_text(json.dumps(bad))
-            failed = run_vertical_slice(manifest, public_root=public, sealed_root=sealed)
+            failed = run_vertical_slice(
+                manifest,
+                public_root=public,
+                sealed_root=sealed,
+                trust_key=trust_key,
+            )
             self.assertFalse(failed.passed)
             self.assertTrue(
                 any("hard_failure_did_not_zero_vds" in item for item in failed.failures)

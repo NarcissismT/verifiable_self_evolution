@@ -8,6 +8,7 @@ from typing import Any
 from .hashing import content_hash, file_hash
 from .ledger import RunLedger
 from .paper_capsule import audit_capsule, capsule_from_mapping, sealed_target_from_mapping
+from .semantic_review import load_semantic_review
 from .paper_selection import (
     PaperCandidate,
     candidate_exclusion_reasons,
@@ -92,6 +93,9 @@ def initialize_formal_run(
         sampling_seed=int(config["seeds"]["manifest_sampling"]),
         minimum_candidate_pool=int(config["capsule"]["candidate_pool_minimum"]),
         cutoff_days=int(config["cutoff"]["days_before_target"]),
+        reserve_minimum_by_stratum=config["capsule"].get(
+            "reserve_minimum_by_stratum", {}
+        ),
     )
     sealed_config = dict(config)
     config_digest = content_hash(config)
@@ -188,8 +192,11 @@ def seal_formal_capsules(
         semantic_review_path.relative_to(public_root.resolve())
         if not semantic_review_path.is_file():
             raise FileNotFoundError(semantic_review_path)
-        if file_hash(semantic_review_path) != capsule.semantic_leak_review_digest:
-            raise ValueError(f"semantic leak review digest mismatch: {paper_id}")
+        load_semantic_review(
+            semantic_review_path,
+            capsule=capsule,
+            target=target,
+        )
         audit = audit_capsule(capsule, target, public_root, sealed_root)
         audit_value = asdict(audit)
         audit_value["audit_digest"] = content_hash(audit_value)
@@ -247,6 +254,7 @@ def bind_formal_freeze(
 ) -> dict[str, str]:
     config = json.loads((root / "config.json").read_text())
     selection = json.loads((root / "manifests" / "paper_selection.json").read_text())
+    candidate_pool = json.loads((root / "manifests" / "candidate_pool.json").read_text())
     task_manifest = json.loads(
         (root / "manifests" / "capsule_task_manifest.json").read_text()
     )
@@ -263,14 +271,31 @@ def bind_formal_freeze(
         raise ValueError("contamination receipt has no audit digest")
     if not base.get("checkpoint_digest") or base.get("checkpoint_id") != "base":
         raise ValueError("base checkpoint receipt is incomplete")
+    base_group_digest = str(base.get("training_recipe_digest", ""))
+    if not base_group_digest:
+        base_group_digest = content_hash(
+            {
+                "group_kind": "frozen_base",
+                "checkpoint_digest": str(base["checkpoint_digest"]),
+            }
+        )
     bindings = {
         "config_digest": str(config["config_digest"]),
         "paper_selection_digest": str(selection["assignment_digest"]),
+        "candidate_pool_digest": str(candidate_pool["candidate_pool_digest"]),
         "task_manifest_digest": str(task_digest),
         "evaluator_digest": str(evaluator["evaluator_digest"]),
         "contamination_audit_digest": contamination_digest,
         "base_checkpoint_digest": str(base["checkpoint_digest"]),
+        "base_group_digest": base_group_digest,
     }
+    power_path = root / "manifests" / "power_receipt.json"
+    if power_path.is_file():
+        power = _verified_receipt(power_path, "receipt_digest")
+        bindings["power_receipt_digest"] = str(power["receipt_digest"])
+    rubric_path = root / "manifests" / "human_review_rubric.json"
+    if rubric_path.is_file():
+        bindings["rubric_digest"] = file_hash(rubric_path)
     bindings["freeze_bindings_digest"] = content_hash(bindings)
     for path, value in (
         (root / "manifests" / "trusted_evaluator_receipt.json", evaluator),
@@ -282,4 +307,12 @@ def bind_formal_freeze(
         root / "manifests" / "freeze_bindings.json",
         json.dumps(bindings, indent=2, sort_keys=True) + "\n",
     )
+    ledger = RunLedger(root / "ledger" / "events.jsonl")
+    entries = ledger.validate()
+    if entries:
+        ledger.anchor_head(
+            event_type="freeze_bindings",
+            freeze_bindings_digest=bindings["freeze_bindings_digest"],
+        )
+        # `anchor_head` writes the latest pointer and an immutable snapshot.
     return bindings

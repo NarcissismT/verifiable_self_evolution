@@ -1,6 +1,8 @@
 {
   "schema_version": 1,
   "pilot_id": "bilevel_vertical_slice_v0_1",
+  "trust_anchor_digest": "sha256-of-private-trusted-producer-key",
+  "trusted_test_runtime": false,
   "cases": [
     {
       "case_id": "pilot_case_01",
@@ -8,9 +10,16 @@
       "excluded_from_formal_splits": true,
       "capsule_json": "pilot_case_01/capsule.json",
       "target_json": "pilot_case_01/target.json",
+      "semantic_review_receipt": "pilot_case_01/semantic_review_receipt.json",
       "generation_receipt": "pilot_case_01/generation_receipt.json",
       "execution_receipt": "pilot_case_01/execution_receipt.json",
-      "evaluation_receipt": "pilot_case_01/evaluation_receipt.json"
+      "evaluation_receipt": "pilot_case_01/evaluation_receipt.json",
+      "generation_producer_receipt": "pilot_case_01/generation_producer_receipt.json",
+      "execution_producer_receipt": "pilot_case_01/execution_producer_receipt.json",
+      "evaluation_producer_receipt": "pilot_case_01/evaluation_producer_receipt.json",
+      "generation_producer_receipt_digest": "sha256",
+      "execution_producer_receipt_digest": "sha256",
+      "evaluation_producer_receipt_digest": "sha256"
     },
     {
       "case_id": "pilot_case_02",
@@ -18,9 +27,16 @@
       "excluded_from_formal_splits": true,
       "capsule_json": "pilot_case_02/capsule.json",
       "target_json": "pilot_case_02/target.json",
+      "semantic_review_receipt": "pilot_case_02/semantic_review_receipt.json",
       "generation_receipt": "pilot_case_02/generation_receipt.json",
       "execution_receipt": "pilot_case_02/execution_receipt.json",
-      "evaluation_receipt": "pilot_case_02/evaluation_receipt.json"
+      "evaluation_receipt": "pilot_case_02/evaluation_receipt.json",
+      "generation_producer_receipt": "pilot_case_02/generation_producer_receipt.json",
+      "execution_producer_receipt": "pilot_case_02/execution_producer_receipt.json",
+      "evaluation_producer_receipt": "pilot_case_02/evaluation_producer_receipt.json",
+      "generation_producer_receipt_digest": "sha256",
+      "execution_producer_receipt_digest": "sha256",
+      "evaluation_producer_receipt_digest": "sha256"
     },
     {
       "case_id": "pilot_case_03",
@@ -28,9 +44,16 @@
       "excluded_from_formal_splits": true,
       "capsule_json": "pilot_case_03/capsule.json",
       "target_json": "pilot_case_03/target.json",
+      "semantic_review_receipt": "pilot_case_03/semantic_review_receipt.json",
       "generation_receipt": "pilot_case_03/generation_receipt.json",
       "execution_receipt": "pilot_case_03/execution_receipt.json",
-      "evaluation_receipt": "pilot_case_03/evaluation_receipt.json"
+      "evaluation_receipt": "pilot_case_03/evaluation_receipt.json",
+      "generation_producer_receipt": "pilot_case_03/generation_producer_receipt.json",
+      "execution_producer_receipt": "pilot_case_03/execution_producer_receipt.json",
+      "evaluation_producer_receipt": "pilot_case_03/evaluation_producer_receipt.json",
+      "generation_producer_receipt_digest": "sha256",
+      "execution_producer_receipt_digest": "sha256",
+      "evaluation_producer_receipt_digest": "sha256"
     }
   ]
 }

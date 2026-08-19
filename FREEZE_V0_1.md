@@ -80,4 +80,7 @@ tokenizer file hashes. Candidate-pool membership and the independent human
 review rubric are also not yet sealed. The config therefore remains
 `blocked_pending_implementation_and_artifacts`; it is a valid partial
 preregistration, not launch authorization. The formal CLI, freeze-check, ledger,
-and real 3-5 capsule vertical slice remain mandatory before QLoRA.
+and a real 3-5 capsule engineering vertical slice remain mandatory before
+QLoRA. These 3-5 cases validate the execution method and cannot confirm power;
+power requires the separate 12-paper pilot-eval plus conservative sensitivity
+analysis.
