@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "experiment_id": "paper_rediscovery_v0_1",
+  "protocol": "paper_time_capsule_v1",
+  "primary_model": "qwen2.5-7b-instruct",
+  "models": [
+    {
+      "model_id": "qwen2.5-7b-instruct",
+      "repository": "Qwen/Qwen2.5-7B-Instruct",
+      "revision": "d1e200f",
+      "role": "primary",
+      "parameter_count_billions": 7.61
+    },
+    {
+      "model_id": "qwen2.5-14b-instruct",
+      "repository": "Qwen/Qwen2.5-14B-Instruct",
+      "revision": "336cd7f",
+      "role": "scale_replication",
+      "parameter_count_billions": 14.7
+    }
+  ],
+  "target_publication_window": {
+    "start_utc": "2025-03-01T00:00:00Z",
+    "end_utc": "2026-03-31T23:59:59Z"
+  },
+  "cutoff": {
+    "rule": "earliest_public_timestamp_minus_days",
+    "days_before_target": 30,
+    "timestamp_sources": [
+      "arxiv_v1",
+      "openreview_first_public",
+      "public_code_first_commit",
+      "public_blog_slides_or_report"
+    ],
+    "sampling_seed": 20260819
+  },
+  "split_constraints": {
+    "train": {"minimum": 100},
+    "dev": {"minimum": 1},
+    "promotion": {"exact": 12},
+    "heldout": {"exact": 24},
+    "ood": {"exact": 16}
+  },
+  "promotion_strata": {
+    "id": 8,
+    "ood": 4
+  },
+  "final_strata": {
+    "id_heldout": 24,
+    "ood": 16
+  },
+  "selection_quotas": {
+    "promotion": {
+      "constrained_safe_rl": 3,
+      "general_sum_equilibrium_marl": 3,
+      "bilevel_stackelberg_alignment_optimization": 2,
+      "ood_constrained_bilevel_differentiable_optimization": 2,
+      "ood_safe_control_learning_to_optimize": 2
+    },
+    "heldout": {
+      "constrained_safe_rl": 8,
+      "general_sum_equilibrium_marl": 8,
+      "bilevel_stackelberg_alignment_optimization": 8
+    },
+    "ood": {
+      "ood_constrained_bilevel_differentiable_optimization": 8,
+      "ood_safe_control_learning_to_optimize": 8
+    }
+  },
+  "seeds": {
+    "rollout": [101, 211, 307, 401],
+    "adapter": [17, 29, 43],
+    "power_simulation": 20260820,
+    "manifest_sampling": 20260819
+  },
+  "evolution": {
+    "maximum_generations": 3,
+    "maximum_promotion_attempts": 3,
+    "final_evaluation_runs": 1,
+    "promotion_set_is_training_free": true,
+    "final_sets_are_evaluation_only": true
+  },
+  "teacher_policy": {
+    "bootstrap_round": 0,
+    "hard_state_min_failures": 2,
+    "allowed_splits_for_bootstrap": ["train"],
+    "allowed_splits_for_repair": ["train"],
+    "forbidden_splits": ["promotion", "heldout", "ood"]
+  },
+  "capsule": {
+    "public_material_cutoff": "target_first_public_minus_30_days",
+    "target_paper_version_for_truth": "v1",
+    "official_code_window_days_after_target": 30,
+    "later_versions_for_formal_scoring": false,
+    "required_artifact_hashes": ["sha256", "git_commit"],
+    "candidate_pool_minimum": 70
+  },
+  "contamination_audit": {
+    "probe_count_per_paper": 12,
+    "seeds_per_probe": 3,
+    "probe_families": ["bibliographic", "method", "result", "algorithm_name"],
+    "exclude_if_target_specific_memory": true,
+    "exclude_if_exact_phrase_words_at_least": 13,
+    "exclude_if_target_specific_numeric_results_at_least": 2
+  },
+  "vds": {
+    "primary_endpoint": "verified_discovery_score",
+    "weights": {
+      "empirical": 0.35,
+      "hypothesis": 0.20,
+      "experiment": 0.20,
+      "novelty": 0.15,
+      "calibration": 0.10
+    },
+    "secondary_endpoint": "binary_verified_discovery_success",
+    "human_reviewers": 2,
+    "third_reviewer_on_absolute_difference_at_least": 0.2,
+    "hard_gate_failure_sets_vds_to": 0.0
+  },
+  "resource_budget": {
+    "gpu_model": "A6000-48GB",
+    "gpu_hours_per_agent_task": 4.0,
+    "cpu_hours_per_agent_task": 32.0,
+    "ram_gb": 64,
+    "scratch_gb": 20,
+    "max_agent_actions": 40,
+    "max_generated_tokens": 32000,
+    "max_wall_hours": 6.0,
+    "common_worker_layout": "one independent task worker per GPU"
+  },
+  "containers": {
+    "train_image": "research-agent-train:v0.1",
+    "evaluator_image": "trusted-evaluator:v0.1",
+    "train_image_baseline": {
+      "ubuntu": "22.04",
+      "cuda": "12.4.1",
+      "python": "3.11",
+      "pytorch": "2.5.1",
+      "transformers": "4.48.3",
+      "peft": "0.14.0",
+      "trl": "0.15.2",
+      "bitsandbytes": "0.45.2",
+      "accelerate": "1.3.0"
+    },
+    "network": "none",
+    "runtime_installation": false,
+    "record_image_digest": true,
+    "train_image_digest": null,
+    "evaluator_image_digest": null,
+    "trusted_evaluator_repository_commit": null
+  },
+  "tokenizer": {
+    "max_sequence_length": 8192,
+    "train_padding_side": "right",
+    "inference_padding_side": "left",
+    "eos_token": "<|im_end|>",
+    "allow_new_special_tokens": false,
+    "record_file_hashes": true
+  },
+  "qlora": {
+    "quantization": "nf4_4bit",
+    "double_quantization": true,
+    "compute_dtype": "bfloat16",
+    "rank": 64,
+    "alpha": 128,
+    "dropout": 0.05,
+    "target_modules": "all-linear",
+    "weight_decay": 0.01,
+    "optimizer": "paged_adamw_8bit",
+    "betas": [0.9, 0.95],
+    "scheduler": "cosine",
+    "warmup_ratio": 0.03,
+    "gradient_clipping": 1.0,
+    "gradient_checkpointing": true,
+    "learning_rate_by_model": {
+      "qwen2.5-7b-instruct": 0.0001,
+      "qwen2.5-14b-instruct": 0.00008
+    },
+    "effective_nonpad_tokens_per_batch": 32768,
+    "initial_verified_sft_nonpad_tokens": 20000000,
+    "new_tokens_per_generation_max": 5000000,
+    "replay_mixture": {
+      "original_trusted_or_teacher_anchor": 0.50,
+      "verified_success": 0.30,
+      "corrected_failure_or_counterexample": 0.20
+    },
+    "loss_on": ["assistant_plan", "assistant_action", "structured_result_explanation", "belief_update"],
+    "loss_off": ["system", "user", "tool_observation"]
+  },
+  "promotion": {
+    "tasks": 12,
+    "id_tasks": 8,
+    "ood_tasks": 4,
+    "vds_delta_min": 0.05,
+    "bootstrap_ci_alpha": 0.10,
+    "bootstrap_replicates": 10000,
+    "hard_pass_rate_min": 0.95,
+    "executable_pass_rate_min": 0.95,
+    "fabricated_result_count_max": 0,
+    "target_leakage_count_max": 0,
+    "component_delta_min": -0.02,
+    "cost_ratio_max": 1.10,
+    "adapter_seed_passes_min": 2,
+    "adapter_seed_median_pass_required": true,
+    "ood_mean_delta_min": 0.0
+  },
+  "final": {
+    "id_tasks": 24,
+    "ood_tasks": 16,
+    "bootstrap_ci_alpha": 0.05,
+    "bootstrap_replicates": 10000,
+    "vds_delta_min": 0.05,
+    "hard_pass_rate_min": 0.95,
+    "executable_pass_rate_min": 0.95,
+    "id_vds_ci_lower_min": 0.0,
+    "ood_vds_ci_lower_min": -0.03,
+    "multiple_comparison_correction": "holm_for_secondary_endpoints"
+  },
+  "arms": [
+    "base",
+    "teacher_sft",
+    "linear_self_teacher",
+    "verifier_grounded_archive"
+  ],
+  "decoding": {
+    "freeze_before_generation": true,
+    "agent_action_and_token_budget_is_frozen": true,
+    "temperature": null,
+    "top_p": null,
+    "top_k": null,
+    "repetition_penalty": null
+  },
+  "freeze_readiness": {
+    "status": "blocked_pending_artifacts",
+    "pending": [
+      "dev_size",
+      "model_checkpoint_and_tokenizer_file_hashes",
+      "train_image_digest",
+      "evaluator_image_digest",
+      "trusted_evaluator_repository_commit",
+      "inference_decoding_values",
+      "candidate_pool_manifest",
+      "independent_human_review_rubric"
+    ]
+  }
+}

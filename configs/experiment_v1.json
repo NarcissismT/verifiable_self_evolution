@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "experiment_id": "vse_pilot_v1",
+  "task_plugin": "quadratic_box_toy",
+  "splits": {
+    "train": 24,
+    "dev": 8,
+    "promotion": 4,
+    "heldout": 12,
+    "ood": 12
+  },
+  "seeds": {
+    "task_seed": 20260819,
+    "execution": [101, 211, 307],
+    "promotion_bootstrap": 20260820
+  },
+  "teacher_policy": {
+    "bootstrap_round": 0,
+    "hard_state_min_failures": 2,
+    "allowed_splits_for_repair": ["train"]
+  },
+  "verification": {
+    "required_unit_pass_rate": 1.0,
+    "max_solution_error": 1e-08,
+    "max_objective_gap": 1e-10,
+    "max_kkt_residual": 1e-08,
+    "max_runtime_seconds": 5.0,
+    "min_discrimination_power": 0.8
+  },
+  "promotion": {
+    "minimum_tasks_per_split": 10,
+    "minimum_hard_pass_rate": 1.0,
+    "maximum_regressed_task_fraction": 0.0,
+    "minimum_mean_quality_delta": 0.0,
+    "require_positive_ci_low": true,
+    "bootstrap_replicates": 2000,
+    "alpha": 0.05,
+    "maximum_runtime_ratio": 1.25
+  }
+}

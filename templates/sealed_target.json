@@ -1,0 +1,21 @@
+{
+  "capsule_id": "replace_me",
+  "target_id": "replace_me",
+  "title": "Hidden target title",
+  "identifiers": ["hidden-doi", "hidden-arxiv-id"],
+  "first_public_at_utc": "2024-02-01T00:00:00Z",
+  "target_snapshot_path": "sealed/target.pdf",
+  "target_snapshot_sha256": "replace_me",
+  "hidden_claims": [
+    {
+      "claim_id": "c1",
+      "claim": "Machine-readable hidden claim",
+      "metric": "replace_me"
+    }
+  ],
+  "hidden_result_spec": {
+    "trusted_scorer": "replace_me",
+    "metric_rules": []
+  },
+  "salt": "replace_with_random_secret"
+}

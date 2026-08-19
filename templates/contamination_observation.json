@@ -1,0 +1,13 @@
+{
+  "target_id": "replace_me",
+  "model_id": "qwen2.5-7b-instruct",
+  "model_digest": "replace_me",
+  "probe_id": "bibliographic_01",
+  "probe_family": "bibliographic",
+  "seed": 101,
+  "output_digest": "replace_me",
+  "remembered_title_or_algorithm": false,
+  "target_specific_contributions": 0,
+  "max_exact_phrase_words": 0,
+  "target_specific_numeric_results": 0
+}

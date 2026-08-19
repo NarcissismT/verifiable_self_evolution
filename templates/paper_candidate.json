@@ -1,0 +1,19 @@
+{
+  "paper_id": "arxiv_or_openreview_id",
+  "stratum": "constrained_safe_rl",
+  "venue": "ICML",
+  "proceedings_year": 2025,
+  "official_main_or_proceedings": true,
+  "public_paper": true,
+  "public_code": true,
+  "public_data": true,
+  "requires_commercial_api": false,
+  "requires_private_data": false,
+  "requires_real_robot": false,
+  "estimated_gpu_hours": 4.0,
+  "estimated_cpu_hours": 32.0,
+  "public_timestamps_utc": {
+    "arxiv_v1": "2025-03-01T00:00:00Z",
+    "public_code_first_commit": "2025-03-02T00:00:00Z"
+  }
+}

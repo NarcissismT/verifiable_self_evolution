@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "capsule_id": "replace_me",
+  "split": "train",
+  "field": "replace_me",
+  "cutoff_utc": "2024-01-01T00:00:00Z",
+  "public_problem": "Target-neutral research problem visible to the student.",
+  "research_context": {
+    "research_question": "Target-neutral question.",
+    "formal_problem": "Formal pre-cutoff problem statement.",
+    "assumptions": ["A sourced pre-cutoff assumption."],
+    "known_results": [
+      {"claim_id": "known_001", "summary": "Known result before cutoff."}
+    ],
+    "known_failures_and_conflicts": [],
+    "candidate_metrics": ["primary_metric"],
+    "available_datasets": [],
+    "available_environments": [],
+    "baseline_code": [
+      {"baseline_id": "baseline_001", "artifact_id": "prior_paper_001"}
+    ],
+    "compute_budget": {"gpu_hours": 4, "cpu_hours": 32},
+    "source_manifest": [
+      {"artifact_id": "prior_paper_001", "sha256": "replace_me", "git_commit": null}
+    ],
+    "claim_evidence_graph": [
+      {
+        "claim": "A sourced pre-cutoff claim.",
+        "source_id": "prior_paper_001",
+        "locator": "page 1"
+      }
+    ]
+  },
+  "artifacts": [
+    {
+      "artifact_id": "prior_paper_001",
+      "kind": "paper",
+      "title": "A pre-cutoff work",
+      "version": "v1",
+      "available_at_utc": "2023-12-01T00:00:00Z",
+      "snapshot_path": "artifacts/prior_paper_001.pdf",
+      "snapshot_sha256": "replace_me",
+      "search_text_path": "artifacts/prior_paper_001.txt",
+      "search_text_sha256": "replace_me",
+      "provenance_url": "replace_me"
+    }
+  ],
+  "environment_lock_path": "environment/environment.lock",
+  "environment_lock_sha256": "replace_me",
+  "allowed_tools": ["python"],
+  "target_commitment": "replace_me"
+}
