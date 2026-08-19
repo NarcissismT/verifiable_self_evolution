@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "experiment_id": "qwen25_7b_qlora_pipeline_smoke_v0_1",
+  "study_kind": "qlora_pipeline_smoke",
+  "scientific_claims_allowed": false,
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "model": {
+    "model_id": "qwen2.5-7b-instruct",
+    "repository": "Qwen/Qwen2.5-7B-Instruct",
+    "revision": "d1e200fcf95ef0d4326873ddf63e5562d5f1fdbb",
+    "manifest_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e"
+  },
+  "dataset": {
+    "kind": "deterministic_synthetic_toy",
+    "row_count": 128,
+    "formal_split_eligible": false,
+    "paper_capsules_allowed": false,
+    "sealed_targets_allowed": false
+  },
+  "loss_mask": {
+    "loss_on": [
+      "assistant_plan",
+      "assistant_action",
+      "structured_result_explanation",
+      "belief_update"
+    ],
+    "loss_off": [
+      "system",
+      "user",
+      "tool_observation"
+    ]
+  },
+  "training": {
+    "adapter_seeds": [17],
+    "max_optimizer_updates": 100,
+    "max_sequence_length": 512,
+    "per_device_batch_size": 1,
+    "gradient_accumulation_steps": 1,
+    "learning_rate": 0.0002,
+    "weight_decay": 0.0,
+    "warmup_steps": 5,
+    "max_grad_norm": 1.0,
+    "optimizer": "paged_adamw_8bit",
+    "quantization": "nf4_4bit",
+    "double_quantization": true,
+    "compute_dtype": "bfloat16",
+    "lora_rank": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.05,
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj"
+    ],
+    "gradient_checkpointing": true
+  },
+  "decoding": {
+    "do_sample": false,
+    "max_new_tokens": 32,
+    "num_beams": 1
+  },
+  "runtime": {
+    "network_policy": "none",
+    "visible_gpu_count": 1,
+    "runtime_installation": false
+  },
+  "acceptance": {
+    "require_4bit_loaded": true,
+    "require_segmented_loss_mask": true,
+    "require_finite_nonzero_gradient_each_step": true,
+    "require_exact_optimizer_updates": 100,
+    "require_adapter_save": true,
+    "require_fresh_process_reload": true,
+    "require_offline_inference": true,
+    "require_adapter_file_hashes": true
+  }
+}
