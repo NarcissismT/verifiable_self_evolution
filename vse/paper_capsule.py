@@ -143,6 +143,7 @@ class PublicPaperCapsule:
     environment_lock_sha256: str
     allowed_tools: tuple[str, ...]
     target_commitment: str
+    semantic_leak_review_digest: str = ""
     schema_version: int = 1
 
     def payload(self) -> dict[str, Any]:
@@ -159,6 +160,7 @@ class PublicPaperCapsule:
             "environment_lock_sha256": self.environment_lock_sha256,
             "allowed_tools": list(self.allowed_tools),
             "target_commitment": self.target_commitment,
+            "semantic_leak_review_digest": self.semantic_leak_review_digest,
         }
 
     @property
@@ -178,6 +180,11 @@ class SealedTarget:
     hidden_claims: tuple[dict[str, Any], ...]
     hidden_result_spec: dict[str, Any]
     salt: str
+    algorithm_names: tuple[str, ...] = ()
+    forbidden_terms: tuple[str, ...] = ()
+    code_fingerprints: tuple[str, ...] = ()
+    numeric_fingerprints: tuple[str, ...] = ()
+    distinctive_phrases: tuple[str, ...] = ()
 
     @property
     def commitment(self) -> str:
@@ -212,6 +219,8 @@ def audit_capsule(
         failures.append("target_not_strictly_after_cutoff")
     if capsule.target_commitment != sealed.commitment:
         failures.append("target_commitment_mismatch")
+    if not capsule.semantic_leak_review_digest:
+        failures.append("missing_semantic_leak_review")
     sealed_snapshot = (sealed_root / sealed.target_snapshot_path).resolve()
     try:
         sealed_snapshot.relative_to(sealed_root.resolve())
@@ -243,13 +252,18 @@ def audit_capsule(
         elif file_hash(environment_lock) != capsule.environment_lock_sha256:
             failures.append("environment_lock_hash_mismatch")
 
-    public_text = _normalized(
-        " ".join(
-            [capsule.public_problem, canonical_json(capsule.research_context.payload())]
-            + [artifact.title for artifact in capsule.artifacts]
-            + [artifact.provenance_url for artifact in capsule.artifacts]
-        )
-    )
+    public_parts = [
+        capsule.public_problem,
+        canonical_json(capsule.research_context.payload()),
+        *[artifact.title for artifact in capsule.artifacts],
+        *[artifact.provenance_url for artifact in capsule.artifacts],
+    ]
+    for artifact in capsule.artifacts:
+        text_path = capsule_root / artifact.search_text_path
+        if text_path.is_file():
+            public_parts.append(text_path.read_text(encoding="utf-8", errors="ignore"))
+    public_raw = "\n".join(public_parts)
+    public_text = _normalized(public_raw)
     forbidden = [sealed.title, sealed.target_id, *sealed.identifiers]
     for identifier in forbidden:
         token = _normalized(identifier)
@@ -257,16 +271,22 @@ def audit_capsule(
             failures.append(f"target_identifier_leak:{identifier}")
         if len(token) < 6:
             continue
-        for artifact in capsule.artifacts:
-            text_path = capsule_root / artifact.search_text_path
-            if text_path.is_file():
-                artifact_text = _normalized(
-                    text_path.read_text(encoding="utf-8", errors="ignore")
-                )
-                if token in artifact_text:
-                    failures.append(
-                        f"target_identifier_leak_in_artifact:{artifact.artifact_id}:{identifier}"
-                    )
+    for value in (*sealed.algorithm_names, *sealed.forbidden_terms):
+        token = _normalized(value)
+        if token and token in public_text:
+            failures.append(f"target_forbidden_term_leak:{value}")
+    for phrase in sealed.distinctive_phrases:
+        token = _normalized(phrase)
+        if token and token in public_text:
+            failures.append(f"target_distinctive_phrase_leak:{content_hash(phrase)[:12]}")
+    for fingerprint in sealed.code_fingerprints:
+        token = _normalized(fingerprint)
+        if token and token in public_text:
+            failures.append(f"target_code_fingerprint_leak:{content_hash(fingerprint)[:12]}")
+    compact_raw = "".join(public_raw.split())
+    for fingerprint in sealed.numeric_fingerprints:
+        if fingerprint and "".join(str(fingerprint).split()) in compact_raw:
+            failures.append(f"target_numeric_fingerprint_leak:{content_hash(fingerprint)[:12]}")
 
     return CapsuleAudit(
         capsule_id=capsule.capsule_id,
@@ -292,6 +312,8 @@ def capsule_from_mapping(value: dict[str, Any]) -> PublicPaperCapsule:
         )
         for item in value["artifacts"]
     )
+
+
     context = value["research_context"]
     return PublicPaperCapsule(
         schema_version=int(value.get("schema_version", 1)),
@@ -321,6 +343,27 @@ def capsule_from_mapping(value: dict[str, Any]) -> PublicPaperCapsule:
         environment_lock_sha256=value["environment_lock_sha256"],
         allowed_tools=tuple(value["allowed_tools"]),
         target_commitment=value["target_commitment"],
+        semantic_leak_review_digest=value.get("semantic_leak_review_digest", ""),
+    )
+
+
+def sealed_target_from_mapping(value: dict[str, Any]) -> SealedTarget:
+    return SealedTarget(
+        capsule_id=value["capsule_id"],
+        target_id=value["target_id"],
+        title=value["title"],
+        identifiers=tuple(value["identifiers"]),
+        first_public_at_utc=value["first_public_at_utc"],
+        target_snapshot_path=value["target_snapshot_path"],
+        target_snapshot_sha256=value["target_snapshot_sha256"],
+        hidden_claims=tuple(value.get("hidden_claims", ())),
+        hidden_result_spec=dict(value.get("hidden_result_spec", {})),
+        salt=value["salt"],
+        algorithm_names=tuple(value.get("algorithm_names", ())),
+        forbidden_terms=tuple(value.get("forbidden_terms", ())),
+        code_fingerprints=tuple(value.get("code_fingerprints", ())),
+        numeric_fingerprints=tuple(str(item) for item in value.get("numeric_fingerprints", ())),
+        distinctive_phrases=tuple(value.get("distinctive_phrases", ())),
     )
 
 

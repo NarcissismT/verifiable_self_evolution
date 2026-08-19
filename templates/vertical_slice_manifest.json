@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "pilot_id": "bilevel_vertical_slice_v0_1",
+  "cases": [
+    {
+      "case_id": "pilot_case_01",
+      "independent_pilot": true,
+      "excluded_from_formal_splits": true,
+      "capsule_json": "pilot_case_01/capsule.json",
+      "target_json": "pilot_case_01/target.json",
+      "generation_receipt": "pilot_case_01/generation_receipt.json",
+      "execution_receipt": "pilot_case_01/execution_receipt.json",
+      "evaluation_receipt": "pilot_case_01/evaluation_receipt.json"
+    },
+    {
+      "case_id": "pilot_case_02",
+      "independent_pilot": true,
+      "excluded_from_formal_splits": true,
+      "capsule_json": "pilot_case_02/capsule.json",
+      "target_json": "pilot_case_02/target.json",
+      "generation_receipt": "pilot_case_02/generation_receipt.json",
+      "execution_receipt": "pilot_case_02/execution_receipt.json",
+      "evaluation_receipt": "pilot_case_02/evaluation_receipt.json"
+    },
+    {
+      "case_id": "pilot_case_03",
+      "independent_pilot": true,
+      "excluded_from_formal_splits": true,
+      "capsule_json": "pilot_case_03/capsule.json",
+      "target_json": "pilot_case_03/target.json",
+      "generation_receipt": "pilot_case_03/generation_receipt.json",
+      "execution_receipt": "pilot_case_03/execution_receipt.json",
+      "evaluation_receipt": "pilot_case_03/evaluation_receipt.json"
+    }
+  ]
+}

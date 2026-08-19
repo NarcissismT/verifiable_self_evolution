@@ -10,6 +10,13 @@ from .contracts import Split
 from .hashing import content_hash
 
 
+VDS_COMPONENTS = frozenset(
+    {"empirical", "hypothesis", "experiment", "novelty", "calibration"}
+)
+DEFAULT_ROLLOUT_SEEDS = (101, 211, 307, 401)
+DEFAULT_ADAPTER_SEEDS = (17, 29, 43)
+
+
 @dataclass(frozen=True)
 class EvaluationCell:
     evaluation_run_id: str
@@ -51,9 +58,15 @@ class PromotionPolicy:
     minimum_hard_pass_rate: float = 0.95
     minimum_executable_pass_rate: float = 0.95
     maximum_component_drop: float = 0.02
+    maximum_regressed_task_fraction: float = 0.0
     maximum_cost_ratio: float = 1.10
     minimum_adapter_seed_passes: int = 2
     maximum_promotion_attempts: int = 3
+    rollout_seeds: tuple[int, ...] = DEFAULT_ROLLOUT_SEEDS
+    adapter_seeds: tuple[int, ...] = DEFAULT_ADAPTER_SEEDS
+    expected_manifest_digest: str | None = None
+    expected_evaluator_digest: str | None = None
+    expected_contamination_digest: str | None = None
 
 
 @dataclass(frozen=True)
@@ -66,6 +79,13 @@ class FinalPolicy:
     ood_noninferiority_margin: float = -0.03
     minimum_hard_pass_rate: float = 0.95
     minimum_executable_pass_rate: float = 0.95
+    rollout_seeds: tuple[int, ...] = DEFAULT_ROLLOUT_SEEDS
+    adapter_seeds: tuple[int, ...] = DEFAULT_ADAPTER_SEEDS
+    reference_checkpoint_id: str | None = None
+    reference_checkpoint_digest: str | None = None
+    expected_manifest_digest: str | None = None
+    expected_evaluator_digest: str | None = None
+    expected_contamination_digest: str | None = None
 
 
 def promotion_policy_from_config(config: dict) -> PromotionPolicy:
@@ -81,9 +101,12 @@ def promotion_policy_from_config(config: dict) -> PromotionPolicy:
         minimum_hard_pass_rate=float(values["hard_pass_rate_min"]),
         minimum_executable_pass_rate=float(values["executable_pass_rate_min"]),
         maximum_component_drop=abs(float(values["component_delta_min"])),
+        maximum_regressed_task_fraction=float(values.get("regressed_task_fraction_max", 0.0)),
         maximum_cost_ratio=float(values["cost_ratio_max"]),
         minimum_adapter_seed_passes=int(values["adapter_seed_passes_min"]),
         maximum_promotion_attempts=int(evolution["maximum_promotion_attempts"]),
+        rollout_seeds=tuple(int(seed) for seed in config["seeds"]["rollout"]),
+        adapter_seeds=tuple(int(seed) for seed in config["seeds"]["adapter"]),
     )
 
 
@@ -98,6 +121,10 @@ def final_policy_from_config(config: dict) -> FinalPolicy:
         ood_noninferiority_margin=float(values["ood_vds_ci_lower_min"]),
         minimum_hard_pass_rate=float(values["hard_pass_rate_min"]),
         minimum_executable_pass_rate=float(values["executable_pass_rate_min"]),
+        rollout_seeds=tuple(int(seed) for seed in config["seeds"]["rollout"]),
+        adapter_seeds=tuple(int(seed) for seed in config["seeds"]["adapter"]),
+        reference_checkpoint_id=str(values.get("reference_checkpoint_id", "base")),
+        reference_checkpoint_digest=values.get("reference_checkpoint_digest"),
     )
 
 
@@ -155,23 +182,18 @@ def _quantile(values: list[float], probability: float) -> float:
     return ordered[low] * (1.0 - weight) + ordered[high] * weight
 
 
-def _task_bootstrap(
-    deltas: dict[str, list[float]], replicates: int, alpha: float, seed: int
+def _paper_bootstrap(
+    deltas: dict[str, float], replicates: int, alpha: float, seed: int
 ) -> tuple[float, float, float]:
     task_ids = sorted(deltas)
     if not task_ids:
         return float("nan"), float("nan"), float("nan")
-    point = fmean(fmean(deltas[task_id]) for task_id in task_ids)
+    point = fmean(deltas[task_id] for task_id in task_ids)
     rng = random.Random(seed)
     draws: list[float] = []
     for _ in range(replicates):
         sampled_tasks = [rng.choice(task_ids) for _ in task_ids]
-        draws.append(
-            fmean(
-                fmean([rng.choice(deltas[task_id]) for _ in deltas[task_id]])
-                for task_id in sampled_tasks
-            )
-        )
+        draws.append(fmean(deltas[task_id] for task_id in sampled_tasks))
     return point, _quantile(draws, alpha / 2.0), _quantile(draws, 1.0 - alpha / 2.0)
 
 
@@ -188,6 +210,11 @@ def _common_checks(
     *,
     phase: str,
     allowed_splits: set[Split],
+    expected_manifest_digest: str | None = None,
+    expected_evaluator_digest: str | None = None,
+    expected_contamination_digest: str | None = None,
+    expected_reference_checkpoint_id: str | None = None,
+    expected_reference_checkpoint_digest: str | None = None,
 ) -> tuple[str, str, list[str]]:
     if not candidate or not champion:
         raise ValueError("candidate and champion receipts are required")
@@ -205,11 +232,26 @@ def _common_checks(
     )
     if not contamination_digest:
         raise ValueError("contamination audit receipt is required")
+    if expected_manifest_digest is not None and manifest_digest != expected_manifest_digest:
+        raise ValueError("receipt manifest digest does not match frozen manifest")
+    if expected_evaluator_digest is not None and evaluator_digest != expected_evaluator_digest:
+        raise ValueError("receipt evaluator digest does not match frozen evaluator")
+    if expected_contamination_digest is not None and contamination_digest != expected_contamination_digest:
+        raise ValueError("receipt contamination digest does not match frozen audit")
     candidate_digest = _single_value("candidate", candidate, "checkpoint_digest")
     champion_digest = _single_value("champion", champion, "checkpoint_digest")
     failures: list[str] = []
     if candidate_digest == champion_digest:
         failures.append("candidate_is_champion")
+    if expected_reference_checkpoint_id is not None:
+        reference_ids = {cell.checkpoint_id for cell in champion}
+        if reference_ids != {expected_reference_checkpoint_id}:
+            raise ValueError("final comparator is not the frozen base checkpoint")
+    if (
+        expected_reference_checkpoint_digest is not None
+        and champion_digest != expected_reference_checkpoint_digest
+    ):
+        raise ValueError("final comparator digest is not the frozen base checkpoint")
     return manifest_digest, evaluator_digest, failures
 
 
@@ -225,12 +267,25 @@ def _make_split_decision(
     minimum_vds_delta: float,
     minimum_hard_pass_rate: float,
     minimum_executable_pass_rate: float,
+    maximum_regressed_task_fraction: float,
+    expected_rollout_seeds: tuple[int, ...],
+    expected_adapter_seeds: tuple[int, ...],
     maximum_component_drop: float | None,
     maximum_cost_ratio: float | None,
     adapter_gate: bool,
     minimum_adapter_seed_passes: int = 2,
     noninferiority_margin: float | None = None,
 ) -> SplitDecision:
+    expected_rollout_seeds = tuple(sorted(set(expected_rollout_seeds)))
+    expected_adapter_seeds = tuple(sorted(set(expected_adapter_seeds)))
+    if not expected_rollout_seeds or not expected_adapter_seeds:
+        raise ValueError("rollout and adapter seed registries must be nonempty")
+    all_candidate_keys = [cell.key for cell in candidate if cell.split is split]
+    all_champion_keys = [cell.key for cell in champion if cell.split is split]
+    if len(all_candidate_keys) != len(set(all_candidate_keys)):
+        raise ValueError("candidate contains duplicate evaluation cells")
+    if len(all_champion_keys) != len(set(all_champion_keys)):
+        raise ValueError("champion contains duplicate evaluation cells")
     cand = {cell.key: cell for cell in candidate if cell.split is split}
     champ = {cell.key: cell for cell in champion if cell.split is split}
     failures: list[str] = []
@@ -238,11 +293,32 @@ def _make_split_decision(
         failures.append("unmatched_evaluation_grid")
     keys = sorted(set(cand) & set(champ))
     task_ids = sorted({task_id for task_id, _, _ in keys})
-    if len(task_ids) < minimum_tasks:
-        failures.append("too_few_tasks")
+    if len(task_ids) != minimum_tasks:
+        failures.append("task_count_mismatch")
     for key in keys:
         if cand[key].task_digest != champ[key].task_digest:
             failures.append(f"task_digest_mismatch:{key[0]}")
+    for task_id in task_ids:
+        expected = {
+            (task_id, rollout_seed, adapter_seed)
+            for adapter_seed in expected_adapter_seeds
+            for rollout_seed in expected_rollout_seeds
+        }
+        if {key for key in cand if key[0] == task_id} != expected:
+            failures.append(f"candidate_seed_grid_mismatch:{task_id}")
+        if {key for key in champ if key[0] == task_id} != expected:
+            failures.append(f"champion_seed_grid_mismatch:{task_id}")
+    for key in keys:
+        for cells, label in ((cand[key], "candidate"), (champ[key], "champion")):
+            if set(cells.vds_components) != VDS_COMPONENTS:
+                failures.append(f"{label}_vds_component_schema_mismatch:{key[0]}")
+            if any(
+                not math.isfinite(float(value)) or not 0.0 <= float(value) <= 1.0
+                for value in cells.vds_components.values()
+            ):
+                failures.append(f"{label}_vds_component_range_mismatch:{key[0]}")
+            if not math.isfinite(float(cells.vds_score)) or not 0.0 <= float(cells.vds_score) <= 1.0:
+                failures.append(f"{label}_vds_score_range_mismatch:{key[0]}")
     hard_pass_rate = fmean(float(cand[key].hard_pass) for key in keys) if keys else 0.0
     executable_rate = (
         fmean(float(cand[key].executable_pass) for key in keys) if keys else 0.0
@@ -277,9 +353,12 @@ def _make_split_decision(
         if task_deltas
         else 1.0
     )
-    point, low, high = _task_bootstrap(
-        deltas, bootstrap_replicates, alpha, bootstrap_seed
+    task_delta_values = {task_id: fmean(values) for task_id, values in deltas.items()}
+    point, low, high = _paper_bootstrap(
+        task_delta_values, bootstrap_replicates, alpha, bootstrap_seed
     )
+    if regressed > maximum_regressed_task_fraction:
+        failures.append("regressed_task_fraction_gate_failed")
     if noninferiority_margin is None:
         if point < minimum_vds_delta or not math.isfinite(low) or low <= 0.0:
             failures.append("vds_delta_gate_failed")
@@ -303,7 +382,7 @@ def _make_split_decision(
     adapter_passes = 0
     adapter_deltas: list[float] = []
     if adapter_gate:
-        for adapter_seed in sorted({cell.adapter_seed for cell in candidate}):
+        for adapter_seed in expected_adapter_seeds:
             adapter_keys = [key for key in keys if key[2] == adapter_seed]
             if not adapter_keys:
                 continue
@@ -355,7 +434,13 @@ def decide_promotion(
     candidate = list(candidate_cells)
     champion = list(champion_cells)
     manifest_digest, evaluator_digest, failures = _common_checks(
-        candidate, champion, phase="promotion", allowed_splits={Split.PROMOTION}
+        candidate,
+        champion,
+        phase="promotion",
+        allowed_splits={Split.PROMOTION},
+        expected_manifest_digest=policy.expected_manifest_digest,
+        expected_evaluator_digest=policy.expected_evaluator_digest,
+        expected_contamination_digest=policy.expected_contamination_digest,
     )
     attempts = {cell.promotion_attempt for cell in candidate + champion}
     if len(attempts) != 1 or next(iter(attempts)) > policy.maximum_promotion_attempts:
@@ -390,6 +475,9 @@ def decide_promotion(
         minimum_vds_delta=policy.minimum_vds_delta,
         minimum_hard_pass_rate=policy.minimum_hard_pass_rate,
         minimum_executable_pass_rate=policy.minimum_executable_pass_rate,
+        maximum_regressed_task_fraction=policy.maximum_regressed_task_fraction,
+        expected_rollout_seeds=policy.rollout_seeds,
+        expected_adapter_seeds=policy.adapter_seeds,
         maximum_component_drop=policy.maximum_component_drop,
         maximum_cost_ratio=policy.maximum_cost_ratio,
         adapter_gate=True,
@@ -429,6 +517,11 @@ def decide_final(
         champion,
         phase="final",
         allowed_splits={Split.HELDOUT, Split.OOD},
+        expected_manifest_digest=policy.expected_manifest_digest,
+        expected_evaluator_digest=policy.expected_evaluator_digest,
+        expected_contamination_digest=policy.expected_contamination_digest,
+        expected_reference_checkpoint_id=policy.reference_checkpoint_id,
+        expected_reference_checkpoint_digest=policy.reference_checkpoint_digest,
     )
     id_decision = _make_split_decision(
         candidate,
@@ -441,6 +534,9 @@ def decide_final(
         minimum_vds_delta=0.0,
         minimum_hard_pass_rate=policy.minimum_hard_pass_rate,
         minimum_executable_pass_rate=policy.minimum_executable_pass_rate,
+        maximum_regressed_task_fraction=0.0,
+        expected_rollout_seeds=policy.rollout_seeds,
+        expected_adapter_seeds=policy.adapter_seeds,
         maximum_component_drop=None,
         maximum_cost_ratio=None,
         adapter_gate=False,
@@ -456,6 +552,9 @@ def decide_final(
         minimum_vds_delta=0.0,
         minimum_hard_pass_rate=policy.minimum_hard_pass_rate,
         minimum_executable_pass_rate=policy.minimum_executable_pass_rate,
+        maximum_regressed_task_fraction=0.0,
+        expected_rollout_seeds=policy.rollout_seeds,
+        expected_adapter_seeds=policy.adapter_seeds,
         maximum_component_drop=None,
         maximum_cost_ratio=None,
         adapter_gate=False,

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "experiment_id": "paper_rediscovery_causal_pilot_v0_2",
+  "study_kind": "single_generation_causal_pilot",
+  "parent_protocol": "paper_rediscovery_v0_1",
+  "research_design": {
+    "primary_endpoint": "verified_discovery_score",
+    "primary_comparison": "verifier_grounded_archive_vs_teacher_sft",
+    "secondary_comparisons": [
+      "teacher_sft_vs_frozen_base",
+      "verifier_grounded_archive_vs_frozen_base"
+    ],
+    "outer_statistical_unit": "paper",
+    "recursive_evolution_in_primary_study": false
+  },
+  "task_family": "bilevel_stackelberg_alignment_optimization",
+  "arms": [
+    "base",
+    "teacher_sft",
+    "verifier_grounded_archive"
+  ],
+  "sample_plan": {
+    "train": 30,
+    "dev": 9,
+    "pilot_eval": 12,
+    "adapter_seeds": [17, 29, 43],
+    "rollout_seeds": [101, 211, 307, 401]
+  },
+  "exclusions": {
+    "linear_self_teacher": true,
+    "recursive_generations": true,
+    "final_id_and_ood_sets": true
+  },
+  "status": "planned_after_vertical_slice"
+}

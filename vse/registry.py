@@ -102,6 +102,11 @@ def build_manifest(
                     f"frozen split minimum not met for {split_name}: "
                     f"minimum={expected['minimum']}, actual={actual}"
                 )
+            if "planned_exact" in expected and actual != int(expected["planned_exact"]):
+                raise ValueError(
+                    f"planned split count mismatch for {split_name}: "
+                    f"expected={expected['planned_exact']}, actual={actual}"
+                )
     return FrozenManifest(
         experiment_id=experiment_id,
         entries=entries,

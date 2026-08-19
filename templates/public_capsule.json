@@ -48,5 +48,6 @@
   "environment_lock_path": "environment/environment.lock",
   "environment_lock_sha256": "replace_me",
   "allowed_tools": ["python"],
-  "target_commitment": "replace_me"
+  "target_commitment": "replace_me",
+  "semantic_leak_review_digest": "replace_me"
 }

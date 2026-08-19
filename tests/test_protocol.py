@@ -120,6 +120,7 @@ class ProtocolTests(unittest.TestCase):
                 ).hexdigest(),
                 allowed_tools=("python",),
                 target_commitment=target.commitment,
+                semantic_leak_review_digest="semantic-review",
             )
             audit = audit_capsule(capsule, target, root, sealed_root)
             self.assertFalse(audit.passed)
@@ -218,7 +219,7 @@ class ProtocolTests(unittest.TestCase):
 
     def test_promotion_uses_only_distinct_promotion_split(self) -> None:
         policy = PromotionPolicy(
-            minimum_tasks=1,
+            minimum_tasks=2,
             promotion_id_tasks=1,
             promotion_ood_tasks=1,
             minimum_vds_delta=0.05,
@@ -228,6 +229,7 @@ class ProtocolTests(unittest.TestCase):
             maximum_component_drop=0.02,
             maximum_cost_ratio=1.10,
             minimum_adapter_seed_passes=2,
+            rollout_seeds=(1, 2),
         )
         rows: list[tuple[EvaluationCell, EvaluationCell]] = []
         for task_index in range(2):
@@ -310,43 +312,45 @@ class ProtocolTests(unittest.TestCase):
         champion: list[EvaluationCell] = []
         for split, count in ((Split.HELDOUT, 24), (Split.OOD, 16)):
             for index in range(count):
-                common = {
-                    "evaluation_run_id": "final-run",
-                    "evaluation_phase": "final",
-                    "promotion_attempt": 1,
-                    "adapter_seed": 17,
-                    "task_id": f"{split.value}-{index}",
-                    "task_digest": f"digest-{split.value}-{index}",
-                    "split": split,
-                    "stratum": "id" if split is Split.HELDOUT else "ood",
-                    "seed": 101,
-                    "hard_pass": True,
-                    "executable_pass": True,
-                    "fabricated_result": False,
-                    "target_leakage": False,
-                    "vds_components": components,
-                    "cost_units": 1.0,
-                    "runtime_seconds": 1.0,
-                    "manifest_digest": "manifest",
-                    "evaluator_digest": "evaluator",
-                    "contamination_audit_digest": "audit",
-                }
-                candidate.append(
-                    EvaluationCell(
-                        checkpoint_id="candidate",
-                        checkpoint_digest="candidate-digest",
-                        vds_score=1.0 if split is Split.HELDOUT else 0.8,
-                        **common,
-                    )
-                )
-                champion.append(
-                    EvaluationCell(
-                        checkpoint_id="champion",
-                        checkpoint_digest="champion-digest",
-                        vds_score=0.5 if split is Split.HELDOUT else 0.8,
-                        **common,
-                    )
-                )
+                for adapter_seed in (17, 29, 43):
+                    for rollout_seed in (101, 211, 307, 401):
+                        common = {
+                            "evaluation_run_id": "final-run",
+                            "evaluation_phase": "final",
+                            "promotion_attempt": 1,
+                            "adapter_seed": adapter_seed,
+                            "task_id": f"{split.value}-{index}",
+                            "task_digest": f"digest-{split.value}-{index}",
+                            "split": split,
+                            "stratum": "id" if split is Split.HELDOUT else "ood",
+                            "seed": rollout_seed,
+                            "hard_pass": True,
+                            "executable_pass": True,
+                            "fabricated_result": False,
+                            "target_leakage": False,
+                            "vds_components": components,
+                            "cost_units": 1.0,
+                            "runtime_seconds": 1.0,
+                            "manifest_digest": "manifest",
+                            "evaluator_digest": "evaluator",
+                            "contamination_audit_digest": "audit",
+                        }
+                        candidate.append(
+                            EvaluationCell(
+                                checkpoint_id="candidate",
+                                checkpoint_digest="candidate-digest",
+                                vds_score=1.0 if split is Split.HELDOUT else 0.8,
+                                **common,
+                            )
+                        )
+                        champion.append(
+                            EvaluationCell(
+                                checkpoint_id="champion",
+                                checkpoint_digest="champion-digest",
+                                vds_score=0.5 if split is Split.HELDOUT else 0.8,
+                                **common,
+                            )
+                        )
         decision = decide_final(
             candidate,
             champion,
@@ -416,7 +420,7 @@ class ProtocolTests(unittest.TestCase):
                 public_timestamps_utc={"arxiv_v1": "2025-06-01T00:00:00Z"},
             )
             for stratum in strata
-            for index in range(14)
+            for index in range(60)
         )
         eligible = eligible_candidates(
             candidates,
@@ -428,6 +432,16 @@ class ProtocolTests(unittest.TestCase):
         selection = select_frozen_papers(
             eligible,
             {
+                "train": {
+                    "constrained_safe_rl": 34,
+                    "general_sum_equilibrium_marl": 33,
+                    "bilevel_stackelberg_alignment_optimization": 33,
+                },
+                "dev": {
+                    "constrained_safe_rl": 3,
+                    "general_sum_equilibrium_marl": 3,
+                    "bilevel_stackelberg_alignment_optimization": 3,
+                },
                 "promotion": {
                     "constrained_safe_rl": 3,
                     "general_sum_equilibrium_marl": 3,

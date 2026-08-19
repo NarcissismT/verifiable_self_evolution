@@ -2,6 +2,17 @@
   "schema_version": 1,
   "experiment_id": "paper_rediscovery_v0_1",
   "protocol": "paper_time_capsule_v1",
+  "research_design": {
+    "primary_endpoint": "verified_discovery_score",
+    "primary_comparison": "verifier_grounded_archive_vs_teacher_sft",
+    "secondary_comparisons": [
+      "teacher_sft_vs_frozen_base",
+      "verifier_grounded_archive_vs_frozen_base"
+    ],
+    "final_comparator": "frozen_base",
+    "outer_statistical_unit": "paper",
+    "recursive_evolution_in_primary_study": false
+  },
   "primary_model": "qwen2.5-7b-instruct",
   "models": [
     {
@@ -9,14 +20,18 @@
       "repository": "Qwen/Qwen2.5-7B-Instruct",
       "revision": "d1e200f",
       "role": "primary",
-      "parameter_count_billions": 7.61
+      "parameter_count_billions": 7.61,
+      "checkpoint_file_hashes": null,
+      "tokenizer_file_hashes": null
     },
     {
       "model_id": "qwen2.5-14b-instruct",
       "repository": "Qwen/Qwen2.5-14B-Instruct",
       "revision": "336cd7f",
       "role": "scale_replication",
-      "parameter_count_billions": 14.7
+      "parameter_count_billions": 14.7,
+      "checkpoint_file_hashes": null,
+      "tokenizer_file_hashes": null
     }
   ],
   "target_publication_window": {
@@ -36,10 +51,10 @@
   },
   "split_constraints": {
     "train": {"minimum": 100},
-    "dev": {"minimum": 1},
+    "dev": {"exact": 9},
     "promotion": {"exact": 12},
-    "heldout": {"exact": 24},
-    "ood": {"exact": 16}
+    "heldout": {"planned_exact": 24, "status": "pending_power_confirmation"},
+    "ood": {"planned_exact": 16, "status": "pending_power_confirmation"}
   },
   "promotion_strata": {
     "id": 8,
@@ -50,6 +65,16 @@
     "ood": 16
   },
   "selection_quotas": {
+    "train": {
+      "constrained_safe_rl": 34,
+      "general_sum_equilibrium_marl": 33,
+      "bilevel_stackelberg_alignment_optimization": 33
+    },
+    "dev": {
+      "constrained_safe_rl": 3,
+      "general_sum_equilibrium_marl": 3,
+      "bilevel_stackelberg_alignment_optimization": 3
+    },
     "promotion": {
       "constrained_safe_rl": 3,
       "general_sum_equilibrium_marl": 3,
@@ -93,7 +118,8 @@
     "official_code_window_days_after_target": 30,
     "later_versions_for_formal_scoring": false,
     "required_artifact_hashes": ["sha256", "git_commit"],
-    "candidate_pool_minimum": 70
+    "candidate_pool_minimum": 161,
+    "reserve_policy": "all_eligible_unassigned_candidates_are_sealed_reserve"
   },
   "contamination_audit": {
     "probe_count_per_paper": 12,
@@ -116,6 +142,15 @@
     "human_reviewers": 2,
     "third_reviewer_on_absolute_difference_at_least": 0.2,
     "hard_gate_failure_sets_vds_to": 0.0
+  },
+  "power": {
+    "status": "pending_independent_pilot",
+    "minimum_id_effect": 0.05,
+    "ood_noninferiority_margin": -0.03,
+    "target_power": 0.8,
+    "paper_level_bootstrap": true,
+    "missing_paper_policy": "fail_closed",
+    "capsule_replacement_policy": "only_from_sealed_reserve_before_generation"
   },
   "resource_budget": {
     "gpu_model": "A6000-48GB",
@@ -172,6 +207,7 @@
     "warmup_ratio": 0.03,
     "gradient_clipping": 1.0,
     "gradient_checkpointing": true,
+    "epochs": 1.0,
     "learning_rate_by_model": {
       "qwen2.5-7b-instruct": 0.0001,
       "qwen2.5-14b-instruct": 0.00008
@@ -180,9 +216,9 @@
     "initial_verified_sft_nonpad_tokens": 20000000,
     "new_tokens_per_generation_max": 5000000,
     "replay_mixture": {
-      "original_trusted_or_teacher_anchor": 0.50,
+      "teacher_anchor": 0.50,
       "verified_success": 0.30,
-      "corrected_failure_or_counterexample": 0.20
+      "corrected_counterexample": 0.20
     },
     "loss_on": ["assistant_plan", "assistant_action", "structured_result_explanation", "belief_update"],
     "loss_off": ["system", "user", "tool_observation"]
@@ -199,6 +235,7 @@
     "fabricated_result_count_max": 0,
     "target_leakage_count_max": 0,
     "component_delta_min": -0.02,
+    "regressed_task_fraction_max": 0.0,
     "cost_ratio_max": 1.10,
     "adapter_seed_passes_min": 2,
     "adapter_seed_median_pass_required": true,
@@ -214,12 +251,12 @@
     "executable_pass_rate_min": 0.95,
     "id_vds_ci_lower_min": 0.0,
     "ood_vds_ci_lower_min": -0.03,
-    "multiple_comparison_correction": "holm_for_secondary_endpoints"
+    "multiple_comparison_correction": "holm_for_secondary_endpoints",
+    "reference_checkpoint_id": "base"
   },
   "arms": [
     "base",
     "teacher_sft",
-    "linear_self_teacher",
     "verifier_grounded_archive"
   ],
   "decoding": {
@@ -231,15 +268,18 @@
     "repetition_penalty": null
   },
   "freeze_readiness": {
-    "status": "blocked_pending_artifacts",
+    "status": "blocked_pending_implementation_and_artifacts",
     "pending": [
-      "dev_size",
+      "paper_level_power_simulation_receipt",
+      "independent_real_3_to_5_paper_vertical_slice",
+      "container_enforced_generation_and_evaluation",
+      "segmented_loss_mask_pipeline",
+      "qlora_gpu_validation",
       "model_checkpoint_and_tokenizer_file_hashes",
       "train_image_digest",
       "evaluator_image_digest",
       "trusted_evaluator_repository_commit",
       "inference_decoding_values",
-      "candidate_pool_manifest",
       "independent_human_review_rubric"
     ]
   }

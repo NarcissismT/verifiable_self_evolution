@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "experiment_id": "paper_rediscovery_recursive_v1",
+  "parent_protocol": "paper_rediscovery_v0_1",
+  "research_design": {
+    "primary_endpoint": "verified_discovery_score",
+    "primary_comparison": "final_recursive_champion_vs_frozen_base",
+    "secondary_comparisons": [
+      "linear_self_teacher_vs_frozen_base",
+      "verifier_grounded_archive_vs_teacher_sft"
+    ],
+    "final_comparator": "frozen_base",
+    "outer_statistical_unit": "paper",
+    "recursive_evolution_in_primary_study": true
+  },
+  "arms": [
+    "base",
+    "teacher_sft",
+    "linear_self_teacher",
+    "verifier_grounded_archive"
+  ],
+  "maximum_generations": 3,
+  "status": "planned_after_causal_pilot"
+}

@@ -10,11 +10,11 @@ The five sets are disjoint:
 
 | Set | Size | Use |
 |---|---:|---|
-| Train | 100 minimum | teacher bootstrap, SFT, self-evolution |
-| Dev | pending | teacher-free diagnostics before formal freeze |
+| Train | 100 | teacher bootstrap, SFT, self-evolution |
+| Dev | 9 | teacher-free diagnostics before formal freeze, 3 per ID stratum |
 | Promotion | 12 | 8 ID + 4 OOD, at most three generation decisions |
-| Final ID held-out | 24 | final primary conclusion only |
-| Final OOD | 16 | final non-inferiority conclusion only |
+| Final ID held-out | planned 24 | pending independent-pilot power confirmation |
+| Final OOD | planned 16 | pending independent-pilot power confirmation |
 
 Promotion never reads final held-out or final OOD. Final evaluation runs once
 after all generations and training are complete.
@@ -63,8 +63,10 @@ QLoRA uses NF4, double quantization, BF16 compute, rank 64, alpha 128, dropout
 scheduler, 3% warmup, gradient clipping 1.0, 8192 sequence length, and
 gradient checkpointing. Learning rate is `1e-4` for 7B and `8e-5` for 14B.
 
-The four registered arms are `Base`, `Teacher-SFT`, `Linear Self-Teacher`, and
-`Verifier-Grounded Archive`. Teacher access is train-only; a teacher cannot see
+The causal pilot registers three arms: `Base`, `Teacher-SFT`, and
+`Verifier-Grounded Archive`. `Linear Self-Teacher` is reserved for the separate
+recursive configuration [`paper_rediscovery_recursive_v1.json`](configs/paper_rediscovery_recursive_v1.json).
+Teacher access is train-only; a teacher cannot see
 promotion, final held-out, final OOD, target papers, or promotion receipts.
 
 The full values, container names, resource budget, contamination probes,
@@ -72,9 +74,10 @@ replay mixture, and decoding freeze are in the JSON configuration.
 
 ## Readiness boundary
 
-The supplied response does not provide concrete decoding values, dev size,
+The supplied response does not provide concrete decoding values,
 container image digests, trusted-evaluator commit/digest, or full model and
 tokenizer file hashes. Candidate-pool membership and the independent human
 review rubric are also not yet sealed. The config therefore remains
-`blocked_pending_artifacts`; it is a valid partial preregistration, not launch
-authorization.
+`blocked_pending_implementation_and_artifacts`; it is a valid partial
+preregistration, not launch authorization. The formal CLI, freeze-check, ledger,
+and real 3-5 capsule vertical slice remain mandatory before QLoRA.

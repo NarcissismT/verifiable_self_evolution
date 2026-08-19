@@ -17,5 +17,10 @@
     "trusted_scorer": "replace_me",
     "metric_rules": []
   },
+  "algorithm_names": [],
+  "forbidden_terms": [],
+  "code_fingerprints": [],
+  "numeric_fingerprints": [],
+  "distinctive_phrases": [],
   "salt": "replace_with_random_secret"
 }
