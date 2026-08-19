@@ -1,0 +1,14 @@
+{
+  "case_id": "realpilot_nonconvex_simple",
+  "evaluation_digest": "4d62069027f2d715d68e5db3567006cadd4e7e93215591d3d218846ad48b9eb9",
+  "execution_digest": "329be3fea7d5aa75f477d3a8233c78fe03507f91973795448dc0fd9f2950735d",
+  "failures": [],
+  "hard_pass": true,
+  "schema_version": 1,
+  "thresholds": {
+    "lower_residual": 0.08,
+    "primal_feasibility": 1e-12,
+    "upper_regret": 0.08
+  },
+  "vds_score": 0.9999999999999999
+}

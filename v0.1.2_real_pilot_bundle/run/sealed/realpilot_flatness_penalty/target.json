@@ -1,0 +1,49 @@
+{
+  "algorithm_names": [
+    "PBGD-Free"
+  ],
+  "capsule_id": "realpilot_flatness_penalty",
+  "code_fingerprints": [],
+  "distinctive_phrases": [
+    "beyond value functions",
+    "under flatness conditions"
+  ],
+  "first_public_at_utc": "2025-05-06T18:23:29Z",
+  "forbidden_terms": [
+    "penalty-based gradient descent free of lower-level loops"
+  ],
+  "hidden_claims": [
+    {
+      "claim": "A single-loop first-order penalty method can avoid a value-function construction and a lower-level inner loop under relaxed flatness conditions.",
+      "claim_id": "flatness_01",
+      "metric": "joint_stationarity_under_gradient_budget"
+    }
+  ],
+  "hidden_result_spec": {
+    "metric_rules": [
+      "lower_gap",
+      "upper_stationarity",
+      "gradient_calls",
+      "reproducibility"
+    ],
+    "target_code_snapshot": {
+      "git_commit": "415acbeab836b1ae7c7eb8c6fe79a1dcfee54d76",
+      "path": "realpilot_flatness_penalty/target_code.tar.gz",
+      "repository": "https://github.com/Liuyuan999/PBGD_Free",
+      "sha256": "d0344ab6e0cab413836fed04958b3b49aa947733a8500b5f2ac6c64ede9f0a52"
+    },
+    "trusted_scorer": "trusted_evaluator.py:realpilot_flatness_penalty"
+  },
+  "identifiers": [
+    "2507.20400",
+    "https://proceedings.neurips.cc/paper_files/paper/2025/hash/4aa5e0b33e6f774c0d34ab2e1bc3bced-Abstract-Conference.html",
+    "https://github.com/Liuyuan999/PBGD_Free",
+    "dCGQlVRa2B"
+  ],
+  "numeric_fingerprints": [],
+  "salt": "582b6ebaafc9063348242ddab53fcf5c6f6aa01dcf73e71d004ff552b799bb03",
+  "target_id": "neurips2025_beyond_value_functions_flatness",
+  "target_snapshot_path": "realpilot_flatness_penalty/target.pdf",
+  "target_snapshot_sha256": "ecf353e6eb69959709fe31a8d17eee19eaf0775b409c9007f222eb218bd5ea5b",
+  "title": "Beyond Value Functions: Single-Loop Bilevel Optimization under Flatness Conditions"
+}

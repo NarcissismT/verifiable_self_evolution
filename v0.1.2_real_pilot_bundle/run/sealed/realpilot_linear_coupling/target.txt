@@ -1,0 +1,3927 @@
+A Single-Loop First-Order Algorithm for Linearly
+Constrained Bilevel Optimization
+Wei Shen
+University of Virginia
+zyy5hb@virginia.edu
+Jiawei Zhang
+University of Wisconsin-Madison
+jzhang2924@wisc.edu
+Minhui Huang
+Meta
+mhhuang@meta.com
+Cong Shen
+University of Virginia
+cong@virginia.edu
+Abstract
+We study bilevel optimization problems where the lower-level problems are strongly
+convex and have coupled linear constraints. To overcome the potential non-
+smoothness of the hyper-objective and the computational challenges associated
+with the Hessian matrix, we utilize penalty and augmented Lagrangian meth-
+ods to reformulate the original problem as a single-level one. Especially, we
+establish a strong theoretical connection between the reformulated function and
+the original hyper-objective by characterizing the closeness of their values and
+derivatives. Based on this reformulation, we propose a single-loop, first-order
+algorithm for linearly constrained bilevel optimization (SFLCB). We provide
+rigorous analyses of its non-asymptotic convergence rates, showing an improve-
+ment over prior double-loop algorithms – formO(ϵ−3 log(ϵ−1)) toO(ϵ−3). The
+experiments corroborate our theoretical findings and demonstrate the practical
+efficiency of the proposed SFLCB algorithm. Simulation code is provided at
+https://github.com/ShenGroup/SFLCB.
+1 Introduction
+In recent years, bilevel optimization (BLO) has gained significant popularity for addressing a wide
+range of modern machine learning problems, such as hyperparameter optimization [35, 7, 32], data
+hypercleaning [37], meta learning [36, 13], reinforcement learning [40, 11] and neural architecture
+search [26, 23]; see survey papers [51, 27, 39] for additional discussions. While numerous works
+for unconstrained BLO problems have been proposed [ 9, 30, 15, 5, 11, 22], studies focusing on
+constrained BLO problems are relatively limited.
+In this paper, we consider the following BLO problem where the lower-level (LL) problem has
+coupled constraints:
+min
+x∈X
+Φ(x)≜f(x,y ∗(x))(1)
+s.t.y ∗(x)∈arg min
+y∈Y(x)
+g(x,y).
+The upper-level (UL) objective functionf:R dx×Rdy→Rand the lower-level objective function
+g:R dx×Rdy→R are continuously differentiable. Moreover, we assume thatg(x,y) is strongly
+convex with respect toy. The feasible sets are defined asX=R dx,Y(x) ={y∈R dy|h(x,y)≤
+0}whereh:R dx×Rdy→R dh.
+39th Conference on Neural Information Processing Systems (NeurIPS 2025).
+arXiv:2510.24710v1  [math.OC]  28 Oct 2025
+
+For this setting, we develop a single loop algorithm for the special case h(x,y) =Bx+Ay−b ,
+whereB∈R dh×dx andA∈R dh×dy. This special class of constrained BLO problems covers a
+wide class of applications, including distributed optimization [ 47], hyperparameter optimization
+of constrained learning problems [45] and adversarial training [52] and draw significant attentions
+[41, 18, 20].
+A popular approach for solving unconstrained BLO is implicit gradient descent [9, 15, 14, 4, 19]. For
+constrained BLO, several studies have extended this approach to accommodate different constraint
+settings [41, 18, 45, 44]. However, these implicit gradient-based methods in constrained BLO
+necessitate computing the Hessian matrix of the lower-level problem [41, 18, 45, 44]. The potential
+computational challenges associated with the Hessian matrix limit their practical applicability for
+large-scale problems.
+Recently, some first-order methods [21, 49, 48, 16, 20] have been proposed for addressing constrained
+BLO problems. Most of those works considered transforming the original problem (1) into a single-
+level one and trying to find the stationary points of the reformulated problem. For example, [49, 48]
+reformulated the original problem into some approximated functions and proposed single-loop
+algorithms for finding the stationary point of the approximated problem. However, neither [49] nor
+[48] establishes clear relationships between the stationary points of their approximated problems and
+the original one.
+Works most closely related to ours are those by [21] and [16], both of which reformulated the problem
+(1) as
+min
+x∈X,y∈Y(x)
+f(x,y)s.t.g(x,y)−min
+z∈Y(x)
+g(x,z)≤0,(2)
+and considered optimizing the following function with a penalty parameterδ:
+min
+x∈X
+[Φδ(x)≜min
+y∈Y(x)
+max
+z∈Y(x)
+Φδ(x,y,z)](3)
+where Φδ(x,y,z) =f(x,y) + 1
+δ [g(x,y)−g(x,z)] . Based on this reformulation, [ 21] proposed
+algorithms for solving BLO with LL constraints y∈Y and [16] proposed algorithms for solving
+coupled LL constraints Y(x) ={y∈R dy|h(x,y)≤0} . However, [ 21] only considered the
+LL constraintsY that are independent of x and their methods require projection oracle to Y at
+each iteration. Algorithms in [16] require complex double or triple loops, resulting in sub-optimal
+convergence rates and difficult implementation. Moreover, the connection between the stationary
+point of the reformulated function Φδ and the original hyper-objective Φ is not discussed in [21, 16]
+for coupled constraintsY(x).
+To address these limitations, in this paper, we establish a rigorous theoretical justification for this
+reformulation (3) and propose a single-loop Hessian-free algorithm for the linearly constrained cases.
+Our main contributions can be summarized as follows.
+• We establish a rigorous theoretical connection between the reformulated function Φδ and the
+original hyper-objective Φ by proving the closeness of their values and derivatives under coupled
+constraintsY(x) ={y∈R dy|h(x,y)≤0} with certain assumptions, which provides strong
+justifications for the reformulation (3).
+• Based on this reformulation and equipped with augmented Lagrangian methods, we proposed
+SFLCB, a single-loop, first-order algorithm for linearly constrained bilevel optimization problem.
+and provide rigorous analyses of its non-asymptotic convergence rates, achieving an improvement
+in the convergence rate fromO(ϵ−3 log(ϵ−1)) toO(ϵ−3) compared to prior works (See Table 1 for
+a more comprehensive comparison of our work with previous studies). The simple single-loop
+structure also makes our algorithm easier to implement in practice compared to [16].
+• Our experiments on hyperparameter optimization in the support vector machine (SVM) and
+transportation network design problems validate the practical effectiveness and efficiency of the
+proposed SFLCB algorithm.
+2 Related works
+BLO without constraints.One popular approach for solving unconstrained BLO is to use implicit
+gradient descent methods [35]. It is well established that when the LL problem is strongly convex
+2
+
+Table 1: Comparison of our paper with [21, 16, 20]. More detailed introductions and discussions of
+other related works can be found in Section 2. Here, the “Complexity” for [21, 16] and SFLCB means
+the complexity needed to achieve the ϵ-stationary point of Φδ; for [ 20], it means the complexity
+needed to achieve the(δ,ϵ)-Goldstein stationarity defined in [20].
+Methods LL Constraint Complexity Loops
+[21]y∈Y,Yis a convex and compact setO(ϵ −3 log(ϵ−1))single/double
+[16]h(x,y)≤0, LICQ holdsO(ϵ −5 log(ϵ−1))triple
+[16]B(x) +A(x)y≤0,A(x)is full row rankO(ϵ −3 log(ϵ−1))double
+[20]Bx+Ay−b≤0, LICQ holds ˜O(dδ−1ϵ−3)double
+[20]Bx+Ay−b≤0, LICQ holds ˜O(δ−1ϵ−4)double
+SFLCB (ours)Bx+Ay−b≤0,Ais full row rankO(ϵ −3)single
+SFLCB (ours)Ay≤0, LICQ holds at the initial pointsO(ϵ −3)single
+SFLCB (ours)Ay≤0O(ϵ −4)single
+and unconstrained, y∗(x) = argminyg(x,y) exists and is differentiable, and the gradient of the
+hyper-objective can be calculated by∇Φ(x) =∇ xf(x,y) + (∇y∗(x))⊤∇yf(x,y∗(x)) [9]. Later
+works improved the convergence rates and studied the gradient descent methods under various settings
+[15, 14, 4, 19, 46]. Another popular approach is based on iterative differentiation, which iteratively
+solves the LL problems and computes ∇y∗(x) to approximate the hypergradient [ 33, 10, 29, 2].
+Recently, penalty-based methods have gained traction as a promising approach for solving BLO.
+Those works usually reformulate the original BLO as the single-level one and use the first-order
+methods to find the stationary point of the reformulated problems [28, 34, 25, 22, 38, 8, 31].
+BLO with constraints.There are two primary types of methods for solving constrained bilevel
+optimization problems. One is based on the implicit gradient method. Generally, when the LL problem
+has constraints, the differentiabilities of y∗(x) and Φ(x) are not guaranteed [18]. [ 41] proved the
+existence of∇Φ(x) under additional assumptions for linearly constraint Ay≤b and proposed
+an implicit gradient-type double-loop algorithm. [ 18] proposed a perturbation-based smoothing
+technique to compute the approximate implicit gradient for linearly constraint Ay≤b . [45] used
+Clarke subdifferential to approximate the non-differentiable implicit function Φ. However, they only
+provided an asymptotic convergence analysis of their algorithm. [44] proved the existence of∇ϕ
+where the LL has equality constraintsAy+H(x) =c , and introduced an alternating projected SGD
+approach to solve this problem. However, these implicit gradient-type algorithms [41, 18, 45, 44]
+require the computations for the Hessian matrix of the LL problems, which potentially limit their
+practical applicability for large-scale problems.
+Another commonly used approach for solving constrained BLO problems is based on penalty
+reformulation. For example, [49] reformulated the original problem into a proximal Lagrangian value
+function and proposed a single-loop, first-order method to find the stationary points of the reformulated
+value function. However, their algorithm requires the implementation of the projection operator
+onC={x,y|h(x,y)≤0} at each iteration, which can be potentially costly. [ 48] reformulated
+the original problem into a doubly regularized gap function and proposed a single-loop, first-order
+algorithm. Compared to [ 49], [48] did not need the projection operator to the coupled constraint
+set. However, both [49] and [48] did not establish very clear relationships between the stationary
+points of their approximated problems and the original one. For example, [ 48] only provided an
+asymptotic relationship between the original problem and their reformulated one, i.e., as their penalty
+parameter approaches infinite, their reformulated problem is equivalent to the original one. Recently,
+[42, 17] proposed algorithms based on barrier approximation approach for constrained BLO problems.
+However, their algorithms also require the computations for the Hessian matrix.
+[21] and [16] considered the same reformulation as ours. [21] studied the case where the LL variables
+y∈Y are independent ofx and characterized the conditions under which the values and derivatives
+of Φ and Φδ can beO(δ)-close fory∈Y constraints. Compared with [21], we prove similar results
+under coupled constraintsY(x) ={y∈R dy|h(x,y)≤0} . Moreover, the algorithms in [21] require
+the implementation of the projection operator toY at each iteration, which can be costly. [16] studied
+the coupled constraints Y(x) ={y∈R dy|h(x,y)≤0} . While [ 16] considered more general
+3
+
+constraints than ours, however, it did not characterize the gap between the stationary point of the
+reformulated function Φδ and the original hyper-objective Φ. Our Theorem 4.9 provides further
+justifications for their reformulation in coupled constraints. Moreover, compared with the double- and
+triple-loop algorithms in [21], we propose a single-loop algorithm SFLCB and prove an improvement
+in the convergence rate fromO(ϵ−3 log(ϵ−1))toO(ϵ −3).
+Recently, [20] also proposed first-order methods for linearly constrained BLO. Especially, they proved
+a nearly optimal convergence rate ˜O(ϵ−2) for linear equality constraints and proposed algorithms that
+can attain (δ,ϵ) -Goldstein stationarity for linear inequality constraints. However, their convergence
+rates for linear inequality constraints either have additional dependence on dimension d (such as
+˜O(dδ−1ϵ−3)) or need additional assumptions to access theexactoptimal dual variable (such as
+˜O(δ−1ϵ−4)), while we do not require the exact optimal dual variable assumption. Compared with
+the double-loop algorithms in [20], our proposed single-loop one is easier to implement in practice.
+Moreover, our techniques are also different from theirs under linear inequality constraints, thereby
+highlighting the distinct contributions and independent interests of our work.
+3 Preliminaries
+Notation.For vectors a,b∈R d, we denotea≤b if for alli∈[d] ,ai≤b i. We use∥·∥ to denote
+thel2 norm of a vector and the spectral norm of a matrix. We define the projection operator that
+projectx to a setP as ΠP(x) = argminx′∈P
+1
+2∥x−x ′∥2. We denote the projection operator that
+projects ax∈R d to the setRd
+− asΠ−(x).
+We state the following assumptions for problem (1), which are commonly used in the theoretical
+studies of BLO.
+Assumption 3.1.For any x∈X ,Y(x) is nonempty, closed, and convex and Φ(x) is lower bounded
+by a finite,Φ∗ = infx∈X Φ(x)≥−∞.
+Assumption 3.2. f,∇f,∇g are Lipschitz continuous withlf,0,lf,1,lg,1 respectively, jointly over
+X×Y(x).
+Assumption 3.3.For any fixedx∈X,g(x,y)isµ g-strongly convex with respect toy∈Y(x).
+We introduce the standard definition of theϵ-stationary point for a differentiable function.
+Definition 3.4.We sayˆxis anϵ-stationary point of a differentiable functionfif∥∇f(ˆx)∥≤ϵ.
+4 Reformulation
+In this section, we provide a theoretical justification for our reformulation (3) and establish the
+conditions under which the function values and gradients of the reformulated function Φδ and the
+original hyper-objective Φ become sufficiently close. Note that in this section, we considered general
+coupled constraintsY(x) ={y∈R dy|h(x,y)≤0} which include, but are not limited to, the linear
+constraint case. The complete proofs for the lemmas and theorems in this section can be found in
+Section C.
+First, we assumeδ≤ µg
+2lf,1
+and introduce the following notations:
+y∗
+δ(x) = argmin
+y∈Y(x)
+δf(x,y) +g(x,y)
+y∗(x) =z∗(x) = argmin
+y∈Y(x)
+g(x,y)
+ϕδ(x,y,z) =δΦ δ(x,y,z)
+ϕδ(x) =ϕ δ(x,y∗
+δ(x),z∗(x)).
+Similar to Theorem 3.8 in [21], we have the following theorem to bound the difference betweenΦ
+andΦδ, as well asy∗(x)andy ∗
+δ(x)in the coupled constraints.
+Theorem 4.1.When Theorem 3.1, 3.2 and 3.3 hold, we have
+0≤Φ(x)−Φ δ(x)≤
+δl2
+f,0
+2µg
+,∥y ∗
+δ(x)−y ∗(x)∥≤ 2δlf,0
+µg
+.
+4
+
+Theorem 4.1 characterizes how the difference in function values and the optimal LL variables
+between the reformulated problem and the original one are controlled by the penalty parameter δ.
+Therefore, by choosing a sufficiently smallδ, i.e.,δ=O(ϵ) , we can treat the reformulated problem
+minx∈X Φδ(x) as an approximation of the original problem and solve this approximated problem
+instead. In the following lemmas, we will provide the conditions under which the reformulated
+function Φδ(x) is differentiable. Before that, we first introduce the well-known and commonly used
+Linear Independence Constraint Qualification (LICQ) condition.
+Definition 4.2(Active set).We denote Iy ⊆[d h] as the active set of y, i.e. Iy ={i∈[d h]|
+hi(x,y) = 0}.
+Definition 4.3(LICQ).We say a point y satisfy the LICQ condition if, for alli∈I y,∇yhi(x,y) are
+linearly independent.
+Then, similar to Lemmas 2 and 3 in [16], we have the following lemma.
+Lemma 4.4.When Theorem 3.1, 3.2, 3.3 hold and δ≤µ g/(2lf,1), if, for all x∈X , the LICQ
+condition (Theorem 4.3) holds for y∗(x) and y∗
+δ(x), then there exist the corresponding unique
+Lagrangian multipliersλ∗(x)∈R dh andλ∗
+δ(x)∈R dh such that
+λ∗(x) = argmax
+λ∈R+
+min
+y∈Y(x)
+g(x,y) +λ ⊤h(x,y)(4)
+λ∗
+δ(x) = argmax
+λ∈R+
+min
+y∈Y(x)
+δf(x,y) +g(x,y) +λ ⊤h(x,y).(5)
+Furthermore, we have
+∇Φδ(x) =∇ xf(x,y∗
+δ(x)) + 1
+δ [∇xg(x,y∗
+δ(x)) +∇xh(x,y∗
+δ(x))λ∗
+δ(x)
+−∇xg(x,y∗(x))−∇ xh(x,y∗(x))λ∗(x)].
+While the gradients of Φδ(x) exists under LICQ conditions, for general problem (1), Φ(x) is not
+guaranteed to be differentiable. For example, [18] provides an example where the LICQ condition
+holds, Φ(x) is non-differentiable at some points. However, if a given x satisfies the following
+conditions, then∇Φ(x)exists atx.
+Assumption 4.5(Strict Complementarity).Let λ∗(x) be the Lagrange multipliers fory∗(x)(4) . For
+anyi∈I y∗(x),[λ∗(x)]i >0.
+Assumption 4.6.∇2f,∇ 2g are Lipschitz continuous withlf,2,lg,2 respectively, jointly overX×
+Y(x). For i∈[d h],hi(x,y) is convex with respect toy,hi,∇hi,∇ 2hi are respectively Lipschitz
+continuous withlh,0,lh,1,lh,2 jointly overX×Y(x).
+Note that Theorem 4.5, 4.6 are commonly used in constrained BLO literature [41, 18, 45, 17, 21] to
+ensure the existence of∇Φ(x).
+Lemma 4.7(Theorem 2 in [ 45]).When Theorem 3.1, 3.2, 3.3, 4.6 hold, if, for a given x, Theorem 4.5
+and LICQ (Theorem 4.3) condition hold fory∗(x), then∇Φ(x)exists atx.
+Moreover, with additional assumptions, we can establish a non-asymptotic bound for ∥∇Φ(x)−
+∇Φδ(x)∥.
+Assumption 4.8.For anyt∈[0,δ],
+(1)y ∗
+t (x) satisfies the LICQ condition (Theorem 4.3) with the same active set asy∗(x). Denote
+this active set asI. Let λ∗
+t (x) be the Lagrange multiplier fory∗
+t (x) in (5). For anyi∈I ,
+[λ∗
+t (x)]i >0 (Strict Complementarity). We assume ∥λ∗
+t (x)∥≤Λ , where Λ is an O(1)
+constant.
+(2) Denote∇y¯h(x,y∗
+t (x)) =∇ y[h(x,y∗
+t (x))]I. The singular values of∇y¯h(x,y∗
+t (x)) satisfy
+σmax([∇y¯h(x,y∗
+t (x)))≤s max,σmin(∇y¯h(x,y∗
+t (x)))≥s min >0 , wheresmax,s min are
+O(1)constants.
+Theorem 4.8 is made fort∈[0,δ] . Whenδ is sufficiently small, i.e.,δ=O(ϵ) ,y∗(x) andy∗
+t (x) are
+very close according to Theorem 4.1. Thus, we expect that for t∈[0,δ] ,y∗
+t (x) will have similar
+properties asy∗(x). Similar assumptions have also been used in [21] to establish the non-asymptotic
+bound for∥∇Φ(x)−∇Φ δ(x)∥.
+5
+
+Theorem 4.9.When Theorem 3.1, 3.2, 3.3, 4.6 hold and δ≤µ g/(2lf,1), if Theorem 4.8 holds for a
+givenx, we have
+∥∇Φ(x)−∇Φ δ(x)∥≤O(δ).
+Similar non-asymptotic bound for∥∇Φ(x)−∇Φ δ(x)∥ has been established in [21]; however, their
+bound is established only for the LL constraintsY that do not depend onx. Our Theorem 4.9 provides
+a more general theoretical justification for the validity of the reformulation(3) for coupled constraints
+Y(x) ={y∈R dy|h(x,y)≤0}.
+5 The SFLCB Algorithm
+In the last section, we have justified the validity of our reformulation for coupled constrained
+BLO. In this section, we focus on a special and important case where the LL constraints are
+h(x,y) =Bx+Ay−b . This particular category of constrained BLO problems encompasses a broad
+range of applications, including distributed optimization [47, 18], adversarial training [52, 18], and
+hyperparameter optimization for constrained learning tasks such as hyperparameter optimization in
+SVM (see Section 6). For this special caseh(x,y) =Bx+Ay−b , we introduce a novel single-loop,
+first-order algorithm SFLCB, which achieves an improvement in the convergence rate compared to
+prior works [21, 16].
+First, we introduce the following slackness parameters α,β∈R dh
+− and define y′ = (y⊤,α⊤)⊤,
+z′ = (z⊤,β⊤)⊤. With these slackness parameters, we can convert the original inequality constraints
+to equality constraints, i.e. we can reformulatemin x∈X,y∈Y(x) maxz∈Y(x)ϕδ(x,y,z)as:
+min
+x∈X,y′∈Sy(x)
+max
+z′∈Sy(x)
+ϕδ(x,y,z)(6)
+wherePy ={y∈R dy,α∈R dh
+−},Sy(x) ={y,α∈P y|h(x,y)−α= 0} . The Lagrangian of (6)
+with multiplieru,v∈R dh is
+Lδ(x,y′,z′,u,v) =ϕ δ(x,y,z) +u ⊤(h(x,y)−α)−v ⊤(h(x,z)−β).
+According to Proposition 5.3.4 in [1], we know that
+ϕδ(x) = min
+y′∈Py,v∈Rdh
+max
+z′∈Py,u∈Rdh
+Lδ(x,y′,z′,u,v).
+Note that when δ≤µ g/(2lf,1), ϕδ is µg/2-strongly convex with respect y. However,
+Lδ(x,y′,z′,u,v) is only convex with respect y′ and concave with respect z′. To make the ob-
+jective function strongly convex with respect toy′ and strongly concave with respect toz′, we can
+construct an augmented LagrangianK:
+K(x,y′,z′,u,v) =L δ(x,y′,z′,u,v) + ρ1
+2∥h(x,y)−α∥ 2− ρ2
+2∥h(x,z)−β∥ 2.
+With 0≤ρ 1≤ µg−δlf,1
+σ2max(A) and 0≤ρ 2≤ µg
+σ2max(A), according to Theorem D.1,K is strongly convex
+with respect toy′ and strongly concave with respect toz′. Moreover, we have
+min
+y′∈Py,v∈Rdh
+max
+z′∈Py,u∈Rdh
+Lδ(x,y′,z′,u,v) = min
+y′∈Py,v∈Rdh
+max
+z′∈Py,u∈Rdh
+K(x,y′,z′,u,v).
+Note thatLδ andK have the same optimal points and same optimal function value. Thus, we can
+reformulate the problem (6) to the minimax optimization problem overK:
+min
+x∈X,y′∈Py,v∈Rdh
+max
+z′∈Py,u∈Rdh
+K(x,y′,z′,u,v).(7)
+Motivated by these theoretical analyses, and applying gradient descent ascent (GDA) over problem
+(7), we propose SFLCB. A compact description can be found in Algorithm 1.
+6
+
+Algorithm 1SFLCB
+Input:δ,ρ 1,ρ 2,ηx,ηy,ηz,ηv,ηu,T
+Initialize:x 0∈X,y ′
+0,z′
+0∈P y,u 0,v 0∈R dh
+fort= 0,1,...,T−1do
+ut+1 =u t +ηu(h(xt,yt)−α t)
+vt+1 =v t +ηv(h(xt,zt)−β t)
+xt+1 =x t−ηx∇xK(xt,y′
+t,z′
+t,ut+1,vt+1)
+y′
+t+1 = ΠPy{y′
+t−ηy∇′
+yK(xt,y′
+t,z′
+t,ut+1,vt+1)}
+z′
+t+1 = ΠPy{z′
+t +ηz∇′
+zK(xt,y′
+t,z′
+t,ut+1,vt+1)}
+end for
+5.1 Convergence results
+In this section, we provide the non-asymptotic convergence results of SFLCB (Algorithm 1) for two
+constraint settings: 1) h(x,y) =Bx+Ay−b , whereA is full row rank, and 2) h(y) =Ay−b ,
+whereAis not required to be full row rank.
+Note that when the LICQ condition (Theorem 4.3) holds fory∗(x) andy∗
+δ(x), the optimal Lagrangian
+multipliers ofy∗(x) andy∗
+δ(x) are unique. Thus, we first introduce the following lemma and notations
+for these optimal Lagrangian multipliers.
+Lemma 5.1.When the LICQ condition (Theorem 4.3) holds for y∗(x) and y∗
+δ(x), the optimal
+Lagrangian multipliers ofy∗(x)andy ∗
+δ(x)are unique, and we have
+u∗
+δ(x) = argmax
+u∈R+
+min
+y∈Y(x)
+gδ(x,y) +u⊤h(x,y) = argmax
+u∈Rdh
+min
+y′∈Py
+K(x,y′,z′,u,v),
+v∗(x) = argmax
+v∈R+
+min
+z∈Y(x)
+g(x,z) +v ⊤h(x,z) = argmin
+v∈Rdh
+max
+z′∈Py
+K(x,y′,z′,u,v).
+The proof of Theorem 5.1 can be found in Section E.
+Next, we introduce the following notations:
+y′∗
+δ (x,u) = argmin
+y′∈Py
+K(x,y′,z′,u,v), z ′∗(x,v) = argmax
+z′∈Py
+K(x,y′,z′,u,v), A ′ = (A,−I).
+Then, we present the convergence results of SFLCB (Algorithm 1) for coupled constraintsh(x,y) =
+Bx+Ay−b , whereA is full row rank. Note that BLOCC in [16] that achieves the complexity of
+O(ϵ−3 log(ϵ−1)) also needs the matrixA to be full row rank (See Table 1). ForA that is not full row
+rank andB= 0, we provide the convergence results in Theorem 5.4 and Theorem 5.5.
+Theorem 5.2.When h(x,y) =Bx+Ay−b ,A is full row rank, Theorem 3.1, 3.2, 3.3 hold and
+δ= Θ(ϵ)≤µ g/(2lf,1), if we apply Algorithm 1 with appropriate parameters (see Section E), then
+we can find anϵ-stationary point ofΦ δ with a complexity ofO(ϵ−4).
+Moreover, if we have initial pointsx0,y 0,z 0,u 0,v 0 such that
+∥y0−y∗
+δ(x0)∥≤O(δ),∥u 0−u∗
+δ(x0)∥≤O(δ),(8)
+∥z0−z∗(x0)∥≤O(δ),∥v 0−v∗(x0)∥≤O(δ),(9)
+then we can find anϵ-stationary point ofΦ δ with a complexity ofO(ϵ−3).
+The formal statement and the complete proof of Theorem 5.2 can be found in Section E.
+Proof sketch for Theorem 5.2. The key new idea in our proof is the construction of a novel potential
+functionVt and prove the descent lemma ofVt (Theorem E.4).V t is defined as:
+Vt = 1
+4K(xt,y′
+t,z′
+t,ut,vt) + 2q(xt,vt)−d(x t,z′
+t,ut,vt)
+where d(x,z′,u,v) =K(x,y ′∗
+δ (x,u),z′,u,v) and q(x,v) =ϕ δ(x,y∗
+δ(x),z∗(x,v))−
+v⊤(A′z′∗(x,v)−b)− ρ2
+2∥A′z′∗(x,v)−b∥ 2. To prove Theorem E.4, we need to first prove several
+novel error bounds in Theorem D.2, Theorem E.3 and Theorem E.2. Those error bounds may be of
+7
+
+independent interest for solving other similar problems. The full row rank property ofA is used in
+Theorem E.2 to bound∥ut+1−u∗
+δ(xt)∥and∥v t+1−v∗(xt)∥.
+SinceA has full row rank, then according to Theorem 6 in [ 16], we can easily find initial points
+satisfying (8)-(9) with a complexity ofO(log(ϵ−1))and we have the following corollary.
+Corollary 5.3.When h(x,y) =Bx+Ay−b ,A has full row rank, Theorem 3.1, 3.2, 3.3 hold, andδ=
+Θ(ϵ)≤µ g/(2lf,1), if we apply projected gradient descent (PGD) formaxv∈R+ minz∈Rdy g(x0,y) +
+v⊤(Bx0+Az−b) with a fixedx0, we can find ˆv, ˆzsuch that∥ˆv−v∗(x0)∥≤δ and∥ˆz−z∗(x0)∥≤δ
+with a complexity ofO(log(ϵ−1)). Sety0 =z 0 = ˆz,u0 =v 0 = ˆv,α0 =h(x 0,y 0),β0 =h(x 0,z 0).
+Withx0,y′
+0,z′
+0,u 0,v 0 as initial points and applying Algorithm 1, we can find anϵ-stationary point of
+Φδ with a complexity ofO(ϵ−3). Thus, the total complexity isO(ϵ−3 + log(ϵ−1)) =O(ϵ−3).
+The proof of Theorem 5.3 can be found in Section E. Thus, compared to [16], we achieve an improve-
+ment in the convergence rate fromO(ϵ−3 log(ϵ−1)) toO(ϵ−3) for the coupled linear constraint (See
+Table 1).
+Additionally, we have the following convergence results for constraintsh(y) =Ay−b , whereA is
+not required to have a full row rank.
+Theorem 5.4.When h(x,y) =Ay−b , Theorem 3.1, 3.2, 3.3 hold, andδ= Θ(ϵ)≤µ g/(2lf,1), if
+we apply Algorithm 1 with appropriate parameters (see Section D), then we can find anϵ-stationary
+point ofΦδ with a complexity ofO(ϵ−4).
+Moreover, if we have initial pointsx0,y′
+0,z′
+0,u 0,v 0 such that
+∥y0−y∗
+δ(x0)∥≤O(δ),∥A ′y′∗
+δ (x0,u 0)−b∥≤O(δ),∥A ′y′
+0−b∥≤O(δ)(10)
+∥z0−z∗(x0)∥≤O(δ),∥A ′z′∗(x0,v 0)−b∥≤O(δ)∥A ′z′
+0−b∥≤O(δ)(11)
+then we can find anϵ-stationary point ofΦ δ with a complexity ofO(ϵ−3).
+The formal statement and the complete proof of Theorem 5.4 can be found in Section D.
+Proof sketch for Theorem 5.4. The general proof flow of Theorem 5.4 is similar to that of
+Theorem 5.2. However, since here we do not have coupled constraints, ∇xK has no relationship
+tou orv, and according to the Danskin’s theorem,∇ϕδ(x) =δ∇ xf(x,y∗
+δ(x)) +∇xg(x,y∗
+δ(x))−
+∇xg(x,z∗(x)) also has no relationship tou∗
+δ(x) orv∗(x). Thus, we do not require Theorem E.2 or
+the full row-rank assumption onAin this setting.
+Next, we show that, as long as the LICQ condition (Theorem 4.3) holds for the initial y∗(x0) and
+y∗
+δ(x0), we can find initial points satisfying (10)-(11) with a complexity ofO(ϵ−2)and we have the
+following corollary.
+Corollary 5.5.When h(x,y) =Ay−b , Theorem 3.1, 3.2, 3.3 hold, and δ= Θ(ϵ)≤µ g/(2lf,1),
+for a given initial pointx0, if the LICQ condition (Theorem 4.3) holds aty∗(x0) andy∗
+δ(x0), we can
+apply Algorithm 1 with fixedx0. Then for a sufficiently smallϵ (see Section D), we can find ˆy′,ˆz′,ˆu,ˆv
+such that
+∥ˆy−y∗
+δ(x0)∥≤O(δ),∥A ′y′∗
+δ (x0,ˆu)−b∥≤O(δ),∥A ′ˆy′−b∥≤O(δ),∥ˆu−u ∗
+δ(x0)∥≤O(δ)
+∥ˆz−z∗(x0)∥≤O(δ),∥A ′z′∗(x0,ˆv)−b∥≤O(δ),∥A ′ˆz′−b∥≤O(δ),∥ˆv−v ∗(x0)∥≤O(δ)
+with a complexity of O(ϵ−2). Set y′
+0 = ˆy′, z′
+0 = ˆz′, u0 = ˆu, v0 = ˆv. With x0,y′
+0,z′
+0,u 0,v 0 as
+initial points, we can find anϵ-stationary point of Φδ with a complexity ofO(ϵ−3). Thus, the total
+complexity isO(ϵ−3 +ϵ−2) =O(ϵ−3).
+The proof of Theorem 5.5 can be found in Section D. The key to proving Theorem 5.5 lies in
+Theorem D.4. In Theorem D.4, we prove that, without the full row-rank assumption onA, we can
+bound∥ut+1−u∗
+δ(x0)∥ and∥vt+1−v∗(x0)∥ with a fixed x0. Thus, we can use our algorithm
+SFLCB to find suitable initial points with a fixedx 0.
+Note that in Theorem 5.5, we only need the LICQ condition holds for the initialy∗(x0) andy∗
+δ(x0),
+and we can achieve a total complexity ofO(ϵ−3). Compared to the decoupled constrained setting
+in [21], we achieve an improvement in the convergence rate fromO(ϵ−3 log(ϵ−1)) toO(ϵ−3) (See
+Table 1).
+8
+
+6 Experiments
+In this section, we evaluate the performance of our SFLCB algorithm on three tasks: a toy example,
+hyperparameter optimization for SVM, and a transportation network design problem. These experi-
+ments demonstrate the practical effectiveness and efficiency of SFLCB. Additional hype-parameter
+sensitivity analysis experiments and detailed experimental settings can be found in Section F.
+6.1 Toy example
+Figure 1: Toy example.
+We consider the same constrained BLO problem that was studied
+in [16], which is:
+min
+x∈[0,3]
+f(x,y∗(x)) = e−y∗
+g(x)+2
+2 + cos(6x) + 1
+2 ln
+ 
+(4x−2) 2 + 1
+
+(12)
+s.t.y ∗(x)∈arg min
+y∈Y(x)
+g(x,y) = (y−2x) 2 (13)
+whereY(x) ={y∈R|y≤x} . Note that this problem satisfies
+Theorem 3.1, 3.2, 3.3. Moreover, we havey∗(x) =x and Equa-
+tion (12) is equivalent to minx∈[0,3]f(x,y)| y=x. In Figure 1,
+we plot the hyper-objective functionf(x,y∗(x)). The red points
+indicate the converged solutions obtained by our algorithm with
+200 different initialization values. We notice that SFLCB consistently finds the local minima of the
+hyper-objective function, which validates the effectiveness of SFLCB.
+6.2 Hyperparameter optimization in SVM
+Figure 2: Hyperparameter optimization in SVM.
+Hyperparameter optimization in SVM is a well-
+known real-world application for constrained BLO
+problems that has been used in many prior works
+[45, 49, 48, 16]. Here we consider the same prob-
+lem formulation as in [16], which formulates this
+problem as a coupled linearly constrained BLO
+problem. We conduct experiments comparing our
+SFLCB algorithm with GAM [45], LV-HBA [49],
+BLOCC [16], and BiC-GAFFA [ 48] on the dia-
+betes dataset [6]. Results are plotted in Figure 2.
+We notice that our SFLCB algorithm converges
+significantly faster than other algorithms, which
+demonstrates the practical efficiency of the pro-
+posed SFLCB algorithm.
+6.3 Transportation network design
+We further conduct experiments on a transportation network design problem, following the same
+setting as in [ 16]. In this setting, we act as the operator, whose profit serves as the upper-level
+objective and is influenced by passenger behavior, which is modeled in the lower-level problem.
+Detailed formulations and settings can be found in Section F. We consider the two synthetic networks
+of 3 and 9 nodes, same as those considered in [16]. We compare SFLCB with BLOCC [16]. Results
+are plotted in Figure 3, which indicate that SFLCB significantly outperforms BLOCC on this network
+design task.
+6.3.1 Sensitivity analysis ofδ
+We also conduct the sensitivity analysis of the δ in SFLCB for the 3-node network. We set ρ1 =
+ρ2 = 1000 , ηx =η y =η z =η u =η v = 3e−4 , and T= 20000 . Then, we test different δ
+values from{0.01,0.05,0.1,0.5,1} . For eachδ, we test with three different random seeds. The final
+average results and one standard deviation are reported in Figure 4. As can be seen, larger values of
+9
+
+(a) 3 nodes
+ (b) 9 nodes
+Figure 3: Results of the transportation experiments on 3 nodes and 9 nodes settings. Larger UL utility
+indicates better performance.
+δ lead to a faster initial decrease in the loss (increase in UL utility). In contrast, very smallδ (e.g.,
+δ= 0.01 ) results in significantly slower convergence overall. However, an overly largeδ (e.g.,δ= 1 )
+can lead to large approximation errors in later stages, causing deviation from the true optimization
+objective and ultimately poor performance. We observe that moderate values of δ (such as 0.05,
+0.1, and 0.5) achieve relatively good final performance. These observations are consistent with our
+theoretical predictions. For example, our theory indicates that the convergence rate of SLFCB is
+inversely proportional toδ: smallerδ leads to slower convergence but smaller approximation error,
+whereas largerδ improves convergence speed towards the approximate problem but incurs greater
+approximation error. Figure 4 indicates a properly chosenδ thus can balance convergence speed and
+approximation error.
+Figure 4: Comparison of differentδin SFLCB for the 3 nodes network.
+7 Conclusions and future directions
+In this paper, for coupled constrained BLO problem in Equation (1), we theoretically analyzed
+the relationship between the original hyper-objective Φ and the reformulated function Φδ in Equa-
+tion (3), providing a solid justification for the validity of the reformulation. Especially, for the
+linearly constrained case, we proposed SFLCB, a single-loop, Hessian-free algorithm, improving the
+convergence rate fromO(ϵ−3 log(ϵ−1)) toO(ϵ−3) over previous works [21, 16]. Our experiments
+on hyperparameter optimization for SVM and the transportation network design problem validated
+the practical efficiency of the proposed SFLCB algorithm. One limitation of our work is that the
+analysis is restricted to deterministic and linearly constrained settings. A promising direction for
+future research is to extend the current results to stochastic environments or more general constraint
+structures. Moreover, since the best-known complexity for first-order methods in unconstrained BLO
+[12] is O(ϵ−2), it is also an interesting problem whether we can achieve this optimal rate in the
+constrained cases.
+10
+
+Acknowledgements
+The work of Wei Shen and Cong Shen was supported in part by the US National Science Foundation
+(NSF) under awards 2143559 and 2332060. The work of Jiawei Zhang was supported by the startup
+funding from the University of Wisconsin-Madison.
+References
+[1] Dimitri Bertsekas.Convex Optimization Theory, volume 1. Athena Scientific, 2009.
+[2] Jérôme Bolte, Edouard Pauwels, and Samuel Vaiter. Automatic differentiation of nonsmooth
+iterative algorithms.Advances in Neural Information Processing Systems, 35:26404–26417,
+2022.
+[3] Congliang Chen, Jiawei Zhang, Li Shen, Peilin Zhao, and Zhiquan Luo. Communication effi-
+cient primal-dual algorithm for nonconvex nonsmooth distributed optimization. InInternational
+conference on artificial intelligence and statistics, pages 1594–1602. PMLR, 2021.
+[4] Tianyi Chen, Yuejiao Sun, Quan Xiao, and Wotao Yin. A single-timescale method for stochastic
+bilevel optimization. InInternational Conference on Artificial Intelligence and Statistics, pages
+2466–2488. PMLR, 2022.
+[5] Mathieu Dagréou, Pierre Ablin, Samuel Vaiter, and Thomas Moreau. A framework for bilevel
+optimization that enables stochastic and global variance reduction algorithms.Advances in
+Neural Information Processing Systems, 35:26698–26710, 2022.
+[6] Dheeru Dua, Casey Graff, et al. UCI machine learning repository. 2017.
+[7] Luca Franceschi, Paolo Frasconi, Saverio Salzo, Riccardo Grazzi, and Massimiliano Pontil.
+Bilevel programming for hyperparameter optimization and meta-learning. InInternational
+Conference on Machine Learning, pages 1568–1577. PMLR, 2018.
+[8] Lucy L Gao, Jane Ye, Haian Yin, Shangzhi Zeng, and Jin Zhang. Value function based
+difference-of-convex algorithm for bilevel hyperparameter selection problems. InInternational
+Conference on Machine Learning, pages 7164–7182. PMLR, 2022.
+[9] Saeed Ghadimi and Mengdi Wang. Approximation methods for bilevel programming.arXiv
+preprint arXiv:1802.02246, 2018.
+[10] Riccardo Grazzi, Luca Franceschi, Massimiliano Pontil, and Saverio Salzo. On the iteration
+complexity of hypergradient computation. InInternational Conference on Machine Learning,
+pages 3748–3758. PMLR, 2020.
+[11] Mingyi Hong, Hoi-To Wai, Zhaoran Wang, and Zhuoran Yang. A two-timescale stochastic
+algorithm framework for bilevel optimization: Complexity analysis and application to actor-
+critic.SIAM Journal on Optimization, 33(1):147–180, 2023.
+[12] Feihu Huang. Optimal Hessian/Jacobian-free nonconvex-PL bilevel optimization.arXiv preprint
+arXiv:2407.17823, 2024.
+[13] Kaiyi Ji, Jason D Lee, Yingbin Liang, and H Vincent Poor. Convergence of meta-learning with
+task-specific adaptation over partial parameters.Advances in Neural Information Processing
+Systems, 33:11490–11500, 2020.
+[14] Kaiyi Ji, Mingrui Liu, Yingbin Liang, and Lei Ying. Will bilevel optimizers benefit from loops.
+Advances in Neural Information Processing Systems, 35:3011–3023, 2022.
+[15] Kaiyi Ji, Junjie Yang, and Yingbin Liang. Bilevel optimization: Convergence analysis and
+enhanced design. InInternational Conference on Machine Learning, pages 4882–4892. PMLR,
+2021.
+[16] Liuyuan Jiang, Quan Xiao, Victor M Tenorio, Fernando Real-Rojas, Antonio G Marques, and
+Tianyi Chen. A primal-dual-assisted penalty approach to bilevel optimization with coupled
+constraints.arXiv preprint arXiv:2406.10148, 2024.
+11
+
+[17] Xiaotian Jiang, Jiaxiang Li, Mingyi Hong, and Shuzhong Zhang. Barrier function for bilevel
+optimization with coupled lower-level constraints: Formulation, approximation and algorithms.
+arXiv preprint arXiv:2410.10670, 2024.
+[18] Prashant Khanduri, Ioannis Tsaknakis, Yihua Zhang, Jia Liu, Sijia Liu, Jiawei Zhang, and
+Mingyi Hong. Linearly constrained bilevel optimization: A smoothed implicit gradient approach.
+InInternational Conference on Machine Learning, pages 16291–16325. PMLR, 2023.
+[19] Prashant Khanduri, Siliang Zeng, Mingyi Hong, Hoi-To Wai, Zhaoran Wang, and Zhuoran Yang.
+A near-optimal algorithm for stochastic bilevel optimization via double-momentum.Advances
+in neural information processing systems, 34:30271–30283, 2021.
+[20] Guy Kornowski, Swati Padmanabhan, Kai Wang, Zhe Zhang, and Suvrit Sra. First-order
+methods for linearly constrained bilevel optimization.arXiv preprint arXiv:2406.12771, 2024.
+[21] Jeongyeol Kwon, Dohyun Kwon, Stephen Wright, and Robert Nowak. On penalty methods
+for nonconvex bilevel optimization and first-order stochastic approximation.arXiv preprint
+arXiv:2309.01753, 2023.
+[22] Jeongyeol Kwon, Dohyun Kwon, Stephen Wright, and Robert D Nowak. A fully first-order
+method for stochastic bilevel optimization. InInternational Conference on Machine Learning,
+pages 18083–18113. PMLR, 2023.
+[23] Hanwen Liang, Shifeng Zhang, Jiacheng Sun, Xingqiu He, Weiran Huang, Kechen Zhuang, and
+Zhenguo Li. Darts+: Improved differentiable architecture search with early stopping.arXiv
+preprint arXiv:1909.06035, 2019.
+[24] Tianyi Lin, Chi Jin, and Michael I Jordan. Near-optimal algorithms for minimax optimization.
+InConference on Learning Theory, pages 2738–2779. PMLR, 2020.
+[25] Bo Liu, Mao Ye, Stephen Wright, Peter Stone, and Qiang Liu. Bome! bilevel optimization
+made easy: A simple first-order approach.Advances in neural information processing systems,
+35:17248–17262, 2022.
+[26] Hanxiao Liu, Karen Simonyan, and Yiming Yang. Darts: Differentiable architecture search.
+arXiv preprint arXiv:1806.09055, 2018.
+[27] Risheng Liu, Jiaxin Gao, Jin Zhang, Deyu Meng, and Zhouchen Lin. Investigating bi-level
+optimization for learning and vision from a unified perspective: A survey and beyond.IEEE
+Transactions on Pattern Analysis and Machine Intelligence, 44(12):10045–10067, 2021.
+[28] Risheng Liu, Xuan Liu, Xiaoming Yuan, Shangzhi Zeng, and Jin Zhang. A value-function-based
+interior-point method for non-convex bi-level optimization. InInternational conference on
+machine learning, pages 6882–6892. PMLR, 2021.
+[29] Risheng Liu, Yaohua Liu, Shangzhi Zeng, and Jin Zhang. Towards gradient-based bilevel opti-
+mization with non-convex followers and beyond.Advances in Neural Information Processing
+Systems, 34:8662–8675, 2021.
+[30] Risheng Liu, Pan Mu, Xiaoming Yuan, Shangzhi Zeng, and Jin Zhang. A generic first-order
+algorithmic framework for bi-level programming beyond lower-level singleton. InInternational
+Conference on Machine Learning, pages 6305–6315. PMLR, 2020.
+[31] Songtao Lu. Slm: A smoothed first-order lagrangian method for structured constrained noncon-
+vex optimization.Advances in Neural Information Processing Systems, 36, 2024.
+[32] Matthew MacKay, Paul Vicol, Jon Lorraine, David Duvenaud, and Roger Grosse. Self-tuning
+networks: Bilevel optimization of hyperparameters using structured best-response functions.
+arXiv preprint arXiv:1903.03088, 2019.
+[33] Dougal Maclaurin, David Duvenaud, and Ryan Adams. Gradient-based hyperparameter opti-
+mization through reversible learning. InInternational Conference on Machine Learning, pages
+2113–2122. PMLR, 2015.
+12
+
+[34] Akshay Mehra and Jihun Hamm. Penalty method for inversion-free deep bilevel optimization.
+InAsian conference on machine learning, pages 347–362. PMLR, 2021.
+[35] Fabian Pedregosa. Hyperparameter optimization with approximate gradient. InInternational
+Conference on Machine Learning, pages 737–746. PMLR, 2016.
+[36] Aravind Rajeswaran, Chelsea Finn, Sham M Kakade, and Sergey Levine. Meta-learning with
+implicit gradients.Advances in Neural Information Processing Systems, 32, 2019.
+[37] Amirreza Shaban, Ching-An Cheng, Nathan Hatch, and Byron Boots. Truncated back-
+propagation for bilevel optimization. InThe 22nd International Conference on Artificial
+Intelligence and Statistics, pages 1723–1732. PMLR, 2019.
+[38] Han Shen and Tianyi Chen. On penalty-based bilevel gradient descent method. InInternational
+Conference on Machine Learning, pages 30992–31015. PMLR, 2023.
+[39] Ankur Sinha, Pekka Malo, and Kalyanmoy Deb. A review on bilevel optimization: From
+classical to evolutionary approaches and applications.IEEE Transactions on Evolutionary
+Computation, 22(2):276–295, 2017.
+[40] Richard S Sutton. Reinforcement learning: An introduction.A Bradford Book, 2018.
+[41] Ioannis Tsaknakis, Prashant Khanduri, and Mingyi Hong. An implicit gradient-type method for
+linearly constrained bilevel problems. In2022 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP), pages 5438–5442. IEEE, 2022.
+[42] Ioannis Tsaknakis, Prashant Khanduri, and Mingyi Hong. An implicit gradient method for con-
+strained bilevel problems using barrier approximation. In2023 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP), pages 1–5. IEEE, 2023.
+[43] Gerd Wachsmuth. On LICQ and the uniqueness of lagrange multipliers.Operations Research
+Letters, 41(1):78–80, 2013.
+[44] Quan Xiao, Han Shen, Wotao Yin, and Tianyi Chen. Alternating projected sgd for equality-
+constrained bilevel optimization. InInternational Conference on Artificial Intelligence and
+Statistics, pages 987–1023. PMLR, 2023.
+[45] Siyuan Xu and Minghui Zhu. Efficient gradient approximation method for constrained bilevel
+optimization. InProceedings of the AAAI Conference on Artificial Intelligence, volume 37,
+pages 12509–12517, 2023.
+[46] Haikuo Yang, Luo Luo, Chris Junchi Li, and Michael I Jordan. Accelerating inexact hypergra-
+dient descent for bilevel optimization.arXiv preprint arXiv:2307.00126, 2023.
+[47] Shuoguang Yang, Xuezhou Zhang, and Mengdi Wang. Decentralized gossip-based stochastic
+bilevel optimization over communication networks.Advances in Neural Information Processing
+Systems, 35:238–252, 2022.
+[48] Wei Yao, Haian Yin, Shangzhi Zeng, and Jin Zhang. Overcoming lower-level constraints
+in bilevel optimization: A novel approach with regularized gap functions.arXiv preprint
+arXiv:2406.01992, 2024.
+[49] Wei Yao, Chengming Yu, Shangzhi Zeng, and Jin Zhang. Constrained bi-level optimization:
+Proximal lagrangian value function approach and Hessian-free algorithm.arXiv preprint
+arXiv:2401.16164, 2024.
+[50] Jiawei Zhang and Zhi-Quan Luo. A global dual error bound and its application to the analysis of
+linearly constrained nonconvex optimization.SIAM Journal on Optimization, 32(3):2319–2346,
+2022.
+[51] Yihua Zhang, Prashant Khanduri, Ioannis Tsaknakis, Yuguang Yao, Mingyi Hong, and Sijia
+Liu. An introduction to bilevel optimization: Foundations and applications in signal processing
+and machine learning.IEEE Signal Processing Magazine, 41(1):38–59, 2024.
+[52] Yihua Zhang, Guanhua Zhang, Prashant Khanduri, Mingyi Hong, Shiyu Chang, and Sijia Liu.
+Revisiting and advancing fast adversarial training through the lens of bi-level optimization. In
+International Conference on Machine Learning, pages 26693–26712. PMLR, 2022.
+13
+
+Appendix
+The Appendix is organized as follows. In Section A, we introduce some useful lemmas that will
+be utilized in the subsequent proofs. In Section B, we introduce some notations that will be used
+throughout the Appendix. In Section C, we provide the proofs for the lemmas and theorems in
+Section 4. In Section D, we provide proofs for Theorem 5.4 and Theorem 5.5. In Section E, we
+provide proofs for Theorem 5.2 and Theorem 5.3. In Section F, we present the detailed experimental
+settings along with additional hyperparameter sensitivity analysis experiments.
+A Useful Lemmas
+Lemma A.1(Lemma 12 in [ 3]).Suppose f(·) isl-smooth andµ-strongly convex,X is a convex
+closed set, andη≤1/l . Definex∗ = argminx∈Xf(x) andx+ = ΠX (x−η∇f(x)) . Then, we have
+∥x−x ∗∥≤ 2
+µη∥x−x +∥
+Lemma A.2(Lemma 23 in [ 24]).Suppose for any fixed y∈Y ,f(x,y) isµ-strongly convex w.r.t.
+x and suppose for any y1,y 2∈Y,x∈X ,∥∇xf(x,y 1)−∇ xf(x,y 2)∥≤l∥y 1−y 2∥. Define
+x∗(y) = argminx∈Xf(x,y). Then, we have
+∥x∗(y1)−x ∗(y2)∥≤ l
+µ∥y1−y 2∥
+Lemma A.3(Theorem 4.1 in [ 50]).Suppose f(x) :R d1→R isl-smooth andµ-strongly convex,
+P={x|Cx≤e},S(r) ={x∈P|Ax−b=r}, whereC,A∈R d2×d1,e,b,r∈R d2. Define
+L(x,u) =f(x) +u ⊤(Ax−b)
+x∗(u) = argmin
+x∈P
+L(x,u)
+x∗
+r = argmin
+x∈S(r)
+f(x)
+whereu∈R d2 is the Lagrange multiplier. We have
+∥x∗(u)−x ∗
+0∥≤σ x∥Ax∗(u)−b∥
+∥x∗
+r−x∗
+0∥≤σ x∥r∥
+where
+σx =
+√
+2(¯θl2 + 1)
+µ
+M=
+
+A⊤ C⊤
+0I
+
+¯θ= max
+¯M∈B(M)
+σ2
+max( ¯M)/σ 4
+min( ¯M)
+¯Mis the set of all submatrices ofMwith full row rank.
+Lemma A.4.Suppose f(x) :R dx →R is µ-strongly convex w.r.t. x. Define L(x,α,u) =
+f(x)+u⊤(Ax−b−α)+ ρ
+2∥Ax−b−α∥ 2, whereα,u,b∈R dy,A∈R dy×dx,ρ∈(0,µ/σ 2
+max(A)).
+Denotingx′ = (x⊤,α⊤)⊤,L(x′,u) =L(x,α,u) , we haveL(x′,u) isµx-strongly convex w.r.t.x′,
+whereµx = min{µ−ρσ 2
+max(A), ρ
+2}.
+14
+
+Proof. For anyx1,x 2∈R dx,α 1,α 2∈R dy, denoting x′
+1 = (x⊤
+1,α⊤
+1 )⊤,x′
+2 = (x⊤
+2,α⊤
+2 )⊤,A′ =
+(A,−I), we have
+L(x′
+1,u)−L(x ′
+2,u)−⟨∇ x′L(x′
+2,u),x′
+1−x′
+2⟩
+=f(x1)−f(x 2) +u⊤A′(x′
+1−x′
+2) +ρ
+2∥A′x′
+1−b∥ 2− ρ
+2∥A′x′
+2−b∥ 2
+−⟨∇xf(x2),x 1−x 2⟩−u ⊤A′(x′
+1−x′
+2)−ρ(A ′⊤A′x′
+2−A′⊤b)⊤(x′
+1−x′
+2)
+≥µ
+2∥x1−x 2∥2 + ρ
+2∥A′(x′
+1−x′
+2)∥2
+≥µ
+2∥x1−x 2∥2 + ρ
+4∥α1−α 2∥2− ρ
+2∥A(x1−x 2)∥2
+≥µ−ρσ 2
+max(A)
+2 ∥x1−x 2∥2 + ρ
+4∥α1−α 2∥2
+≥µx
+2∥x′
+1−x′
+2∥2
+whereµx = min{µ−ρσ 2
+max(A), ρ
+2}.
+B Notations
+Denotelδ =µ g/2. We introduce the following notations.
+Φδ(x,y,z) = 1
+δ (δf(x,y) +g(x,y)−g(x,z))
+ϕδ(x,y,z) =δf(x,y) +g(x,y)−g(x,z)
+gδ(x,y) =δf(x,y) +g(x,y)
+y∗
+δ(x) = min
+y∈Y(x)
+gδ(x,y)
+y∗(x) = min
+y∈Y(x)
+g(x,y)
+Lg =l δ +lg,1
+Lϕ =l δ + 2lg,1
+Φ(x) =f(x,y ∗(x))
+Φδ(x) = Φδ(x,y∗
+δ(x),y∗(x))
+ϕδ(x) =ϕ δ(x,y∗
+δ(x),y∗(x))
+Whenδ≤µ g/2lf,1, we haveδlf,1≤µ g/2 =l δ and thus,gδ(x,y) isLg-smooth andϕδ(x,y,z) is
+Lϕ-smooth.
+C Reformulation
+In this section, we provide the proofs for the lemmas and theorems in Section 4.
+Theorem 4.1
+When Theorem 3.1, 3.2 and 3.3 hold, we have
+0≤Φ(x)−Φ δ(x)≤
+δl2
+f,0
+2µg
+∥y∗
+δ(x)−y ∗(x)∥≤ 2δlf,0
+µg
+.
+Proof. Similar results and proofs of Theorem 4.1 can also be found in [21, 16]. For completeness,
+we also provide our proofs for Theorem 4.1 here.
+15
+
+Note thaty∗
+δ(x)satisfy
+ΠY(x)(y∗
+δ(x)−[δ∇ yf(x,y∗
+δ(x)) +∇yg(x,y∗
+δ(x))]/Lϕ) =y∗
+δ(x)
+Sinceg(x,·) isµg-strongly concave andlg,1-smooth andLϕ≥l g,1, according to Theorem A.1, we
+have
+∥y∗
+δ(x)−z ∗(x)∥≤ 2Lϕ
+µg
+∥y∗
+δ(x)−Π Y(x)(y∗
+δ(x)−∇ yg(x,y∗
+δ(x))/Lϕ)∥
+=2Lϕ
+µg
+∥ΠY(x)(y∗
+δ(x)−[δ∇ yf(x,y∗
+δ(x)) +∇yg(x,y∗
+δ(x))]/Lϕ)
+−ΠY(x)(y∗
+δ(x)−∇ yg(x,y∗
+δ(x))/Lϕ)∥
+≤ 2δ
+µg
+∥∇yf(x,y∗
+δ(x))∥
+≤2δlf,0
+µg
+.
+ForΦδ(x), we have
+Φδ(x) =f(x,y∗
+δ(x)) + 1
+δ (g(x,y∗
+δ(x))−g(x,y ∗(x)))
+≤f(x,y∗(x)) + 1
+δ (g(x,y∗(x))−g(x,y ∗(x)))
+=Φ(x),
+and
+Φδ(x) =f(x,y∗
+δ(x)) + 1
+δ [g(x,y∗
+δ(x))−g(x,y ∗(x))]
+≥f(x,y∗
+δ(x)) +µg
+2δ∥y∗
+δ(x)−y ∗(x)∥2
+≥f(x,y∗(x)) +µg
+2δ∥y∗
+δ(x)−y ∗(x)∥2−lf,0∥y∗
+δ(x)−y ∗(x)∥
+≥Φ(x)−
+δl2
+f,0
+2µg
+,
+where the first equality is due to the quadratic growth of a strongly convex function, the last equality
+is due toax 2 +bx≥−b 2/(4a).
+Theorem 4.4
+When Theorem 3.1, 3.2, 3.3 hold andδ≤µ g/(2lf,1), if, for allx∈X , LICQ condition (Theorem 4.3)
+hold fory∗(x) andy∗
+δ(x), then there exist the corresponding unique Lagrangian multipliersλ∗(x)∈
+Rdh andλ∗
+δ(x)∈R dh such that
+λ∗(x) = argmax
+λ∈R+
+min
+y∈Y(x)
+g(x,y) +λ ⊤h(x,y)(14)
+λ∗
+δ(x) = argmax
+λ∈R+
+min
+y∈Y(x)
+δf(x,y) +g(x,y) +λ ⊤h(x,y).(15)
+Furthermore, we have
+∇Φδ(x) =∇xf(x,y∗
+δ(x)) + 1
+δ [∇xg(x,y∗
+δ(x)) +∇xh(x,y∗
+δ(x))λ∗
+δ(x)
+−∇xg(x,y∗(x))−∇ xh(x,y∗(x))λ∗(x)].(16)
+Proof. The uniqueness of Lagrangian multipliers is a direct result from the LICQ condition [ 43].
+According to Lemmas 2 and 3 in [ 16]. We know that when Theorem 3.1, 3.2, 3.3 hold, δ≤
+16
+
+µg/(2lf,1), if, for all x∈X , LICQ condition (Theorem 4.3) holds for y∗(x) andy∗
+δ(x), defining
+ψ(x) =g(x,y ∗(x))andψ δ(x) =g δ(x,y∗
+δ(x)), we have
+∇xψ(x) =∇ xg(x,y∗(x)) +∇xh(x,y∗(x))λ∗(x)
+∇xψδ(x) =δ∇ xf(x,y∗
+δ(x)) +∇xg(x,y∗
+δ(x)) +∇xh(x,y∗
+δ(x))λ∗
+δ(x)
+SinceΦδ(x) =f(x,y ∗
+δ(x)) + 1
+δ (gδ(x,y∗
+δ(x))−g(x,y ∗(x))), we have
+∇Φδ(x) =∇xf(x,y∗
+δ(x)) + 1
+δ [∇xg(x,y∗
+δ(x)) +∇xh(x,y∗
+δ(x))λ∗
+δ(x)
+−∇xg(x,y∗(x))−∇ xh(x,y∗(x))λ∗(x)].
+Theorem 4.7
+When Theorem 3.1, 3.2, 3.3, 4.6 hold, if, for a given x, Theorem 4.5 and the LICQ condition
+(Theorem 4.3) holds fory∗(x), then∇Φ(x)exists atxand can be expressed as
+∇Φ(x) =∇ xf(x,y) + (∇y∗(x))⊤∇yf(x,y∗(x))
+where∇y∗(x)can be calculated according to(20).
+Proof. According to Theorem 2 in [45], we know that when Theorem 3.1, 3.2, 3.3, 4.6 hold, if, for a
+givenx, Theorem 4.5 and the LICQ (Theorem 4.3) condition holds fory∗(x), then∇Φ(x) exists at
+x.
+Moreover, we can give the explicit expression of∇Φ(x).
+Withλ∈R dh, we have the following Lagrangian function
+L(x,y,λ) =g(x,y) +λ ⊤h(x,y)
+Denote λ∗(x) as the optimal Lagrangian multiplier, Ix ⊆[d h] as the active set of y∗(x), i.e.
+Ix ={i∈[d h][h(x,y)]i = 0} Denote ¯h(x,y∗(x)) = [h(x,y∗(x))]Ix and ¯λ∗(x) = [λ∗(x)]Ix. We
+have the following KKT conditions:
+∇yg(x,y∗(x)) +∇y¯h(x,y∗(x))⊤¯λ∗(x) = 0
+¯h(x,y∗(x)) = 0.
+Differentiating the KKT conditions with respect tox, we have
+∇2
+xyg(x,y∗(x)) +∇ 2
+yyg(x,y∗(x))∇y∗(x) +∇ 2
+xy¯h(x,y∗(x))⊤¯λ∗(x)
++∇ 2
+yy¯h(x,y∗(x))⊤¯λ∗(x)∇y∗(x) +∇y¯h(x,y∗(x))⊤∇¯λ∗(x) = 0
+∇x¯h(x,y∗(x)) +∇y¯h(x,y∗(x))∇y∗(x) = 0
+Thus,∇y∗(x)andλ ∗(x)satisfy the following equation.
+
+∇2
+yyg(x,y∗(x)) +∇ 2
+yy¯h(x,y∗(x))⊤¯λ∗(x)∇ y¯h(x,y∗(x))⊤
+∇y¯h(x,y∗(x)) 0
+∇y∗(x)
+∇¯λ∗(x)
+
+(17)
+=
+
+−∇2
+xyg(x,y∗(x))−∇ 2
+xy¯h(x,y∗(x))⊤¯λ∗(x)
+−∇x¯h(x,y∗(x))
+
+(18)
+Denote
+H=
+
+∇2
+yyg(x,y∗(x)) +∇ 2
+yy¯h(x,y∗(x))⊤¯λ∗(x)∇ y¯h(x,y∗(x))⊤
+∇y¯h(x,y∗(x)) 0
+
+(19)
+Since g is strongly convex, h is convex,∇2
+yyg(x,y∗(x))≻0 ,∇2
+yy[¯h(x,y∗(x))]i ⪰0 . More-
+over, since ¯λ∗(x)>0 , we have ∇2
+yyg(x,y∗(x)) +∇ 2
+yy¯h(x,y∗(x))⊤¯λ∗(x)≻0 . Additionally,
+17
+
+∇y¯h(x,y∗(x)) has full row rank. Thus, according to Lemma A.2 in [ 20],H is invertible. We can
+calculate∇y∗(x)andλ ∗(x)with the following equation.∇y∗(x)
+∇¯λ∗(x)
+
+=H−1
+
+−∇2
+xyg(x,y∗(x))−∇ 2
+xy¯h(x,y∗(x))⊤¯λ∗(x)
+−∇x¯h(x,y∗(x))
+
+(20)
+According to [9], we have
+∇Φ(x) =∇ xf(x,y) + (∇y∗(x))⊤∇yf(x,y∗(x)).
+Theorem 4.9
+When Theorem 3.1, 3.2, 3.3, 4.6 hold, andδ≤µ g/(2lf,1), if Theorem 4.8 holds for a givenx, we
+have
+∥∇Φ(x)−∇Φ δ(x)∥≤O(δ).
+Proof.Withλ∈R dh, we have the following Lagrangian function
+Lδ(x,y,λ) =g δ(x,y) +λ⊤h(x,y).
+Denoteλ∗
+δ(x)as the optimal Lagrangian multiplier. We have the following KKT conditions.
+∇ygδ(x,y∗
+δ(x)) +∇y¯h(x,y∗
+δ(x))⊤¯λ∗
+δ(x) = 0
+¯h(x,y∗
+δ(x)) = 0.
+Differentiating the KKT conditions with respect toδ, we have
+∇yf(x,y∗
+δ(x)) +∇ 2
+yygδ(x,y∗
+δ(x)) d
+dδy∗
+δ(x) +∇ 2
+yy¯h(x,y∗
+δ(x))⊤¯λ∗
+δ(x) d
+dδy∗
+δ(x)
++∇y¯h(x,y∗
+δ(x))⊤ d
+dδ
+¯λ∗
+δ(x) = 0
+∇y¯h(x,y∗
+δ(x)) d
+dδy∗
+δ(x) = 0
+We have the following equation:
+∇2
+yygδ(x,y∗
+δ(x)) +∇ 2
+yy¯h(x,y∗
+δ(x))⊤¯λ∗
+δ(x)∇ y¯h(x,y∗
+δ(x))⊤
+∇y¯h(x,y∗
+δ(x)) 0
+ d
+dδy∗
+δ(x)
+d
+dδ
+¯λ∗
+δ(x)
+
+=
+
+−∇yf(x,y∗
+δ(x))
+0
+
+.(21)
+Denote
+Hδ =
+
+∇2
+yygδ(x,y∗
+δ(x)) +∇ 2
+yy¯h(x,y∗
+δ(x))⊤¯λ∗
+δ(x)∇ y¯h(x,y∗
+δ(x))⊤
+∇y¯h(x,y∗
+δ(x)) 0
+
+.(22)
+We can notice thatHδ=0 =H, whereHis defined in (19).
+Then, we have
+lim
+δ→0
+[∇xg(x,y∗
+δ(x)) +∇xh(x,y∗
+δ(x))λ∗
+δ(x)]−[∇ xg(x,y∗(x)) +∇xh(x,y∗(x))λ∗(x)]
+δ
+=
+
+∇2
+xyg(x,y∗(x)) +∇ 2
+xy¯h(x,y∗(x))⊤¯λ∗(x)
+∇x¯h(x,y∗(x))
+⊤ d
+dδy∗
+δ(x)
+d
+dδ
+¯λ∗
+δ(x)
+
+δ=0
+=
+
+∇2
+xyg(x,y∗(x)) +∇ 2
+xy¯h(x,y∗(x))⊤¯λ∗(x)
+∇x¯h(x,y∗(x))
+⊤
+H−1
+
+−∇yf(x,y∗(x))
+0
+
+=T⊤H−1
+
+−∇yf(x,y∗(x))
+0
+
+18
+
+where we denote
+T=
+
+∇2
+xyg(x,y∗(x)) +∇ 2
+xy¯h(x,y∗(x))⊤¯λ∗(x)
+∇x¯h(x,y∗(x))
+
+.
+Note that according to (20), we have
+∇y∗(x) =−[ 1 0 ]H−1T
+(∇y∗(x))⊤∇yf(x,y∗(x)) =T ⊤H−1
+
+−∇yf(x,y∗(x))
+0
+
+Thus,
+lim
+δ→0
+[∇xg(x,y∗
+δ(x)) +∇xh(x,y∗
+δ(x))λ∗
+δ(x)]−[∇ xg(x,y∗(x)) +∇xh(x,y∗(x))λ∗(x)]
+δ
+=(∇y∗(x))⊤∇yf(x,y∗(x))(23)
+Note that, according to Theorem 4.4, we have
+∇Φδ(x) =[∇xg(x,y∗
+δ(x)) +∇xh(x,y∗
+δ(x))λ∗
+δ(x)]−[∇ xg(x,y∗(x)) +∇xh(x,y∗(x))λ∗(x)]
+δ
++∇xf(x,y∗
+δ(x)).
+Then, we consider to bound∇Φδ(x)−∇Φ(x).
+∇Φδ(x)−∇Φ(x)
+=∇xf(x,y∗
+δ(x))−∇ xf(x,y∗(x))
++ [∇xg(x,y∗
+δ(x)) +∇xh(x,y∗
+δ(x))λ∗
+δ(x)]−[∇ xg(x,y∗(x)) +∇xh(x,y∗(x))λ∗(x)]
+δ
+−(∇y∗(x))⊤∇yf(x,y∗(x))
+=∇xf(x,y∗
+δ(x))−∇ xf(x,y∗(x))
++ [∇xg(x,y∗
+δ(x)) +∇xh(x,y∗
+δ(x))λ∗
+δ(x)]−[∇ xg(x,y∗(x)) +∇xh(x,y∗(x))λ∗(x)]
+δ
+−[∇ 2
+xyg(x,y∗(x)) +∇ 2
+xy¯h(x,y∗(x))⊤¯λ∗(x)] d
+dδy∗
+δ(x)|δ=0−∇x¯h(x,y∗(x)) d
+dδ
+¯λ∗
+δ(x)|δ=0
+(24)
+where the last equality is due to (23).
+For the first term in (24), we have
+∥∇xf(x,y∗
+δ(x))−∇ xf(x,y∗(x))∥≤l f,1∥y∗
+δ(x)−y ∗(x)∥≤ 2δlf,0lf,1
+µg
+19
+
+For the remaindering terms in (24), we have
+∇xg(x,y∗
+δ(x))−∇ xg(x,y∗(x))
+δ −∇ 2
+xyg(x,y∗(x)) d
+dδy∗
+δ(x)|δ=0
++∇xh(x,y∗
+δ(x))λ∗
+δ(x)−∇ xh(x,y∗(x))λ∗(x)
+δ −∇ 2
+xyh(x,y∗(x)) d
+dδλ∗
+δ(x)|δ=0
+−∇x¯h(x,y∗(x)) d
+dδ
+¯λ∗
+δ(x)|δ=0
+=1
+δ
+Z δ
+t=0
+
+∇2
+xyg(x,y∗
+t (x))d
+dty∗
+t (x)−∇ 2
+xyg(x,y∗(x)) d
+dδy∗
+δ(x)|δ=0
+
+dt
++ 1
+δ
+Z δ
+t=0
+∇2
+xyh(x,y∗
+t (x))d
+dty∗
+t (x) +∇xh(x,y∗
+t (x))d
+dtλ∗
+t (x)dt
+− 1
+δ
+Z δ
+t=0
+
+∇2
+xyh(x,y∗(x)) d
+dsy∗
+s(x) +∇xh(x,y∗(x)) d
+dsλ∗
+s(x)
+
+|s=0dt
+=1
+δ
+Z δ
+t=0
+
+∇2
+xyg(x,y∗
+t (x))−∇ 2
+xyg(x,y∗(x))
+ d
+dty∗
+t (x)dt
++ 1
+δ
+Z δ
+t=0
+∇2
+xyg(x,y∗(x))
+d
+dty∗
+t (x)− d
+dsy∗
+s(x)|s=0
+
+dt
++ 1
+δ
+Z δ
+t=0
+
+∇2
+xyh(x,y∗
+t (x))−∇ 2
+xyh(x,y∗(x))
+ d
+dty∗
+t (x)dt
++ 1
+δ
+Z δ
+t=0
+∇2
+xyh(x,y∗(x))
+d
+dty∗
+t (x)− d
+dsy∗
+s(x)|s=0
+
+dt
++ 1
+δ
+Z δ
+t=0
+[∇xh(x,y∗
+t (x))−∇ xh(x,y∗(x))] d
+dtλ∗
+t (x)dt
++ 1
+δ
+Z δ
+t=0
+∇xh(x,y∗(x))
+d
+dtλ∗
+t (x)−λ ∗
+s(x)|s=0
+
+dt(25)
+For the first term in (25), we have
+
+
+
+
+
+1
+δ
+Z δ
+t=0
+[∇2
+xyg(x,y∗
+t (x))−∇ 2
+xyg(x,y∗(x))]d
+dty∗
+t (x)dt
+
+
+
+
+
+≤1
+δ
+Z δ
+t=0
+∥d
+dty∗
+t (x)∥·l g,2∥y∗
+t (x)−y ∗(x)∥·dt
+≤1
+δ
+Z δ
+t=0
+lg,2C2
+y·t·dt
+=δlg,2C2
+y/2
+where the last equality is due to Theorem C.1.
+Similarly, for the third, fifth terms in (25), we have
+
+
+
+
+
+1
+δ
+Z δ
+t=0
+
+∇2
+xyh(x,y∗
+t (x))−∇ 2
+xyh(x,y∗(x))
+ d
+dty∗
+t (x)dt
++ 1
+δ
+Z δ
+t=0
+[∇xh(x,y∗
+t (x))−∇ xh(x,y∗(x))] d
+dtλ∗
+t (x)dt
+
+
+
+
+
+≤δ(lh,2 +lh,1)C2
+y/2
+20
+
+For the second term in (25), we have
+∥1
+δ
+Z δ
+t=0
+∇2
+xy(x,y∗(x)·
+d
+dty∗
+t (x)− d
+dsy∗
+s(x)|s=0
+
+dt∥
+≤1
+δ∥∇2
+xy(x,y∗(x)∥·
+Z δ
+t=0
+Z t
+s=0
+∥ d2
+ds2y∗
+s(x)∥dsdt
+≤1
+δ∥∇2
+xy(x,y∗(x)∥·max
+s∈[0,δ]
+∥ d2
+ds2y∗
+s(x)∥·δ 2
+≤δlg,1Ly
+where the last equality is due to Theorem C.1.
+Similarly, for the fourth, sixth terms in (25), we have
+
+
+
+
+
+1
+δ
+Z δ
+t=0
+∇2
+xyg(x,y∗(x))
+d
+dty∗
+t (x)− d
+dsy∗
+s(x)|s=0
+
+dt
++ 1
+δ
+Z δ
+t=0
+∇xh(x,y∗(x))
+d
+dtλ∗
+t (x)−λ ∗
+s(x)|s=0
+
+dt
+
+
+
+
+
+≤δ(lh,1 +lh,0)Ly
+Therefore,
+∥∇Φδ(x)−∇Φ(x)∥≤O(δ).
+Lemma C.1.When Theorem 3.1, 3.2, 3.3, 4.6 hold, and δ≤µ g/(2lf,1), if Theorem 4.8 holds for a
+givenx, we have
+
+
+
+
+ d
+dδy∗
+δ(x)
+d
+dδ
+¯λ∗
+δ(x)
+
+
+
+
+≤C y
+
+
+
+
+
+"
+d2
+dδ2y∗
+δ(x)
+d2
+dδ2
+¯λ∗
+δ(x)
+#
+
+
+
+
+≤L y
+whereCy,Ly areO(1)constants.
+Proof.According to (21), we have
+ d
+dδy∗
+δ(x)
+d
+dδ
+¯λ∗
+δ(x)
+
+=H−1
+δ pδ,
+where
+Hδ =
+
+∇2
+yygδ(x,y∗
+δ(x)) +∇ 2
+yy¯h(x,y∗
+δ(x))⊤¯λ∗
+δ(x)∇ y¯h(x,y∗
+δ(x))⊤
+∇y¯h(x,y∗
+δ(x)) 0
+
+,
+pδ =
+
+−∇yf(x,y∗
+δ(x))
+0
+
+.
+According to Theorem C.2, we have
+
+
+
+
+ d
+dδy∗
+δ(x)
+d
+dδ
+¯λ∗
+δ(x)
+
+
+
+
+≤
+
+
+H−1
+δ pδ
+
+
+≤C Hlf,0 =C y.
+Denote
+∥Hδ2−Hδ1∥=
+
+
+
+
+
+B D T
+D0
+
+
+
+
+21
+
+where
+B=∇ 2
+yygδ2(x,y∗
+δ2(x)) +∇ 2
+yy¯h(x,y∗
+δ2(x))⊤¯λ∗
+δ2(x)−∇ 2
+yygδ1(x,y∗
+δ1(x))−∇ 2
+yy¯h(x,y∗
+δ1(x))⊤¯λ∗
+δ1(x)
+=δ2∇2
+yyf(x,y∗
+δ2(x))−δ 1∇2
+yyf(x,y∗
+δ1(x)) +∇ 2
+yyg(x,y∗
+δ2(x))−∇ 2
+yyg(x,y∗
+δ1(x))
++∇ 2
+yy¯h(x,y∗
+δ2(x))⊤¯λ∗
+δ2(x)−∇ 2
+yy¯h(x,y∗
+δ1(x))⊤¯λ∗
+δ1(x)
+=δ1(∇2
+yyf(x,y∗
+δ2(x))−∇ 2
+yyf(x,y∗
+δ1(x))) +∇ 2
+yyf(x,y∗
+δ2(x))(δ2−δ 1) +∇ 2
+yyg(x,y∗
+δ2(x))
+−∇ 2
+yyg(x,y∗
+δ1(x)) + [∇2
+yy¯h(x,y∗
+δ2(x))−∇ 2
+yy¯h(x,y∗
+δ1(x))]⊤¯λ∗
+δ2(x)
++∇ 2
+yy¯h(x,y∗
+δ1(x))⊤[¯λ∗
+δ2(x)− ¯λ∗
+δ1(x)].
+Thus
+∥B∥≤
+2µglf,2
+lf,1
+Cy +lf,1 +lg,2Cy + Λlh,2Cy +lf,1Cy
+
+|δ2−δ 1|
+∥D∥=∥∇ y¯h(x,y∗
+δ2(x))−∇ y¯h(x,y∗
+δ1(x))∥≤l h,1(y∗
+δ2(x)−y ∗
+δ1(x))≤l h,1Cy|δ1−δ 2|
+Therefore, we have
+∥Hδ2−Hδ1∥≤M H|δ1−δ 2|
+Moreover, we have 
+
+
+
+ d
+dδy∗
+δ1(x)
+d
+dδ
+¯λ∗
+δ1(x)
+
+−
+ d
+dδy∗
+δ2(x)
+d
+dδ
+¯λ∗
+δ2(x)
+
+
+
+
+=∥H−1
+δ1
+pδ1−H−1
+δ2
+pδ2∥
+=∥(H−1
+δ1
+−H−1
+δ2
+)pδ1 +H−1
+δ2
+(pδ1−pδ2)∥
+≤∥(H−1
+δ1
+(Hδ2−Hδ1)H−1
+δ2
+)∥∥pδ1∥+∥H −1
+δ2
+∥∥pδ1−pδ2∥
+≤
+ 
+C2
+Hlf,0M2
+H +CHlf,1
+
+|δ1−δ 2|=L y|δ1−δ 2|
+whereLy =
+ 
+C2
+Hlf,0M2
+H +CHlf,1
+
+.
+Lemma C.2.ForH δ defined in(22), we have
+∥H−1
+δ ∥≤C H,
+whereCH is anO(1)constant depending onµ g,lg,1,lf,1,dh,lh,1,s min,s max,Λ.
+Proof.DenoteA=∇ 2
+yygδ(x,y∗
+δ(x)) +∇ 2
+yy¯h(x,y∗
+δ(x))⊤¯λ∗
+δ(x),C=∇ y¯h(x,y∗
+δ(x)). We have
+H−1
+δ1
+=
+
+A−1 +A−1C⊤(CA−1C⊤)−1CA−1 −A−1C⊤(CA−1C⊤)−1
+−(CA−1C⊤)−1CA−1 (CA−1C⊤)−1
+
+.
+According to Theorem 4.8, we know that∥λ∗
+δ(x)∥≤Λ. Thus,0≤[λ ∗
+δ(x)]i≤Λ. We have
+∥A−1∥≤ 2
+µg
+∥A∥≤L g +dhlh,1Λ
+∥C∥≤s max
+∥C−1∥≤ 1
+smin
+Denote
+H−1
+δ1
+=
+
+B D T
+D E
+
+.
+we have∥B∥≤C B,∥D∥≤C D,∥E∥≤C E and so that∥H−1
+δ1
+∥≤C H, whereCB,CD,CE,CH
+areO(1)constants depending onµ g,lg,1,lf,1,dh,lh,1,s min,s max,Λ.
+22
+
+D Proofs of Theorem 5.4 and Theorem 5.5
+In this section, we provide proofs for Theorem 5.4 and Theorem 5.5. We first introduce the additional
+notations and lemmas that will be used in this section.
+Notations
+K(x,y′,z′,u,v) =ϕ δ(x,y,z) +u ⊤(A′y′−b)−v ⊤(A′z′−b) + ρ1
+2∥A′y′−b∥ 2− ρ2
+2∥A′z′−b∥ 2
+LK =l δ + 2lg,1 + max{ρ1,ρ 2}σ2
+max(A′)
+µy = min{µg−lδ−ρ 1σ2
+max(A),ρ1
+2}
+µz = min{µg−ρ 2σ2
+max(A),ρ2
+2}
+y∗
+δ(x) = min
+y∈Y(x)
+gδ(x,y)
+z∗(x) = argmin
+z∈Y(x)
+g(x,z)
+y′∗
+δ (x,u) = argmin
+y′∈Py
+K(x,y′,z′,u,v)
+z′∗(x,v) = argmax
+z′∈Py
+K(x,y′,z′,u,v)
+[y∗
+δ(x,u)⊤,α∗
+δ(x,u)⊤]⊤ =y′∗
+δ (x,u)
+[z∗(x,v)⊤,β∗(x,v)⊤]⊤ =z′∗(x,v)
+d(x,z′,u,v) =K(x,y ′∗
+δ (x,u),z′,u,v)
+q(x,v) =ϕ δ(x,y∗
+δ(x),z∗(x,v))−v ⊤(A′z′∗(x,v)−b)− ρ2
+2∥A′z′∗(x,v)−b∥ 2
+Vt = 1
+4K(xt,y′
+t,z′
+t,ut,vt) + 2q(xt,vt)−d(x t,z′
+t,ut,vt)
+Lemma D.1.When δ≤µ g/(2lf,1), 0≤ρ 1≤ µg−δlf,1
+σ2max(A) and 0≤ρ 2≤ µg
+σ2max(A),K(x,y′,z′,u,v) is
+µy-strongly convex w.r.t.y′,µz-strongly concave w.r.t.z′, andLK-smooth w.r.t.x,y′,z′.
+Proof. According to Theorem A.4, we know thatK(x,y′,z′,u,v) isµy-strongly convex w.r.t.y′,
+µz-strongly concave w.r.t.z′. Moreover
+∇xK(x,y′,z′,u,v) =∇ xϕδ(x,y,z)
+∇yK(x,y′,z′,u,v) =∇ yϕδ(x,y,z) +A ⊤u+ρ 1A⊤(A′y′−b)
+∇zK(x,y′,z′,u,v) =∇ zϕδ(x,y,z)−A ⊤v−ρ 2A⊤(A′z′−b)
+Thus,K(x,y ′,z′,u,v)isL K-smooth w.r.t.x,y′,z′.
+23
+
+Lemma D.2.When δ≤µ g/(2lf,1), 0≤ρ 1≤ µg−δlf,1
+σ2max(A) and 0≤ρ 2≤ µg
+σ2max(A),ηy,ηz≤1/L K, we
+have
+∥y′∗
+δ (x,u 1)−y ′∗
+δ (x,u 2)∥≤σ yu∥u1−u 2∥(26)
+∥y′∗
+δ (x1,u)−y ′∗
+δ (x2,u)∥≤σ yx∥x1−x 2∥(27)
+∥z′∗(x,v 1)−z ′∗(x,v 2)∥≤σ zv∥v1−v 2∥(28)
+∥z′∗(x1,v)−z ′∗(x2,v)∥≤σ zx∥x1−x 2∥(29)
+∥y∗
+δ(x1)−y ∗
+δ(x2)∥≤σ ys∥x1−x 2∥(30)
+∥z∗(x1)−z ∗(x2)∥≤σ zs∥x1−x 2∥(31)
+∥y′∗
+δ (x,u)−y ′∗
+δ (x)∥≤σ y∥A′y′∗
+δ (x,u)−b∥(32)
+∥z′∗(x,v)−z ′∗(x)∥≤σ z∥A′z′∗(x,v)−b∥(33)
+∥y′∗
+δ (x,u)−y ′∥≤σ ye∥∇yK(x,y′,z′,u,v)∥+σ α∥α−Π −(α−η y∇αK(x,y′,z′,u,v))∥(34)
+∥z′∗(x,v)−z ′∥≤σ ze∥∇zK(x,y′,z′,u,v)∥+σ β∥β−Π −(β+η z∇βK(x,y′,z′,u,v))∥(35)
+∥y′∗
+δ (xt,ut+1)−y ′
+t∥≤ 2
+µyηy
+∥y′
+t+1−y′
+t∥(36)
+∥z′∗(xt,vt+1)−z ′
+t∥≤ 2
+µzηz
+∥z′
+t+1−z′
+t∥(37)
+whereσyu = σmax(A′)
+µy
+,σyx = LK
+µy
+,σzv = σmax(A′)
+µz
+,σzx = LK
+µz
+,σye = 2
+µy
+,σze = 2
+µz
+,σα = 2
+µyηy
+,
+σβ = 2
+µzηz
+,σys = 2LK
+µg
+,σzs = LK
+µg
+,
+σy =
+√
+2(¯θL2
+K + 1)
+µy
+σz =
+√
+2(¯θL2
+K + 1)
+µz
+M=
+
+A′⊤ G⊤
+0I
+
+G=
+
+0dy×dh 0
+0I dh
+
+¯θ= max
+¯M∈B(M)
+σ2
+max( ¯M)/σ 4
+min( ¯M)
+¯Mis the set of all submatrices ofMwith full row rank.
+Proof.(26) , (27), (28), (29), (30), (31) is due to Theorem A.2. (34), (35), (36), (37) is due to
+Theorem A.1. (32), (33) is due to Theorem A.3.
+D.1 Potential function
+In this subsection, we will prove the following descent lemma forVt.
+Lemma D.3.When δ≤µ g/(2lf,1), 0≤ρ 1≤ µg−δlf,1
+σ2max(A) , 0≤ρ 2≤ µg
+σ2max(A),ηy = 1/(4LK),ηz =
+2/(LK + 4Ld), ηx = min{η yµ2
+y/(512L2
+ϕ),ηzµ2
+z/(96L2
+ϕ),ηu/(64σ2
+yL2
+ϕ),ηv/(4σ2
+zL2
+ϕ),2/(LK +
+4Ld + 8Lq)},ηu =η yµ2
+y/(32σ2
+max(A)),ηv =η zµ2
+z/(32σ2
+max(A)), we have
+Vt−Vt+1≥ 1
+4ηx
+∥xt+1−xt∥2 + 1
+16ηy
+∥y′
+t+1−y′
+t∥2 + 1
+8ηz
+∥z′
+t+1−z′
+t∥2
++ ηu
+4∥A′y′∗
+δ (xt,ut+1)−b∥ 2 + ηv
+2∥A′z′∗(xt,vt+1)−b∥ 2
++ ηu
+4∥A′y′
+t−b∥ 2 + ηv
+4∥A′z′
+t−b∥ 2 + ηx
+4∥∇ϕδ(xt)∥2
+24
+
+Thus,
+1
+T
+T−1X
+t=0
+∥∇ϕδ(xt)∥2≤ 4
+Tηx
+(V0−min
+t
+Vt)(38)
+Proof.First, for functiond, we have
+d(xt,z′
+t,ut+1,vt+1)−d(x t,z′
+t,ut,vt)
+=K(xt,y′∗
+δ (xt,ut+1),z′
+t,ut+1,vt+1)−K(x t,y′∗
+δ (xt,ut),z′
+t,ut,vt)
+≥K(xt,y′∗
+δ (xt,ut+1),z′
+t,ut+1,vt+1)−K(x t,y′∗
+δ (xt,ut+1),z′
+t,ut,vt)
+=(ut+1−ut)⊤(A′y′∗
+δ (xt,ut+1)−b)−(v t+1−vt)⊤(A′z′
+t−b)
+=−η v∥A′z′
+t−b∥ 2 +ηu(A′y′∗
+δ (xt,ut+1)−b) ⊤(A′y′
+t−b)
+Note that
+∇xd(x,z′,u,v) =∇ xϕδ(x,y∗
+δ(x,u),z)
+∇z′d(x,z′,u,v) =
+
+∇zg(x,z)−A ⊤v−ρ 2A⊤(A′z′−b)
+v+ (A′z′−b)
+
+Thus, according to Theorem D.2, we know that∇xd(x,z′,u,v) is (Lϕ +Lϕσyx)-continuous w.r.t.
+x,z′ and∇′
+zd(x,z′,u,v) isLK-continuous w.r.t.x,z′. DefineLd = max{Lϕ +Lϕσyx,LK}. We
+have
+d(xt+1,z′
+t+1,ut+1,vt+1)−d(x t,z′
+t,ut+1,vt+1)
+≥⟨∇xK(xt,y′∗
+δ (xt,ut+1),z′
+t,ut+1,vt+1),xt+1−xt⟩
++⟨∇z′K(xt,y′∗
+δ (xt,ut+1),z′
+t,ut+1,vt+1),z′
+t+1−z′
+t⟩
+− Ld
+2 (∥xt+1−xt∥2 +∥z′
+t+1−z′
+t∥2)
+≥⟨∇xϕδ(xt,y∗
+δ(xt,ut+1),zt),xt+1−xt⟩+ 1
+ηz
+∥z′
+t+1−z′
+t∥2
+− Ld
+2 (∥xt+1−xt∥2 +∥z′
+t+1−z′
+t∥2)
+Then, for functionq, we have
+q(xt,vt)−q(x t,vt+1)
+≥K(xt,y′∗
+δ (xt),z′∗(xt,vt),ut,vt)−K(x t,y′∗
+δ (xt),z′∗(xt,vt+1),ut,vt+1)
+≥K(xt,y′∗
+δ (xt),z′∗(xt,vt+1),ut,vt)−K(x t,y′∗
+δ (xt),z′∗(xt,vt+1),ut,vt+1)
+≥ηv(A′z′∗(xt,vt+1)−b) ⊤(A′z′
+t−b)
+Note that
+∇xq(x,v) =∇ xϕδ(x,y∗
+δ(x),z∗(x,v))
+Thus, according to Theorem D.2,q(·,v)isL q = (Lϕ +Lϕσzx +Lϕσys)-smooth. We have
+q(xt,vt+1)−q(x t+1,vt+1)
+≥⟨∇xϕδ(xt,y∗
+δ(xt),z∗(xt,vt+1)),xt−xt+1⟩− Lq
+2 (∥xt+1−xt∥2)
+Finally, for functionK, we have
+K(xt,y′
+t,z′
+t,ut,vt)−K(x t,y′
+t,z′
+t,ut+1,vt+1) =−η u∥A′y′
+t−b∥ 2 +ηv∥A′z′
+t−b∥ 2
+and
+K(xt,y′
+t,z′
+t,ut+1,vt+1)−K(x t+1,y′
+t+1,z′
+t+1,ut+1,vt+1)
+≥ 1
+ηx
+∥xt+1−xt∥2 + 1
+ηy
+∥y′
+t+1−y′
+t∥2− 1
+ηz
+∥z′
+t+1−z′
+t∥2
+− LK
+2 (∥xt+1−xt∥2 +∥y′
+t+1−y′
+t∥2 +∥z′
+t+1−z′
+t∥2).
+25
+
+Thus, forVt, we have
+Vt−Vt+1
+≥⟨∇xϕδ(xt,y∗
+δ(xt,ut+1),zt),xt+1−xt⟩+ 1
+ηz
+∥z′
+t+1−z′
+t∥2
++ηu(A′y′∗
+δ (xt,ut+1)−b) ⊤(A′y′
+t−b)−η v∥A′z′
+t−b∥ 2− Ld
+2 (∥xt+1−xt∥2 +∥z′
+t+1−z′
+t∥2)
++ 2⟨∇xϕδ(xt,y∗
+δ(xt),z∗(xt,vt+1)),xt−xt+1⟩
++ 2ηv(A′z′∗(xt,vt+1)−b) ⊤(A′z′
+t−b)−L q(∥xt+1−xt∥2)
++ 1
+4ηx
+∥xt+1−xt∥2 + 1
+4ηy
+∥y′
+t+1−y′
+t∥2− 1
+4ηz
+∥z′
+t+1−z′
+t∥2− ηu
+4∥A′y′
+t−b∥ 2 + ηv
+4∥A′z′
+t−b∥ 2
+− LK
+8 (∥xt+1−xt∥2 +∥y′
+t+1−y′
+t∥2 +∥z′
+t+1−z′
+t∥2)
+≥−∥∇ xϕδ(xt,y∗
+δ(xt,ut+1),zt)−∇ xϕδ(xt,y∗
+δ(xt),z∗(xt,vt+1))∥∥xt+1−xt∥
++
+ηu
+2 − ηu
+4
+
+∥A′y′
+t−b∥ 2 + ηu
+2∥A′y′∗
+δ (xt,ut+1)−b∥ 2− ηu
+2∥A′y′
+t−A′y′∗
+δ (xt,ut+1)∥2
++
+
+ηv + ηv
+4 −ηv
+
+∥A′z′
+t−b∥ 2 +ηv∥A′z′∗(xt,vt+1)−b∥ 2−ηv∥A′z′
+t−A′z′∗(xt,vt+1)∥2
+− ηx
+2∥∇xϕδ(xt,y∗
+δ(xt),z∗(xt,vt+1))−∇ xϕδ(xt,yt,zt)∥2
++ 1
+2ηx
+∥xt−xt+1∥2 + ηx
+2∥∇xϕδ(xt,y∗
+δ(xt),z∗(xt,vt+1))∥2
++
+ 1
+4ηx
+− LK
+8 − Ld
+2 −Lq
+
+∥xt+1−xt∥2
++
+ 1
+ηz
+− 1
+4ηz
+− LK
+8 − Ld
+2
+
+∥z′
+t+1−z′
+t∥2
++
+ 1
+4ηy
+− LK
+8
+
+∥y′
+t+1−y′
+t∥2
+≥− 1
+4ηx
+∥xt+1−xt∥2−2ηxL2
+ϕ∥y′∗
+δ (xt,ut+1)−y ′∗
+δ (xt)∥2−2ηxL2
+ϕ∥z′∗(xt,vt+1)−z ′
+t∥2
++ ηu
+4∥A′y′
+t−b∥ 2 + ηu
+2∥A′y′∗
+δ (xt,ut+1)−b∥ 2− ηuσ2
+max(A)
+2 ∥y′∗
+δ (xt,ut+1)−y ′
+t∥2
++ ηv
+4∥A′z′
+t−b∥ 2 +ηv∥A′z′∗(xt,vt+1)−b∥ 2−ηvσ2
+max(A)∥z′∗(xt,vt+1)−z ′
+t∥2
+−2ηxL2
+ϕ∥y′∗
+δ (xt)−y ′∗
+δ (xt,ut+1)∥2−2ηxL2
+ϕ∥y′∗
+δ (xt,ut+1)−y ′
+t∥2−ηxL2
+ϕ∥z′∗(xt,vt+1)−z ′
+t∥2
++ ηx
+4∥∇xϕδ(xt,y∗
+δ(xt),z∗(xt))∥2−
+ηxL2
+ϕ
+2 ∥z′∗(xt)−z ′∗(xt,vt+1)∥2 + 1
+2ηx
+∥xt−xt+1∥2
++
+ 1
+4ηx
+− LK
+8 − Ld
+2 −Lq
+
+∥xt+1−xt∥2
++
+ 3
+4ηz
+− LK
+8 − Ld
+2
+
+∥z′
+t+1−z′
+t∥2
++
+ 1
+4ηy
+− LK
+8
+
+∥y′
+t+1−y′
+t∥2,
+26
+
+and
+Vt−Vt+1
+≥
+ 1
+2ηx
++ 1
+4ηx
+− 1
+4ηx
+− LK
+8 − Ld
+2 −Lq
+
+∥xt+1−xt∥2
++
+ 1
+4ηy
+− LK
+8
+
+∥y′
+t+1−y′
+t∥2−
+
+4ηxL2
+ϕ + ηuσ2
+max(A)
+2
+
+∥y′∗
+δ (xt,ut+1)−y ′
+t∥2
++
+ 3
+4ηz
+− LK
+8 − Ld
+2
+
+∥z′
+t+1−z′
+t∥2−
+ 
+3ηxL2
+ϕ +ηvσ2
+max(A)
+
+∥z′∗(xt,vt+1)−z ′
+t∥2
++ ηu
+4∥A′y′
+t−b∥ 2 + ηu
+2∥A′y′∗
+δ (xt,ut+1)−b∥ 2−4ηxL2
+ϕ∥y′∗
+δ (xt,ut+1)−y ′∗
+δ (xt)∥2
++ ηv
+4∥A′z′
+t−b∥ 2 +ηv∥A′z′∗(xt,vt+1)−b∥ 2−
+ηxL2
+ϕ
+2 ∥z′∗(xt,vt+1)−z ′∗(xt)∥2
++ ηx
+4∥∇ϕδ(xt)∥2
+≥
+ 1
+2ηx
+− LK
+8 − Ld
+2 −Lq
+
+∥xt+1−xt∥2
++
+ 
+1
+4ηy
+− LK
+8 −
+16ηxL2
+ϕ + 2ηuσ2
+max(A)
+µ2yη2y
+!
+∥y′
+t+1−y′
+t∥2
++
+ 
+3
+4ηz
+− LK
+8 − Ld
+2 −
+12ηxL2
+ϕ + 4ηvσ2
+max(A)
+µ2zη2z
+!
+∥z′
+t+1−z′
+t∥2
++
+ηu
+2 −4σ 2
+yηxL2
+ϕ
+
+∥A′y′∗
+δ (xt,ut+1)−b∥ 2
++
+ 
+ηv−
+σ2
+zηxL2
+ϕ
+2
+!
+∥A′z′∗(xt,vt+1)−b∥ 2
++ ηu
+4∥A′y′
+t−b∥ 2 + ηv
+4∥A′z′
+t−b∥ 2 + ηx
+4∥∇ϕδ(xt)∥2
+where the last equality is due to Theorem D.2.
+Thus, whenδ≤µ g/(2lf,1), 0≤ρ 1≤ µg−δlf,1
+σ2max(A) , 0≤ρ 2≤ µg
+σ2max(A),ηy = 1/(4LK),ηz = 2/(LK +
+4Ld),ηx = min{ηyµ2
+y/(512L2
+ϕ),ηzµ2
+z/(96L2
+ϕ),ηu/(64σ2
+yL2
+ϕ),ηv/(4σ2
+zL2
+ϕ),2/(LK +4Ld+8Lq)},
+ηu =η yµ2
+y/(32σ2
+max(A)),ηv =η zµ2
+z/(32σ2
+max(A)), we have
+Vt−Vt+1
+≥ 1
+4ηx
+∥xt+1−xt∥2 + 1
+16ηy
+∥y′
+t+1−y′
+t∥2 + 1
+8ηz
+∥z′
+t+1−z′
+t∥2
++ ηu
+4∥A′y′∗
+δ (xt,ut+1)−b∥ 2 + ηv
+2∥A′z′∗(xt,vt+1)−b∥ 2
++ ηu
+4∥A′y′
+t−b∥ 2 + ηv
+4∥A′z′
+t−b∥ 2 + ηx
+4∥∇ϕδ(xt)∥2 (39)
+Thus,
+1
+T
+T−1X
+t=0
+∥∇ϕδ(xt)∥2≤ 4
+Tηx
+(V0−min
+t
+Vt)(40)
+27
+
+Proof of Theorem 5.4
+Whenδ≤µ g/(2lf,1), 0≤ρ 1≤ µg−δlf,1
+σ2max(A) , 0≤ρ 2≤ µg
+σ2max(A),ηy = 1/(4LK),ηz = 2/(LK + 4Ld),
+ηx = min{ηyµ2
+y/(512L2
+ϕ),ηzµ2
+z/(96L2
+ϕ),ηu/(64σ2
+yL2
+ϕ),ηv/(4σ2
+zL2
+ϕ),2/(LK +4Ld+8Lq)},ηu =
+ηyµ2
+y/(32σ2
+max(A)),ηv =η zµ2
+z/(32σ2
+max(A)), according to (40), we have
+1
+T
+T−1X
+t=0
+∥∇ϕδ(xt)∥2≤ 4
+Tηx
+(V0−min
+t
+Vt)(41)
+Note that
+Vt =1
+4K(xt,y′
+t,z′
+t,ut,vt) + 2q(xt,vt)−d(x t,z′
+t,ut,vt)
+≥2q(xt,vt)− 3
+4d(xt,z′
+t,ut,vt)≥ 5
+4q(xt,vt)≥ 5
+4ϕδ(xt)≥ 5δΦ∗
+4 −
+5δ2l2
+f,0
+8µg
+Therefore, when δ= Θ(ϵ) , with T=O(ϵ −4), we have t∈[T] , such that ∥∇Φδ(xt)∥=
+∥ 1
+δ∇ϕδ(xt)∥≤ϵ.
+Moreover, if we havex 0,y 0,z 0,u 0,v 0 such that
+∥y0−y∗
+δ(x0)∥≤O(δ)
+∥A′y′∗
+δ (x0,u 0)−b∥≤O(δ)
+∥A′y′
+0−b∥≤O(δ)
+∥z0−z∗(x0)∥≤O(δ)
+∥A′z′∗(x0,v 0)−b∥≤O(δ)
+∥A′z′
+0−b∥≤O(δ)
+Then, we have
+V0
+=1
+4
+
+δf(x 0,y 0) + (g(x0,y 0)−g(x 0,z 0)) +u⊤
+0 (A′y′
+0−b)−v ⊤
+0 (A′z′
+0−b)
++ ρ1
+2∥A′y′
+0−b∥ 2− ρ2
+2∥A′z′
+0−b∥ 2
+
++ 2
+
+δf(x 0,y∗
+δ(x0)) + (g(x0,y∗
+δ(x0))−g(x 0,z∗(x0,v 0)))−v ⊤
+0 (A′z′∗(x0,v 0)−b)
+− ρ2
+2∥A′z′∗(x0,v 0)−b∥ 2
+
+−
+
+δf(x 0,y∗
+δ(x0,u 0)) + (g(x0,y∗
+δ(x0,u 0))−g(x 0,z 0)) +u⊤
+0 (A′y′∗
+δ (x0,u 0)−b)
+−v⊤
+0 (A′z′
+0−b) + ρ1
+2∥A′y′∗
+δ (x0,u 0)−b∥ 2− ρ2
+2∥A′z′
+0−b∥ 2
+
+≤5δΦ(x0)
+4 +O(1)lf,1(∥y0−y∗(x0)∥+∥y ∗
+δ(x0)−y ∗(x0)∥+∥y ∗
+δ(x0,u 0)−y ∗(x0)∥)
++O(1)Cg(∥z0−y 0∥+∥y ∗
+δ(x0)−z ∗(x0,v 0)∥+∥y ∗
+δ(x0,u 0)−z 0∥)
++O(∥A′z′
+0−b∥+∥A ′z′
+0−b∥ 2 +∥A′y′
+0−b∥+∥A ′y′
+0−b∥ 2
++∥A′z′∗(x0,v 0)−b∥+∥A ′z′∗(x0,v 0)−b∥ 2 +∥A′y′∗
+δ (x0,u 0)−b∥+∥A ′y′∗
+δ (x0,u 0)−b∥ 2)
+≤5δΦ(x0)
+4 +O(δ)
+whereG= max{g(x 0,y 0),g(x 0,z 0),g(x 0,y∗
+δ(x0),g(x 0,z∗(x0,v 0)),g(x 0,y∗
+δ(x0,u 0)},C={y∈
+Rdy|g(x0,y)≤G} ,Cg = supy∈C∇yg(x0,y) . Sinceg(x0,y) is strongly convex w.r.ty, its sub-level
+28
+
+setC is compact and convex. Moreover, sinceg is Lipschitz smoothness, its gradient in this compact
+setCis upper bounded by anO(1)constantC g.
+We can notice that
+V0−min
+t
+Vt≤ 5δ[Φ(x0)−Φ ∗]
+4 +O(δ) =O(ϵ)
+and
+1
+T
+T−1X
+t=0
+∥∇Φδ(xt)∥2 = 1
+Tδ 2
+T−1X
+t=0
+∥∇ϕδ(xt)∥2≤ 4
+Tηxδ2 (V0−min
+t
+Vt) =O
+ϵ−1
+T
+
+.
+Therefore, we can find anϵ-stationary point ofΦ δ(x)with a complexity ofO(ϵ −3).
+Proof of Theorem 5.5
+For fixedx0, defineWt = 1
+4K(x0,y′
+t,z′
+t,ut,vt) + 2q(x0,vt)−d(x 0,z′
+t,ut,vt). According to (39),
+with appropriate parameters, we have
+Wt−Wt+1
+≥ 1
+16ηy
+∥y′
+t+1−y′
+t∥2 + 1
+8ηz
+∥z′
+t+1−z′
+t∥2
++ ηu
+4∥A′y′∗
+δ (x0,ut+1)−b∥ 2 + ηv
+2∥A′z′∗(x0,vt+1)−b∥ 2
++ ηu
+4∥A′y′
+t−b∥ 2 + ηv
+4∥A′z′
+t−b∥ 2
+Thus, whenT=O(ϵ 2), we can findt∈Tsuch that
+∥y′
+t+1−y′
+t∥≤δ
+∥A′y′∗
+δ (x0,ut+1)−b∥≤δ
+∥A′y′
+t−b∥≤δ
+∥z′
+t+1−z′
+t∥≤δ
+∥A′z′∗(x0,vt+1)−b∥≤δ
+∥A′z′
+t−b∥≤δ
+Denote the active set at y∗
+δ(x0) asIα,Jα = [dh]/I. Define ∆α = mini∈Jα|[α∗
+δ(x0)]i|. De-
+note the active set of z∗(x0) asIβ,Jβ = [d h]/I. Define ∆β = min i∈Jβ|[β∗(x0)]i|. Set
+ϵ≤min{∆ α/(6σα),∆α/(6σy),∆β/(6σβ),∆β/(6σz)}. According to Theorem D.4, we have
+∥ut+1−u∗
+δ(x0)∥≤O(δ)
+∥vt+1−v∗(x0)∥≤O(δ)
+Then, if we set y′
+0 =y ′
+t,z′
+0 =z ′
+t,u0 =u t+1,v0 =v t+1, with x0,y′
+0,z′
+0,u 0,v 0 as initial points,
+according to Theorem 5.4, we can find anϵ-stationary point ofΦ δ with a complexity ofO(ϵ−3).
+Thus, the total complexity isO(ϵ−3 +ϵ−2) =O(ϵ−3).
+Lemma D.4.For a fixed x0, denote the active set at y∗
+δ(x0) asIα,Jα = [dh]/I. We have
+[α∗
+δ(x0)]Iα = 0 and [α∗
+δ(x0)]Jα <0 . Suppose sα
+min =σ min(AIα)>0 . Define ∆α =
+mini∈Jα|[α∗
+δ(x0)]i|. When ∥y′
+t+1−y′
+t∥≤∆ α/(6σα),∥A′y′∗
+δ (x0,ut+1)−b∥≤∆ α/(6σy), we
+have
+∥ut+1−u∗
+δ(x0)∥≤σ uyx0∥y′
+t+1−y′
+t∥+σ u2x0∥A′y′∗
+δ (x0,ut+1)−b∥+σ u1x0∥A′y′
+t−b∥
+whereσuyx0 = 1
+ηy
++ 1+σmax
+ηysα
+min
++ Lgσα
+sα
+min
+,σu2x0 = Lgσy
+sα
+min
+,σu1x0 = ρ1σmax(A)
+sα
+min
+.
+Similarly, for a fixed x0, denote the active set of z∗(x0) asIβ, Jβ = [d h]/I. Suppose
+sβ
+min =σ min(AIβ)>0 . Define ∆β = min i∈Jβ|[β∗(x0)]i|. When ∥z′
+t+1−z ′
+t∥ ≤
+∆β/(6σβ),∥A′z′∗
+δ (x0,vt+1)−b∥≤∆ β/(6σz), we have
+∥vt+1−v∗(x0)∥≤σ uzx0∥z′
+t+1−z′
+t∥+σ v2x0∥A′z′∗(x0,vt+1)−b∥+σ v1x0∥A′z′
+t−b∥
+whereσuzx0 = 1
+ηz
++ 1+σmax
+ηzsβ
+min
++ lg,1σβ
+sβ
+min
+,σv2x0 = lg,1σz
+sβ
+min
+,σv1x0 = ρ2σmax(A)
+sβ
+min
+.
+29
+
+Proof. Denote the active set ofy∗
+δ(x0) asI,J= [d h]/I. We have [α∗
+δ(x0)]I = 0 and [α∗
+δ(x0)]J <
+0. Note that
+∥αt−α∗
+δ(x0)∥≤∥y′
+t−y′∗
+δ (x0)∥≤∥y t−y∗
+δ(x0,ut+1)∥+∥y ∗
+δ(x0)−y ∗
+δ(x0,ut+1)∥
+≤σα∥y′
+t+1−y′
+t∥+σ y∥A′y′∗
+δ (x0,ut+1)−b∥
+Define ∆ = mini∈J|[α∗
+δ(x0)]i|. When∥y′
+t+1−y′
+t∥≤∆/(6σ α),∥A′y′∗
+δ (x0,ut+1)−b∥≤∆/(6σ y),
+we have
+∥αt−α∗
+δ(x0)∥≤ 1
+3∆
+∥αt+1−αt∥≤ 1
+6∆
+Thus, forJ, we have
+[αt]J <0
+[αt+1]J <0
+Therefore, there are no projection in the update ofαt+1 and we have
+∥[ut+1]J−[u∗
+δ(x0)]J∥=∥[u t+1]J∥=∥ 1
+ηy
+([αt+1]J−[αt]J )∥≤ 1
+ηy
+∥αt+1−αt∥
+Moreover, forI, we have
+∇ygδ(x0,y∗
+δ(x0)) +A⊤
+I [u∗
+δ(x0)]I = 0
+Thus,
+∇ygδ(x0,yt) +A⊤
+I [ut+1]I +A⊤
+J [ut+1]J +ρ 1A⊤(A′y′
+t−b) = 1
+ηy
+(yt+1−yt)
+Supposeσ min(AI) =s min , we have
+∥[ut+1]I−[u∗
+δ(x0)]I∥
+≤ 1
+smin
+[ 1
+ηy
+∥yt+1−yt∥+L g∥yt−y∗
+δ(x0)∥+ρ 1σmax(A)∥A′y′
+t−b∥+σ max(A)∥ut+1]J∥]
+≤ 1
+smin
+"1 +σ max
+ηy
++Lgσα
+
+∥y′
+t+1−y′
+t∥+L gσy∥A′y′∗
+δ (x0,ut+1)−b∥
++ρ 1σmax(A)∥A′y′
+t−b∥
+#
+Thus,
+∥ut+1−u∗
+δ(x0)∥≤σ uyx0∥y′
+t+1−y′
+t∥+σ u2x0∥A′y′∗
+δ (x0,ut+1)−b∥+σ u1x0∥A′y′
+t−b∥
+whereσuyx0 = 1
+ηy
++ 1+σmax
+ηysmin
++ Lgσα
+smin
+,σu2x0 = Lgσy
+smin
+,σu1x0 = ρ1σmax(A)
+smin
+Similar conditions and conclusions also hold for∥vt+1−v∗(x0)∥.
+E Proofs of Theorem 5.2 and Theorem 5.3
+In this section, we provide proofs for Theorem 5.2 and Theorem 5.3. We first introduce the additional
+notations and lemmas that will be used in this section.
+30
+
+Notations
+K(x,y′,z′,u,v) =ϕ δ(x,y,z) +u ⊤(Bx+A ′y′−b)−v ⊤(Bx+A ′z′−b)
++ ρ1
+2∥Bx+A ′y′−b∥ 2− ρ2
+2∥Bx+A ′z′−b∥ 2
+LK =l δ + 2lg,1 + max{ρ1,ρ 2}max{σ 2
+max(A′),σ 2
+max(B),σ max(B)σmax(A′)}
+µy = min{µg−lδ−ρ 1σ2
+max(A),ρ1
+2}
+µz = min{µg−ρ 2σ2
+max(A),ρ2
+2}
+y∗
+δ(x) = min
+y∈Y(x)
+gδ(x,y)
+z∗(x) = argmin
+z∈Y(x)
+g(x,z)
+u∗
+δ(x) = argmax
+u∈R+
+min
+y∈Y(x)
+gδ(x,y) +u⊤(Bx+Ay−b)
+v∗(x) = argmax
+v∈R+
+min
+z∈Y(x)
+g(x,y) +v ⊤(Bx+Az−b)
+y′∗
+δ (x,u) = argmin
+y′∈Py
+K(x,y′,z′,u,v)
+z′∗(x,v) = argmax
+z′∈Py
+K(x,y′,z′,u,v)
+[y∗
+δ(x,u)⊤,α∗
+δ(x,u)⊤]⊤ =y′∗
+δ (x,u)
+[z∗(x,v)⊤,β∗(x,v)⊤]⊤ =z′∗(x,v)
+d(x,z′,u,v) =K(x,y ′∗
+δ (x,u),z′,u,v)
+q(x,v) =ϕ δ(x,y∗
+δ(x),z∗(x,v))−v ⊤(Bx+A ′z′∗(x,v)−b)− ρ2
+2∥Bx+A ′z′∗(x,v)−b∥ 2
+Vt = 1
+4K(xt,y′
+t,z′
+t,ut,vt) + 2q(xt,vt)−d(x t,z′
+t,ut,vt)
+Theorem 5.1
+When the LICQ condition (Theorem 4.3) holds fory∗(x) andy∗
+δ(x), the optimal Lagrangian multipli-
+ers ofy∗(x)andy ∗
+δ(x)are unique and we have
+u∗
+δ(x) = argmax
+u∈R+
+min
+y∈Y(x)
+gδ(x,y) +u⊤h(x,y) = argmax
+u∈Rdh
+min
+y′∈Py
+K(x,y′,z′,u,v),
+v∗(x) = argmax
+v∈R+
+min
+z∈Y(x)
+g(x,z) +v ⊤h(x,z) = argmin
+v∈Rdh
+max
+z′∈Py
+K(x,y′,z′,u,v).
+Proof.Suppose
+v1 = argmax
+v∈R+
+min
+z∈Y(x)
+g(x,y),
+v2 = argmax
+u∈Rdh
+min
+y′∈Py
+K(x,y′,z′,u,v).
+The KKT conditions forv 1 are
+∇yg(x,z∗(x)) +A⊤v1 = 0
+Bx+Az ∗(x)−b≤0
+v1≥0
+v⊤
+1 (Bx+Az ∗(x)−b) = 0
+31
+
+The KKT conditions forv 2 are
+∇yg(x,z∗(x)) +A⊤v1 +ρ 2(Bx+A ′z′∗(x)−b) = 0
+Bx+A ′z′∗(x)−b= 0
+β≤0
+v1∈∂I−(β)
+Note that these two KKT conditions are equivalent. Moreover, since the LICQ condition (The-
+orem 4.3) holds for z∗(x), we have v1 =v 2. Similar conditions and conclusions also hold for
+u∗
+δ(x).
+Lemma E.1. K(x,y′,z′,u,v) isµy-strongly w.r.t.y′,µz-strongly concave w.r.t.z′, andLK-smooth
+w.r.t.x,y′,z′.
+Proof. According to Theorem A.4, we know thatK(x,y′,z′,u,v) isµy-strongly convex w.r.t.y′,
+µz-strongly concave w.r.t.z′. Moreover
+∇xK(x,y′,z′,u,v) =∇ xϕδ(x,y,z) +B ⊤(u−v) +ρ 1B⊤(Bx+A ′y′−b)
+−ρ 2B⊤(Bx+A ′z′−b)
+∇yK(x,y′,z′,u,v) =∇ yϕδ(x,y,z) +A ⊤u+ρ 1A⊤(A′y′−b)
+∇zK(x,y′,z′,u,v) =∇ zϕδ(x,y,z)−A ⊤v−ρ 2A⊤(A′z′−b)
+Thus,K(x,y ′,z′,u,v)isL K-smooth w.r.t.x,y′,z′.
+Lemma E.2.
+∥ut+1−u∗
+δ(xt)∥≤σ uy∥y′
+t+1−y′
+t∥+σ u1∥Bxt +A′y′
+t−b∥+σ u2∥Bxt +A′y′∗
+δ (xt,ut+1)−b∥
+∥vt+1−v∗(xt)∥≤σ vz∥z′
+t+1−z′
+t∥+σ v1∥Bxt +A′z′
+t−b∥+σ v2∥Bxt +A′z′∗(xt,vt+1)−b∥
+whereσuy = 1
+σmin(A)( 1
+ηy
++σ αlg,1), σu1 =ρ 1, σu2 = σylg,1
+σmin(A), σvz = 1
+σmin(A)( 1
+ηz
++σ βlg,1),
+σv1 =ρ 2,σv2 = σzlg,1
+σmin(A)
+Proof.By the optimality condition aty ∗
+δ(xt), we have
+∇ygδ(xt,y∗
+δ(xt)) +A⊤u∗
+δ(xt) = 0.
+The update rule ofyt:
+−yt+1−yt
+ηy
+=∇ ygδ(xt,yt) +A⊤ut+1 +ρ 1A⊤(Bxt +Ayt−b−α t),
+Putting together, we have
+A⊤(u∗
+δ(xt)−u t+1)
+=yt+1−yt
+ηy
++∇ygδ(xt,yt)−∇ ygδ(xt,y∗
+δ(xt)) +ρ 1A⊤(Bxt +Ayt−b−α t)
+SinceAhas full row rank, we have
+u∗
+δ(xt)−u t+1 =(AA⊤)−1A
+yt+1−yt
+ηy
++∇ygδ(xt,yt)−∇ ygδ(xt,y∗
+δ(xt))
+
++ρ 1(Bxt +Ayt−b−α t),
+and
+∥ut+1−u∗
+δ(xt)∥
+≤ 1
+σmin(A)ηy
+∥yt+1−yt∥+ lg,1
+σmin(A)∥yt−y∗
+δ(xt)∥+ρ 1∥Bxt +Ayt−b−α t∥
+32
+
+Moreover,
+∥yt−y∗
+δ(xt)∥≤∥y t−y∗
+δ(xt,ut+1)∥+∥y ∗
+δ(xt)−y ∗
+δ(xt,ut+1)∥
+≤σα∥y′
+t+1−y′
+t∥+σ y∥Bxt +A′y′∗
+δ (xt,ut+1)−b∥
+where the last equality is due to Theorem D.2.
+Thus,
+∥ut+1−u∗
+δ(xt)∥≤σ uy∥y′
+t+1−y′
+t∥+σ u1∥Bxt +A′y′
+t−b∥+σ u2∥Bxt +A′y′∗
+δ (xt,ut+1)−b∥
+whereσuy = 1
+σmin(A)( 1
+ηy
++σαlg,1),σu1 =ρ 1,σu2 = σylg,1
+σmin(A).
+Similarly, we have
+∥vt+1−v∗(xt)∥≤σ vz∥z′
+t+1−z′
+t∥+σ v1∥Bxt +A′z′
+t−b∥+σ v2∥Bxt +A′z′∗(xt,vt+1)−b∥
+whereσvz = 1
+σmin(A)( 1
+ηz
++σβlg,1),σv1 =ρ 2,σv2 = σzlg,1
+σmin(A).
+Lemma E.3.
+∥z′∗(x1)−z ′∗(x2)∥≤σ zb∥x1−x 2∥
+∥y′∗
+δ (x1)−z ′∗
+δ (x2)∥≤σ yb∥x1−x 2∥
+∥v∗(x1)−v ∗(x2)∥≤σ vb∥x1−x 2∥
+∥u∗
+δ(x1)−u ∗
+δ(x2)∥≤σ ub∥x1−x 2∥
+whereσzb =σ max(A)σz +σzx,σyb =σ max(A)σy +σyx,σvb = lg,1σzb
+σmin(A),σub = Lgσyb
+σmin(A).
+Proof. Here, we introduce an additional notation: z′∗(x;w) = argminz′∈G(w)g(x,z) + ρ2
+2∥Bx+
+A′z′−b∥ 2, whereG(w) ={z ′∈P y|Bw+A ′z′−b= 0} . We can notice thatz′∗(x;x) =z ′∗(x).
+According to Theorem A.3, we have∥z′∗(x1;x 1)−z ′∗(x1;x 2)∥≤σ z∥Ax1−Ax 2∥. Moreover,
+we have∥z′∗(x1;x 2)−z ′∗(x2;x 2)∥≤σ zx∥x1−x 2∥. Thus,∥z′∗(x1)−z ′∗(x2)∥≤[σ max(A)σz +
+σzx]∥x1−x 2∥. Moreover,
+∇yg(x,z∗(x1)) +A⊤v∗(x1) = 0
+∇yg(x,z∗(x2)) +A⊤v∗(x2) = 0
+Thus,
+∥v∗(x1)−v ∗(x2)∥≤ lg,1σzb
+σmin(A)∥x1−x 2∥
+Similarly, we have∥y′∗
+δ (x1)−y′∗
+δ (x2)∥≤[σ max(A)σy +σyx]∥x1−x 2∥ and∥u∗
+δ(x1)−u∗
+δ(x2)∥≤
+Lgσyb
+σmin(A)∥x1−x 2∥
+E.1 Potential function
+In this subsection, we will prove the following descent lemma forVt.
+Lemma E.4.When δ≤µ g/(2lf,1), 0≤ρ 1 ≤ µg−δlf,1
+σ2max(A) , 0≤
+ρ2 ≤ µg
+σ2max(A), ηy = 1/(4L K), ηz = 2/(L K + 4L d), ηx =
+min{ηyµ2
+y/(640L2
+K),ηzµ2
+z/(640L2
+K),ηu/(240(σ2
+y +σ 2
+u2 +σ 2
+u1)L2
+K),ηv/(240(σ2
+z +
+σ2
+v2 +σ 2
+v1)L2
+K),2/(LK + 4L d + 8L q),1/(1920ηyL2
+Kσ2
+uy),1/(1920ηzL2
+Kσ2
+uz)}, ηu =
+ηyµ2
+y/(256σ2
+max(A)),ηv =η zµ2
+z/(256σ2
+max(A)), we have
+Vt−Vt+1≥ 1
+4ηx
+∥xt+1−xt∥2 + 1
+16ηy
+∥y′
+t+1−y′
+t∥2 + 1
+8ηz
+∥z′
+t+1−z′
+t∥2
++ ηu
+4∥Bx+A ′y′∗
+δ (xt,ut+1)−b∥ 2 + ηv
+2∥Bx+A ′z′∗(xt,vt+1)−b∥ 2
++ ηu
+4∥Bx+A ′y′
+t−b∥ 2 + ηv
+4∥Bx+A ′z′
+t−b∥ 2 + ηx
+4∥∇ϕδ(xt)∥2 (42)
+33
+
+Thus,
+1
+T
+T−1X
+t=0
+∥∇ϕδ(xt)∥2≤ 4
+Tηx
+(V0−min
+t
+Vt)(43)
+Proof.First, for functiond, we have
+d(xt,z′
+t,ut+1,vt+1)−d(x t,z′
+t,ut,vt)
+=K(xt,y′∗
+δ (xt,ut+1),z′
+t,ut+1,vt+1)−K(x t,y′∗
+δ (xt,ut),z′
+t,ut,vt)
+≥K(xt,y′∗
+δ (xt,ut+1),z′
+t,ut+1,vt+1)−K(x t,y′∗
+δ (xt,ut+1),z′
+t,ut,vt)
+≥−η v∥Bxt +A′z′
+t−b∥ 2 +ηu(Bxt +A′y′∗
+δ (xt,ut+1)−b) ⊤(Bxt +A′y′
+t−b)
+Note that
+∇xd(x,z′,u,v) =∇ xϕδ(x,y∗
+δ(x,u),z) +B ⊤(u−v) +ρ 1B⊤(Bx+A ′y′∗
+δ (x,u)−b)
+−ρ 2B⊤(Bx+A ′z′−b)
+∇z′d(x,z′,u,v) =
+
+∇zg(x,z)−A ⊤v−ρ 2A⊤(Bx+A ′z′−b)
+v+ (Bx+A ′z′−b)
+
+Thus, according to Theorem D.2, we know that∇xd(x,z′,u,v) is (LK +LKσyx)-continuous w.r.t.
+x,z′ and∇′
+zd(x,z′,u,v) isLK-continuous w.r.t.x,z′. DefineLd = max{LK +LKσyx,LK}. We
+have
+d(xt+1,z′
+t+1,ut+1,vt+1)−d(x t,z′
+t,ut+1,vt+1)
+≥⟨∇xK(xt,y′∗
+δ (xt,ut+1),z′
+t,ut+1,vt+1),xt+1−xt⟩+⟨∇ z′K(xt,y′∗
+δ (xt,ut+1),z′
+t,ut+1,vt+1),z′
+t+1−z′
+t⟩
+− Ld
+2 (∥xt+1−xt∥2 +∥z′
+t+1−z′
+t∥2)
+≥⟨∇xK(xt,y′∗
+δ (xt,ut+1),z′
+t,ut+1,vt+1),xt+1−xt⟩+ 1
+ηz
+∥z′
+t+1−z′
+t∥2
+− Ld
+2 (∥xt+1−xt∥2 +∥z′
+t+1−z′
+t∥2)
+Then, for functionq, we have
+q(xt,vt)−q(x t,vt+1)
+≥K(xt,y′∗
+δ (xt),z′∗(xt,vt),ut,vt)−K(x t,y′∗
+δ (xt),z′∗(xt,vt+1),ut,vt+1)
+≥K(xt,y′∗
+δ (xt),z′∗(xt,vt+1),ut,vt)−K(x t,y′∗
+δ (xt),z′∗(xt,vt+1),ut,vt+1)
+≥ηv(Bxt +A′z′∗(xt,vt+1)−b) ⊤(Bxt +A′z′
+t−b)
+Note that
+∇xq(x,v) =∇xϕδ(x,y∗
+δ(x),z∗(x,v)) +B ⊤(u∗
+δ(x)−v) +ρ 1B⊤(Bx+A ′y′∗
+δ (x)−b)
+−ρ 2B⊤(Bx+A ′z′∗(x,v)−b)
+Thus, according to Theorem D.2 and E.3,q(·,v) isLq = (LK +LKσzx +LKσyb +σ max(B)σub)-
+smooth. We have
+q(xt,vt+1)−q(x t+1,vt+1)
+≥⟨∇xK(xt,y′∗
+δ (xt),z′∗(xt,vt+1),u∗(xt),vt+1),xt−xt+1⟩− Lq
+2 (∥xt+1−xt∥2)
+Finally, for functionK, we have
+K(xt,y′
+t,z′
+t,ut,vt)−K(x t,y′
+t,z′
+t,ut+1,vt+1) =−η u∥Bxt +A′y′
+t−b∥ 2 +ηv∥Bxt +A′z′
+t−b∥ 2,
+and
+K(xt,y′
+t,z′
+t,ut+1,vt+1)−K(x t+1,y′
+t+1,z′
+t+1,ut+1,vt+1)
+≥ 1
+ηx
+∥xt+1−xt∥2 + 1
+ηy
+∥y′
+t+1−y′
+t∥2− 1
+ηz
+∥z′
+t+1−z′
+t∥2
+− LK
+2 (∥xt+1−xt∥2 +∥y′
+t+1−y′
+t∥2 +∥z′
+t+1−z′
+t∥2).
+34
+
+Thus, forVt, we have
+Vt−Vt+1
+≥⟨∇xK(xt,y′∗
+δ (xt,ut+1),z′
+t,ut+1,vt+1),xt+1−xt⟩+ 1
+ηz
+∥z′
+t+1−z′
+t∥2
++ηu(Bxt +A′y′∗
+δ (xt,ut+1)−b) ⊤(Bxt +A′y′
+t−b)−η v∥Bxt +A′z′
+t−b∥ 2
+− Ld
+2 (∥xt+1−xt∥2 +∥z′
+t+1−z′
+t∥2) + 2⟨∇xK(xt,y′∗
+δ (xt),z′∗(xt,vt+1),u∗(xt),vt+1),xt−xt+1⟩
++ 2ηv(Bxt +A′z′∗(xt,vt+1)−b) ⊤(Bxt +A′z′
+t−b)−L q(∥xt+1−xt∥2)
++ 1
+4ηx
+∥xt+1−xt∥2 + 1
+4ηy
+∥y′
+t+1−y′
+t∥2− 1
+4ηz
+∥z′
+t+1−z′
+t∥2− ηu
+4∥Bxt +A′y′
+t−b∥ 2
++ ηv
+4∥Bxt +A′z′
+t−b∥ 2− LK
+8 (∥xt+1−xt∥2 +∥y′
+t+1−y′
+t∥2 +∥z′
+t+1−z′
+t∥2)
+≥−∥∇ xK(xt,y′∗
+δ (xt,ut+1),z′
+t,ut+1,vt+1)−∇ xK(xt,y′∗
+δ (xt),z′∗(xt,vt+1),u∗(xt),vt+1)∥∥xt+1−xt∥
++
+ηu
+2 − ηu
+4
+
+∥Bxt +A′y′
+t−b∥ 2 + ηu
+2∥Bxt +A′y′∗
+δ (xt,ut+1)−b∥ 2− ηu
+2∥A′y′
+t−A′y′∗
+δ (xt,ut+1)∥2
++
+
+ηv + ηv
+4 −ηv
+
+∥Bxt +A′z′
+t−b∥ 2 +ηv∥Bxt +A′z′∗(xt,vt+1)−b∥ 2−ηv∥A′z′
+t−A′z′∗(xt,vt+1)∥2
+− ηx
+2∥∇xK(xt,y′∗
+δ (xt),z′∗(xt,vt+1),u∗(xt),vt+1)−∇ xK(xt,y′
+t,z′
+t,ut+1,vt+1)∥2
++ 1
+2ηx
+∥xt−xt+1∥2 + ηx
+2∥∇xK(xt,y′∗
+δ (xt),z′∗(xt,vt+1),u∗(xt),vt+1)∥2
++
+ 1
+4ηx
+− LK
+8 − Ld
+2 −Lq
+
+∥xt+1−xt∥2
++
+ 1
+ηz
+− 1
+4ηz
+− LK
+8 − Ld
+2
+
+∥z′
+t+1−z′
+t∥2
++
+ 1
+4ηy
+− LK
+8
+
+∥y′
+t+1−y′
+t∥2,
+and
+Vt−Vt+1
+≥− 1
+4ηx
+∥xt+1−xt∥2−3ηxL2
+K∥y′∗
+δ (xt,ut+1)−y ′∗
+δ (xt)∥2−3ηxL2
+K∥z′∗(xt,vt+1)−z ′
+t∥2
+−3ηxL2
+K∥ut+1−u∗(xt)∥2
++ ηu
+4∥Bxt +A′y′
+t−b∥ 2 + ηu
+2∥Bxt +A′y′∗
+δ (xt,ut+1)−b∥ 2− ηuσ2
+max(A)
+2 ∥y′∗
+δ (xt,ut+1)−y ′
+t∥2
++ ηv
+4∥Bxt +A′z′
+t−b∥ 2 +ηv∥Bxt +A′z′∗(xt,vt+1)−b∥ 2−ηvσ2
+max(A)∥z′∗(xt,vt+1)−z ′
+t∥2
+−2ηxL2
+K∥y′∗
+δ (xt)−y ′∗
+δ (xt,ut+1)∥2−2ηxL2
+K∥y′∗
+δ (xt,ut+1)−y ′
+t∥2−2ηxL2
+K∥ut+1−u∗(xt)∥2
+−2ηxL2
+K∥z′∗(xt,vt+1)−z ′
+t∥2 + 1
+2ηx
+∥xt−xt+1∥2
++ ηx
+4∥∇xK(xt,y′∗
+δ (xt),z′∗(xt),u∗(xt),v∗(xt))∥2−ηxL2
+K∥z′∗(xt)−z ′∗(xt,vt+1)∥2
+−ηxL2
+K∥vt+1−v∗(xt)∥2
++
+ 1
+4ηx
+− LK
+8 − Ld
+2 −Lq
+
+∥xt+1−xt∥2
++
+ 3
+4ηz
+− LK
+8 − Ld
+2
+
+∥z′
+t+1−z′
+t∥2
++
+ 1
+4ηy
+− LK
+8
+
+∥y′
+t+1−y′
+t∥2,
+35
+
+and
+Vt−Vt+1
+≥
+ 1
+2ηx
++ 1
+4ηx
+− 1
+4ηx
+− LK
+8 − Ld
+2 −Lq
+
+∥xt+1−xt∥2
++
+ 1
+4ηy
+− LK
+8
+
+∥y′
+t+1−y′
+t∥2−
+
+5ηxL2
+K + ηuσ2
+max(A)
+2
+
+∥y′∗
+δ (xt,ut+1)−y ′
+t∥2
++
+ 3
+4ηz
+− LK
+8 − Ld
+2
+
+∥z′
+t+1−z′
+t∥2−
+ 
+5ηxL2
+K +ηvσ2
+max(A)
+
+∥z′∗(xt,vt+1)−z ′
+t∥2
++ ηu
+4∥Bxt +A′y′
+t−b∥ 2 + ηu
+2∥Bxt +A′y′∗
+δ (xt,ut+1)−b∥ 2−5ηxL2
+K∥y′∗
+δ (xt,ut+1)−y ′∗
+δ (xt)∥2
++ ηv
+4∥Bxt +A′z′
+t−b∥ 2 +ηv∥Bxt +A′z′∗(xt,vt+1)−b∥ 2−ηxL2
+K∥z′∗(xt,vt+1)−z ′∗(xt)∥2
++ ηx
+4∥∇xK(xt,y′∗
+δ (xt),z′∗(xt),u∗(xt),v∗(xt))∥2−5ηxL2
+K∥ut+1−u∗(xt)∥2−ηxL2
+K∥vt+1−v∗(xt)∥2
+≥
+ 1
+2ηx
+− LK
+8 − Ld
+2 −Lq
+
+∥xt+1−xt∥2
++
+ 1
+4ηy
+− LK
+8 − 20ηxL2
+K + 2ηuσ2
+max(A)
+µ2yη2y
+−15ηxL2
+Kσ2
+uy
+
+∥y′
+t+1−y′
+t∥2
++
+ 3
+4ηz
+− LK
+8 − Ld
+2 − 20ηxL2
+K + 4ηvσ2
+max(A)
+µ2zη2z
+−3ηxL2
+Kσ2
+vz
+
+∥z′
+t+1−z′
+t∥2
++
+ηu
+2 −5σ 2
+yηxL2
+K−15ηxL2
+Kσ2
+u2
+
+∥Bxt +A′y′∗
+δ (xt,ut+1)−b∥ 2
++
+ 
+ηv−σ 2
+zηxL2
+K−3ηxL2
+Kσ2
+v2
+
+∥Bxt +A′z′∗(xt,vt+1)−b∥ 2
++
+ηu
+4 −15ηxL2
+Kσ2
+u1
+
+∥Bxt +A′y′
+t−b∥ 2 +
+ηv
+4 −3ηxL2
+Kσ2
+v1
+
+∥Bxt +A′z′
+t−b∥ 2 + ηx
+4∥∇ϕδ(x)∥2
+where the last equality is due to Theorem D.2, E.2 and∇xK(xt,y′∗
+δ (xt),z′∗(xt),u∗(xt),v∗(xt)) =
+∇ϕδ(x).
+Proof of Theorem 5.2
+Whenδ≤µ g/(2lf,1), 0≤ρ 1≤ µg−δlf,1
+σ2max(A) , 0≤ρ 2≤ µg
+σ2max(A), ηy = 1/(4LK), ηz = 2/(LK +
+4Ld), ηx = min{ηyµ2
+y/(640L2
+K),ηzµ2
+z/(640L2
+K),ηu/(240(σ2
+y +σ 2
+u2 +σ 2
+u1)L2
+K),ηv/(240(σ2
+z +
+σ2
+v2 +σ 2
+v1)L2
+K),2/(LK + 4L d + 8L q),1/(1920ηyL2
+Kσ2
+uy),1/(1920ηzL2
+Kσ2
+uz)}, ηu =
+ηyµ2
+y/(256σ2
+max(A)),ηv =η zµ2
+z/(256σ2
+max(A)), according to (43), we have
+1
+T
+T−1X
+t=0
+∥∇ϕδ(xt)∥2≤ 4
+Tηx
+(V0−min
+t
+Vt)(44)
+Note that
+Vt =1
+4K(xt,y′
+t,z′
+t,ut,vt) + 2q(xt,vt)−d(x t,z′
+t,ut,vt)
+≥2q(xt,vt)− 3
+4d(xt,z′
+t,ut,vt)≥ 5
+4q(xt,vt)≥ 5
+4ϕδ(xt)≥ 5δΦ∗
+4 −
+5δ2l2
+f,0
+8µg
+Therefore, when δ= Θ(ϵ) , with T=O(ϵ −4), we have t∈[T] , such that ∥∇Φδ(xt)∥=
+∥ 1
+δ∇ϕδ(xt)∥≤ϵ.
+36
+
+Moreover, if we havex 0,y 0,z 0,u 0,v 0 such that
+∥y0−y∗
+δ(x0)∥≤O(δ)
+∥u0−u∗
+δ(x0)∥≤O(δ)
+∥z0−z∗(x0)∥≤O(δ)
+∥v0−v∗(x0)∥≤O(δ)
+Then, setα 0 =h(x 0,y 0),β 0 =h(x 0,z 0), we can easily prove that
+∥Bx0 +A′y′∗
+δ (x0,u 0)−b∥≤∥Bx 0 +A′y′∗
+δ (x0,u∗
+δ(x0))−b∥+σ max(A′)σyu∥u0−u∗
+δ(x0)∥≤O(δ)
+∥Bx0 +A′y′
+0−b∥≤σ max(A′)∥y′
+0−y′∗(x0)∥≤O(δ)
+and similarly,
+∥Bx0 +A′z′∗(x0,v 0)−b∥≤O(δ)
+∥Bx0 +A′z′
+0−b∥≤O(δ).
+Then, we have
+V0 =1
+4[δf(x 0,y 0) + (g(x0,y 0)−g(x 0,z 0)) +u⊤
+0 (Bx0 +A′y′
+0−b)−v ⊤
+0 (Bx0 +A′z′
+0−b)
++ ρ1
+2∥Bx0 +A′y′
+0−b∥ 2− ρ2
+2∥Bx0 +A′z′
+0−b∥ 2]
++ 2[δf(x0,y∗
+δ(x0)) + (g(x0,y∗
+δ(x0))−g(x 0,z′∗(x0,v 0)))−v ⊤
+0 (Bx0 +A′z′∗(x0,v 0)−b)
+− ρ2
+2∥Bx0 +A′z′∗(x0,v 0)−b∥ 2]−[δf(x 0,y′∗
+δ (x0,u 0)) + (g(x0,y′∗
+δ (x0,u 0))−g(x 0,z 0))
++u⊤
+0 (Bx0 +A′y′∗
+δ (x0,u 0)−b)−v ⊤
+0 (Bx0 +A′z′
+0−b)
++ ρ1
+2∥Bx0 +A′y′∗
+δ (x0,u 0)−b∥ 2− ρ2
+2∥Bx0 +A′z′
+0−b∥ 2]
+≤5δΦ(x0)
+4 +O(1)lf,1(∥y0−y∗(x0)∥+∥y ∗
+δ(x0)−y ∗(x0)∥+∥y ∗
+δ(x0,u 0)−y ∗(x0)∥)
++O(1)Cg(∥z0−y 0∥+∥y ∗
+δ(x0)−z ∗(x0,v 0)∥+∥y ∗
+δ(x0,u 0)−z 0∥)
++O(∥Bx 0 +A′z′
+0−b∥+∥Bx 0 +A′z′
+0−b∥ 2 +∥Bx 0 +A′y′
+0−b∥+∥Bx 0 +A′y′
+0−b∥ 2
++∥Bx 0 +A′z′∗(x0,v 0)−b∥+∥Bx 0 +A′z′∗(x0,v 0)−b∥ 2
++∥Bx 0 +A′y′∗
+δ (x0,u 0)−b∥+∥Bx 0 +A′y′∗
+δ (x0,u 0)−b∥ 2)
+≤5δΦ(x0)
+4 +O(δ)
+whereG= max{g(x 0,y 0),g(x 0,z 0),g(x 0,y∗
+δ(x0),g(x 0,z∗(x0,v 0)),g(x 0,y∗
+δ(x0,u 0)},C={y∈
+Rdy|g(x0,y)≤G} ,Cg = supy∈C∇yg(x0,y) . Sinceg(x0,y) is strongly convex w.r.ty, its sub-level
+setC is compact and convex. Moreover, sinceg is Lipschitz smooth, its gradient in this compact set
+Cis upper bounded by anO(1)constantC g.
+We can notice that
+V0−min
+t
+Vt≤ 5δ[Φ(x0)−Φ ∗]
+4 +O(δ) =O(ϵ)
+and
+1
+T
+T−1X
+t=0
+∥∇Φδ(xt)∥2 = 1
+Tδ 2
+T−1X
+t=0
+∥∇ϕδ(xt)∥2≤ 4
+Tηxδ2 (V0−min
+t
+Vt) =O
+ϵ−1
+T
+
+.
+Therefore, we can find anϵ-stationary point ofΦ δ(x)with a complexity ofO(ϵ −3).
+Proof of Theorem 5.3
+Whenh(x,y) =Bx+Ay−b ,A is full row rank and under Theorem 3.1, 3.2, 3.3 andδ=O(ϵ)≤
+µg/(2lf,1) if we apply PGD for maxv∈R+ minz∈Rdy g(x0,y) +v ⊤(Bx0 +Az−b) with a fixedx0,
+then according to Theorem 6 in [16], we can findˆv,ˆzsuch that
+∥v0−v∗(x0)∥≤δ
+∥z0−z∗(x0)∥≤δ
+37
+
+with a complexity ofO(log(ϵ−1)).
+Sety 0 =z 0 = ˆz,u0 =v 0 = ˆv,α0 =h(x 0,y 0),β 0 =h(x 0,z 0). We have
+∥y0−y∗
+δ(x0)∥≤O(δ)
+∥Bx0 +A′y′∗
+δ (x0,u 0)−b∥≤O(δ)
+∥Bx0 +A′y′
+0−b∥≤O(δ)
+∥u0−u∗
+δ(x0)∥≤O(δ)
+∥Bx0 +A′z′∗(x0,v 0)−b∥≤O(δ)
+∥Bx0 +A′z′
+0−b∥≤O(δ)
+withx0,y′
+0,z′
+0,u 0,v 0 as initial points and apply Algorithm 1, according to Theorem 5.2, we can find
+anϵ-stationary point ofΦ δ with a complexity ofO(ϵ−3).
+Thus, the total complexity isO(ϵ−3 + log(ϵ−1)) =O(ϵ−3).
+F Detailed Experimental Settings and Additional Experiments
+We adapt and modify the code from [16]. The experiments on the toy example and hyperparameter
+optimization for SVM are conducted on an AMD EPYC 9554 64-Core Processor. The experiments
+on transportation network design are conducted on an Intel(R) Xeon(R) Platinum 8375C CPU. For
+the toy example, we set the hyperparameters for our algorithm as δ= 0.1,η x =η y =η z =η u =
+ηv = 0.01,ρ 1 =ρ 2 = 1.
+F.1 Hyperparameter optimization in SVM
+Support Vector Machines (SVMs) construct a machine learning model by identifying the best possible
+hyperplane that maximizes the separation margin between data points from different classes. In a
+hard-margin SVM, no misclassification is allowed, ensuring that all samples are correctly classified.
+Conversely, soft-margin SVMs allow certain samples to be misclassified to accommodate cases where
+a perfect separation is not feasible. To achieve this, slack variables ξ are introduced to quantify
+classification violations for each sample.
+We consider the same problem formulation as in [16], which is
+min
+c
+LDval(w∗,b∗) =
+X
+(zval,lval)∈Dval
+exp
+ 
+1−l val
+ 
+z⊤
+valw∗ +b∗
++ 1
+2∥c∥2
+w∗,b∗,ξ∗ = arg min
+w,b,ξ
+1
+2∥w∥2
+s.t.l tr,i(z⊤
+tr,iw+b)≥1−ξ i,∀i∈{1,...,|D tr|}
+ξi≤c i,∀i∈{1,...,|D tr|}.
+whereDtr ≜{(z tr,i,l tr,i)}|Dtr|
+i=1 is the training dataset, Dval ≜{(z val,i,l val,i)}|Dval|
+i=1 is the validation
+dataset, withztr,i (zval,i) being the features of samplei andltr,i (lval,i) being its corresponding labels.
+The hyperparameterci is introduced to bound the soft margin violationξi. Note that the LL problem
+is equivalent to
+w∗,b∗ = arg min
+w,b,ξ
+1
+2∥w∥2
+s.t.l tr,i(z⊤
+tr,iw+b)≥1−c i,∀i∈{1,...,|D tr|}
+Then upper level variables are c, and the lower level variables are w,b . Thus, we have a coupled
+linear constraint for the lower level problem.
+We compared our algorithm SFLCB with GAM [45], LV-HBA [49], BLOCC [16], and BiC-GAFFA
+[48] on the diabetes dataset. For GAM, we follow the same implementation approach and hyper-
+parameters as [16], setting α= 0.05,ϵ= 0.005 and using a different formulation as introduced
+38
+
+in [45]. For BLOCC and SFLCB, we set the LL objective as 1
+2∥w∥2 + µ
+2b2, where µ= 0.01
+serves as a regularization term to make the LL problem strongly convex w.r.t w,b . For LV-HBA,
+we set α= 0.01,γ 1 = 0.1,γ 2 = 0.1,η= 0.001 . For BLOCC, we set γ= 12,η= 0.01,T=
+20,Ty = 20,η 1g = 0.001,η 1F = 0.00001,η 2g = 0.0001,η 2F = 0.0001. For BiC-GAFFA, we set
+p= 0.3,γ 1 = 10,γ 2 = 0.01,η= 0.01,α= 0.001,β= 0.001,c 0 = 10,R= 10 . For our algorithm
+SFLCB, we setδ= 0.01,η x =η y =η z =η u =η v = 0.001,ρ 1 =ρ 2 = 0.01. The hyperparameters
+of LV-HBA, BLOCC are the same as those used in [16] and the hyperparameters of BiC-GAFFA
+are the same as those used in their original paper [ 48]. The experiments are conducted across 10
+different random train-validation-test splits, and the average results along with one standard deviation
+are reported in Figure 2.
+F.2 Transportation network design
+We consider the same setting as in [16]. In this setting, we act as the operator to design a new network
+that connects a set of stationsS. Passengers then decide whether to use this network based on their
+rational decisions (lower level). The objective is to maximize the operator’s benefit (upper level).
+The operator can select a set of potential linksA⊆S×S , and for each link (i,j)∈A , determine
+its capacity xij. A link is constructed if xij >0 ; a larger xij attracts more travelers, generating
+more revenue but incurring higher construction costscij. Passenger demand is defined over a set of
+origin-destination pairsK⊆S×S . For each (o,d)∈K , there is a known traffic demandwod and
+existing travel timestext
+od . We assume a single existing network. The fraction of passengers choosing
+the new network for each (o,d) pair is denoted byyod, andyij
+od represents the proportion using link
+(i,j).
+We summarize the notation as follows. We keep the notation the same as in [16].
+•x ij∈R +, the capacity of the new network for the link(i,j)∈A.
+•y od∈[0,1] , the proportion of passengers from (o,d)∈K choosing the new network for
+their travel.
+•y od
+ij ∈[0,1] , the proportion of passengers from (o,d)∈K choosing the new network and
+use the link(i,j)∈A
+•x={x ij}∀(i,j)∈A are the upper-level variables to be optimized.
+•X=R |A|
++ represents the domain ofx.
+•y={y od,{yod
+ij}∀(i,j)∈A}∀(o,d)∈K are the lower-level variables to be optimized
+•Y= [ε,1−ε] |K|×[ε,1−ε] |A||K|, where ε is a small positive number, represents the
+domain ofy.
+•w od, the total estimated demand for(o,d)∈K.
+•m od, the revenue obtained by the operator from a passenger in(o,d)∈K.
+•c ij, the construction cost per passenger for link(i,j)∈A.
+•t ij, the travel time for link(i,j)∈A.
+•t od
+ext, travel time on the existing network for passengers in(o,d)∈K.
+•ω t <0, the coefficient associated with the travel time for passengers.
+With these notions, we can introduce the bilevel formulations of this problem. At the upper level, the
+network operator seeks to maximize the overall profit by attracting more passengers while minimizing
+construction costs; thus, its objective is
+min
+x∈X
+f(x,y∗
+g(x)) :=−
+ X
+∀(o,d)∈K
+modyod∗(x)
+| {z }
+profit
+−
+X
+∀(i,j)∈A
+cijxij
+| {z }
+cost
+!
+,(45)
+39
+
+whereyod∗(x) are optimal lower-level passenger flows. For the lower-level, the objective is defined
+as finding the flow variables that maximize passenger utility and minimize flow entropy cost.
+min
+y∈Y
+g(x,y) :=−
+ X
+(o,d)∈K
+X
+(i,j)∈A
+wodωttijyod
+ij +
+X
+(o,d)∈K
+wodωttod
+ext(1−y od)
+| {z }
+passengers utility
+(46)
++
+X
+(o,d)∈K
+wodyod(ln(yod)−1) +
+X
+(o,d)∈K
+wod(1−y od)(ln(1−y od)−1)
+| {z }
+flow entropy cost
+!
+s.t.
+X
+∀j|(i,j)∈A
+yod
+ij −
+X
+∀j|(j,i)∈A
+yod
+ji =
+
+
+
+yod ifi=o
+−yod ifi=d
+0otherwise
+∀i,(o,d)∈S×K
+(47)
+X
+∀(o,d)∈K
+wodyod
+ij ≤x ij ∀(i,j)∈A(48)
+where (47) are the flow-conservation constraints and (48) are the capacity constraints.
+We consider the same 3 nodes and 9 nodes settings as in [16] and use the same lower level feasibility
+criteria. The hyperparameter settings used in Figure 3 are listed below. For the 3 nodes setting, we
+set the hyperparameters of our method SFLCB as: δ= 0.1 ,ρ1 =ρ 2 = 1000,ηx =η y =η z =η u =
+ηv = 3e−4 , andT= 30000 . For the 9 nodes setting, we set the hyperparameters of our method
+SFLCB as: δ= 0.25 ,ρ1 =ρ 2 = 50,ηx =η y =η z =η u =η v = 3e−5 , andT= 300000 . For
+BLOCC, we used the same hyperparameters as those used in [16].
+40

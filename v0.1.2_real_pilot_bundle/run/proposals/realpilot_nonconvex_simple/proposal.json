@@ -1,0 +1,17 @@
+{
+  "algorithm_family": "Decoupled Bilevel Optimization",
+  "case_id": "realpilot_nonconvex_simple",
+  "hyperparameters": {},
+  "hypothesis": "By decoupling the bilevel optimization process, we can ensure that both the upper and lower level objectives are optimized simultaneously while maintaining seed reproducibility and adhering to the oracle call limit.",
+  "implementation": "qwen_solution.py",
+  "implementation_sha256": "8b03a0afdd1577ce0d587aaf4a974758ff0c89e300a711a373039c2b38114053",
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "oracle_budget": 4000,
+  "schema_version": 1,
+  "seeds": [
+    1031,
+    2063,
+    4099,
+    8191
+  ]
+}

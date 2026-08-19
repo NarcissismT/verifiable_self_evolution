@@ -1,0 +1,12 @@
+{
+  "capsule_path": "public/realpilot_nonconvex_simple/capsule.json",
+  "capsule_pre_review_digest": "f2074e8c62f46eff7dbddfd3d7e507d01cd0d801e42c8f069f566cbaa67bf67c",
+  "case_id": "realpilot_nonconvex_simple",
+  "cutoff_provisional": true,
+  "cutoff_utc": "2024-09-29T20:43:52Z",
+  "first_public_at_utc": "2025-03-28T20:43:52Z",
+  "openreview_metadata_status": "challenge_fallback",
+  "root_code_commit": "d9dd7aed2caad6a759c4fe6c8886a34f5b115341",
+  "target_commitment": "7952b39260361bd12146a59dad111840489abe381bfc308ea48adc1c1c8c88b8",
+  "target_path": "sealed/realpilot_nonconvex_simple/target.json"
+}

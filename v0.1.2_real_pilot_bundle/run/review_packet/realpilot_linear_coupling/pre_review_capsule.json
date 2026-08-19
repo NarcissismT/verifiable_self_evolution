@@ -1,0 +1,144 @@
+{
+  "allowed_tools": [
+    "python",
+    "numpy",
+    "first_order_oracle"
+  ],
+  "artifacts": [
+    {
+      "artifact_id": "first_order_penalty_2023",
+      "available_at_utc": "2023-01-04T17:29:04Z",
+      "kind": "paper",
+      "provenance_url": "https://arxiv.org/abs/2301.01716v1",
+      "search_text_path": "realpilot_linear_coupling/artifacts/first_order_penalty_2023.txt",
+      "search_text_sha256": "dc6daa8645dda87572bb9ed9045b9a3eac839a8d7a72b34ac0ea442092541432",
+      "snapshot_path": "realpilot_linear_coupling/artifacts/first_order_penalty_2023.pdf",
+      "snapshot_sha256": "0a544e0109a20188d83e1655ef5bb051a356068991d278745e715b44dcae7001",
+      "title": "First-order penalty methods for bilevel optimization",
+      "version": "v1"
+    },
+    {
+      "artifact_id": "coupled_constraints_2024",
+      "available_at_utc": "2024-06-14T15:59:36Z",
+      "kind": "paper",
+      "provenance_url": "https://arxiv.org/abs/2406.10148v1",
+      "search_text_path": "realpilot_linear_coupling/artifacts/coupled_constraints_2024.txt",
+      "search_text_sha256": "42a3c9d5eca469869d157d4b7a7592d71bcdb793274651e7f8736412c85b93f7",
+      "snapshot_path": "realpilot_linear_coupling/artifacts/coupled_constraints_2024.pdf",
+      "snapshot_sha256": "98230e1680f3388596dccadf4bdeeef7353cc43fac99f42570c6179f7687fc47",
+      "title": "A Primal-Dual-Assisted Penalty Approach to Bilevel Optimization with Coupled Constraints",
+      "version": "v1"
+    },
+    {
+      "artifact_id": "stochastic_linear_2025",
+      "available_at_utc": "2025-04-06T16:46:03Z",
+      "kind": "paper",
+      "provenance_url": "https://arxiv.org/abs/2504.04545v1",
+      "search_text_path": "realpilot_linear_coupling/artifacts/stochastic_linear_2025.txt",
+      "search_text_sha256": "6f0a30682b092872994585137d57190dd8a58f2ebc4587fa9c313dec112f45d8",
+      "snapshot_path": "realpilot_linear_coupling/artifacts/stochastic_linear_2025.pdf",
+      "snapshot_sha256": "428aad693b67a23b17ad704b9add1d6bdd3403c9f6d19d61968055465f92c500",
+      "title": "A Doubly Stochastically Perturbed Algorithm for Linearly Constrained Bilevel Optimization",
+      "version": "v1"
+    }
+  ],
+  "capsule_id": "realpilot_linear_coupling",
+  "cutoff_utc": "2025-04-26T21:44:15Z",
+  "environment_lock_path": "realpilot_linear_coupling/environment/environment.lock",
+  "environment_lock_sha256": "2d0d80957d6117415f2d5e082fee7db939fb544b9346086f1d39355549c3abe7",
+  "field": "bilevel_stackelberg_alignment_optimization",
+  "public_problem": "Design a target-neutral first-order bilevel optimization procedure for the supplied oracle family. Return one point for each of four fixed seeds within 4,000 oracle calls. The hidden evaluator checks lower-level validity, upper-level progress, finite outputs and seed reproducibility. You may use only the frozen pre-cutoff evidence in this capsule and the declared Python interface. Coupled linear feasibility is a hard gate.",
+  "research_context": {
+    "assumptions": [
+      "Objectives are differentiable with Lipschitz gradients on a bounded box.",
+      "The lower objective is strongly convex in the lower variable for the engineering test instances.",
+      "Coupled constraints are linear and the hidden instances satisfy a strict-feasibility margin."
+    ],
+    "available_datasets": [],
+    "available_environments": [
+      {
+        "environment_id": "vse_hidden_smooth_family_v1",
+        "interface": "student_api_v1"
+      }
+    ],
+    "baseline_code": [
+      {
+        "artifact_id": "first_order_penalty_2023",
+        "baseline_id": "precutoff_penalty_synthesis_1",
+        "implementation_note": "Target-neutral engineering baseline; source paper is frozen in this capsule."
+      },
+      {
+        "artifact_id": "coupled_constraints_2024",
+        "baseline_id": "precutoff_penalty_synthesis_2",
+        "implementation_note": "Target-neutral engineering baseline; source paper is frozen in this capsule."
+      },
+      {
+        "artifact_id": "stochastic_linear_2025",
+        "baseline_id": "precutoff_penalty_synthesis_3",
+        "implementation_note": "Target-neutral engineering baseline; source paper is frozen in this capsule."
+      }
+    ],
+    "candidate_metrics": [
+      "primal_feasibility",
+      "kkt_residual",
+      "outer_objective",
+      "oracle_calls"
+    ],
+    "claim_evidence_graph": [
+      {
+        "claim": "Pre-cutoff penalty and primal-dual-assisted methods address coupled constraints using first-order information.",
+        "locator": "abstract and method sections in frozen arXiv v1 snapshot",
+        "source_id": "first_order_penalty_2023"
+      },
+      {
+        "claim": "Stochastic perturbation is one pre-cutoff route for linearly constrained bilevel problems.",
+        "locator": "abstract and method sections in frozen arXiv v1 snapshot",
+        "source_id": "coupled_constraints_2024"
+      }
+    ],
+    "compute_budget": {
+      "cpu_hours": 2,
+      "gpu_hours": 0,
+      "oracle_calls_per_seed": 4000
+    },
+    "formal_problem": "Minimize a smooth upper objective F(x,y), where y solves a smooth lower problem and (x,y) must satisfy supplied linear inequalities. Candidate methods receive first-order oracle access and projections onto a box; evaluation uses hidden feasible instances and KKT-style residuals.",
+    "known_failures_and_conflicts": [
+      {
+        "failure_id": "linear_failure_01",
+        "summary": "A penalty-only method can report a low objective while remaining infeasible if feasibility is not a hard evaluation gate."
+      }
+    ],
+    "known_results": [
+      {
+        "claim_id": "known_linear_01",
+        "summary": "Pre-cutoff penalty and primal-dual-assisted methods address coupled constraints using first-order information."
+      },
+      {
+        "claim_id": "known_linear_02",
+        "summary": "Stochastic perturbation is one pre-cutoff route for linearly constrained bilevel problems."
+      }
+    ],
+    "research_question": "Can a target-neutral first-order procedure make upper-level progress while maintaining lower optimality and coupled linear feasibility within a fixed oracle budget?",
+    "source_manifest": [
+      {
+        "artifact_id": "first_order_penalty_2023",
+        "git_commit": null,
+        "sha256": "0a544e0109a20188d83e1655ef5bb051a356068991d278745e715b44dcae7001"
+      },
+      {
+        "artifact_id": "coupled_constraints_2024",
+        "git_commit": null,
+        "sha256": "98230e1680f3388596dccadf4bdeeef7353cc43fac99f42570c6179f7687fc47"
+      },
+      {
+        "artifact_id": "stochastic_linear_2025",
+        "git_commit": null,
+        "sha256": "428aad693b67a23b17ad704b9add1d6bdd3403c9f6d19d61968055465f92c500"
+      }
+    ]
+  },
+  "schema_version": 1,
+  "semantic_leak_review_digest": "",
+  "split": "dev",
+  "target_commitment": "78502a5b6f564e429b93c83a12fe9fa3f6254c05e931291f4db2d96b9fdf9466"
+}

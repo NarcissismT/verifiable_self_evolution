@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VSE real-pilot proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "case_id", "model_digest", "algorithm_family", "hypothesis", "implementation", "implementation_sha256", "seeds", "oracle_budget"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "case_id": {"type": "string", "minLength": 1},
+    "model_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "algorithm_family": {"type": "string", "minLength": 1},
+    "hypothesis": {"type": "string", "minLength": 20},
+    "implementation": {"type": "string", "minLength": 1},
+    "implementation_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "hyperparameters": {"type": "object"},
+    "seeds": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "integer"}},
+    "oracle_budget": {"type": "integer", "minimum": 100, "maximum": 20000}
+  }
+}

@@ -1,0 +1,3608 @@
+A Fully First-Order Method for Stochastic Bilevel Optimization
+Jeongyeol Kwon1, Dohyun Kwon1, Stephen Wright1, and Robert Nowak1
+1Wisconsin Institute for Discovery, UW-Madison
+January 27, 2023
+Abstract
+We consider stochastic unconstrained bilevel optimization problems when only the ﬁrst-order gradient
+oracles are available. While numerous optimization methods have been proposed for tackling bilevel
+problems, existing methods either tend to require possibly expensive calculations involving Hessians of
+lower-level objectives, or lack rigorous ﬁnite-time performance guarantees. In this work, we propose a
+Fully First-order Stochastic Approximation (F2SA) method, and study its non-asymptotic convergence
+properties. Speciﬁcally, we show thatF2SA converges to anϵ-stationary solution of the bilevel problem
+afterϵ−7/2,ϵ −5/2, orϵ−3/2 iterations (each iteration usingO(1) samples) when stochastic noises are in
+both level objectives, only in the upper-level objective, or not present (deterministic settings), respectively.
+We further show that if we employ momentum-assisted gradient estimators, the iteration complexities can
+be improved toϵ−5/2,ϵ −4/2, orϵ−3/2, respectively. We demonstrate the superior practical performance
+of the proposed method over existing second-order based approaches on MNIST data-hypercleaning
+experiments.
+1 Introduction
+Bilevel optimization [9] arises in many important applications that have two-level hierarchical structures,
+including meta-learning [36], hyper-parameter optimization [15, 5], model selection [29, 18], adversarial
+networks[20,17],gametheory[ 39]andreinforcementlearning[ 28,40]. Bileveloptimizationcanbegenerally
+formulated as the following minimization problem:
+min
+x∈X
+F (x) :=f(x,y∗(x))
+s.t. y∗(x)∈ arg min
+y∈Rdy
+g(x,y ), (P)
+wheref andg are continuously diﬀerentiable functions andX⊆ Rdx is a convex set. The outer objectiveF
+depends onx both directly and also indirectly viay∗(x), which is a solution of the lower-level problem of
+minimizing another functiong, which is parametrized byx. Throughout the paper, we assume thatX = Rdx
+(thatis,therearenoexplicitconstraintson x)andthat g(x,y )isstronglyconvexin y,sothat y∗(x)isuniquely
+well-deﬁned for allx∈X.
+Among various approaches to(P), iterative procedures have been predominant due to their simplicity
+and potential scalability in large-scale applications. Initiated by [16], a ﬂurry of recent works study eﬃcient
+iterativeproceduresandtheirﬁnite-timeperformanceforsolving (P),see e.g.,[8,22,27,7,12,21,38,25,44].
+The underlying idea is based on an algorithm of (stochastic) gradient descent type, applied toF, that is,
+xk+1 =xk−αk∇F (xk),
+1
+arXiv:2301.10945v1  [math.OC]  26 Jan 2023
+
+with some appropriate step-sizes{αk}. Direct application of this approach requires us to compute or estimate
+the so-called hyper-gradient ofF atx, which is
+∇F (x) =∇xf(x,y∗(x))−∇ 2
+xyg(x,y∗(x))∇2
+yyg(x,y∗(x))−1∇yf(x,y∗(x)). (1)
+There are two major obstacles in computing(1). The ﬁrst obstacle is that for every givenx, we need to
+search for the optimal solutiony∗(x) of the lower problem, which results in updating the lower variabley
+multiple times before updatingx. To tackle this issue, several ideas have been proposed in [16, 22, 8] to
+eﬀectivelytracky∗(x)withoutwaitingfortoomanyinneriterationsbeforeupdating x(wediscussthisfurther
+in Section 1.2). Following in the spirit of this approach, we show that a single-loop style algorithm can still
+be implemented using only ﬁrst-order gradient estimators.
+The second obstacle, which is the main focus of this work, centers around the presence of second-order
+derivatives ofg in (1). Existing approaches mostly require an explicit extraction of second-order information
+fromg with a major focus on estimating the Jacobian and inverse Hessian eﬃciently with stochastic noises
+[25, 7, 12]. We are particularly interested in regimes in which such operations are costly and prohibitive
+[34, 18]. Some existing works avoid the second-order computation and only use the ﬁrst-order information of
+both upper and lower objectives; see [18, 38, 31, 45]. These works either lack a complete ﬁnite-time analysis
+[18, 31] or are applicable only to deterministic functions [45, 38].
+Ourgoalinthispaperistostudya fullyﬁrst-orderapproachforstochasticbileveloptimization. Wepropose
+a gradient-based approach that avoids the estimation of Jacobian and Hessian ofg, and ﬁnds anϵ-stationary
+solution ofF using only ﬁrst-order gradients off andg. Further, the number of inner iterations remains
+constant throughout all outer iterations of our algorithm. We provide a ﬁnite-time analysis of our method
+with explicit convergence rates. To our best knowledge, this work is the ﬁrst to establish non-asymptotic
+convergence guarantees for stochastic bilevel optimization using only ﬁrst-order gradient oracles.
+1.1 Overview of Main Results
+The starting point of our approach is to convert (P) to an equivalent constrained single-level version:
+min
+x∈X, y∈Rdy
+f(x,y ) s.t. g(x,y )−g∗(x)≤ 0, (P’)
+whereg∗(x) :=g(x,y∗(x)). The LagrangianLλ for (P’) with multiplierλ> 0 is
+Lλ(x,y ) :=f(x,y ) +λ(g(x,y )−g∗(x)).
+We can minimizeLλ for a givenλby, for example, running (stochastic) gradient descent. As noted in [45],
+the gradient ofLλ can be computed only with gradients off andg, and thus the entire procedure can be
+implemented using only with ﬁrst-order derivatives. In fact, such a reformulation has been attempted in
+several recent works (e.g., [30, 38, 45]). However, the challenge in handling the constrained version(P’)is to
+ﬁnd an appropriate value of the multiplierλ. Unfortunately, the desired solutionx∗ = arg minxF (x) can
+only be obtained atλ =∞ (in fact, the gradient of the constraint in(P’) is zero with respect to(x,y ) at the
+minimizer, and thus the so-calledconstraint qualiﬁcations[43] fail to hold). However, withλ =∞,Lλ(x,y )
+has unbounded smoothness which prevents us from employing gradient-descent style approaches. For these
+reasons, noneofthepreviouslyproposedalgorithmscanobtainaconsistentestimatorfortheoriginalproblem
+minxF (x) without access to second derivatives ofg.
+Nonetheless,weﬁndthat (P’)isthekeytoderivingaconsistentestimatorthatconvergestoan ϵ-stationary
+point ofF in ﬁnite timewithoutaccess to second derivatives. The main idea is to start with an initial value
+λ =λ0> 0andgraduallyincreaseitonsubsequentiterations: Atiteration k,λk =O(kb)forsome b∈ (0, 1].
+The success of this approach depends crucially on the growth rate captured by the parameterb. On one
+2
+
+hand, fast growth ofλk removes the bias quickly. On the other hand, fast growth ofλk forces a fast decay of
+step-sizes due to the growing nonsmoothness ofLλk, which slows down the overall convergence.
+Ourmaintechnicalcontributionistocharacterizeanexplicitgrowthrateof λk thatoptimizesthetrade-oﬀ
+between bias and step-sizes, and to provide a non-asymptotic convergence guarantee with explicit rates for
+the proposed algorithm.
+• We propose a fully ﬁrst-order method,F2SA, for stochastic bilevel optimization.F2SA is a single-loop
+style algorithm: For every outer variable update we only update inner variables a constant number of
+times.
+• We characterize explicit convergence rates ofF2SA in diﬀerent stochastic regimes. It converges to an
+ϵ-stationary-point of(P)after ˜O(ϵ−3.5), ˜O(ϵ−2.5), or ˜O(ϵ−1.5) iterations if both∇f and∇g contain
+stochastic noise, if only access to∇f is noisy, or if we are in deterministic settings, respectively.
+These complexities can be improved to˜O(ϵ−2.5), ˜O(ϵ−2), or ˜O(ϵ−1.5), respectively, if momentum or
+variance-reduction techniques are employed. The crux of the analysis is to understand the eﬀect of the
+value of multipliersλk on step-sizes, noise variances, and bias.
+• We demonstrate the proposed algorithm on a data hyper-cleaning task for MNIST. Even though our
+theoretical guarantees are not better than existing methods that use second-order information, we
+illustrate thatF2SA can even outperform such methods in practice.
+1.2 Related Work
+Bilevel optimization has a long and rich history since its ﬁrst introduction in [6]. A number of algorithms
+have been proposed for bilevel optimization. Classical results include approximation descent [41] and penalty
+function method [24, 3, 42] for instance; see [9] for a comprehensive overview. These results often deal with
+a several special case of bilevel-optimization and only provide asymptotic convergence. Note that the penalty
+function methods in [24,3,42] are speciﬁcally developed for the subclass of their own interest, and cannot be
+applied to general non-convex objectivesF.
+More recent results on bilevel optimization focuses on non-asymptotic analysis when the lower-level
+problem is strongly-convex iny, since in this case∇F (x) can be expressed in the closed-form(1)using the
+implicit function theorem [10,11]. As mentioned earlier, there are two major challenges in this setting: (i)
+ﬁnding a good approximation ofy∗(x), and (ii) the evaluation of Jacobian and Hessian inverse ofg. The
+work in [16] establishes the ﬁrst non-asymptotic analysis of a double-loop algorithm, where in the inner
+problem we ﬁnd an approximate solution ofy∗(x)givenx, and use it to evaluate an approximation of∇F (x).
+Furthermore, [16] uses the Neuman series approximation to estimate the Hessian inverse when we only have
+access to the stochastic oracles (of second-order derivatives).
+Thepaper[ 16]wasfollowedbyaﬂurryofworkthatimprovedtheirresultinnumerousways. Forinstance,
+[22,8,7,25] develop a single-loop style update by properly choosing two step-sizes for the inner and outer
+iterations, along with the improved sample complexity,i.e., the total number of accesses to ﬁrst and second-
+order stochastic oracles. The overall convergence rate is further optimized by using variance-reduction and
+momentum techniques [27,12,21,44,23]. We do not aim to compete with the convergence rates obtained
+from this line of work, since all of these method have access to second-order derivatives, even though some
+computational cost might be saved if good automatic diﬀerentiation packages [33] are available. Rather, we
+avoid the needs for second-order information altogether, allowing a simple algorithm with low per-iteration
+complexity for large scale applications.
+The results most closely related to ours can be found in [45,38]. [38] considers a primal-dual approach
+for (P’), but their main focus is to get a biased solution wheng is only convex (not strongly convex), so
+the lower-level problem may have multiple solutions. Their analysis is restricted to the case in which the
+3
+
+overall Lagrangian is strongly-convex inx (which is not usually guaranteed) and they do not provide any
+guarantees in terms of the true objectiveF. More recent work in [45] is the closest to ours, but they only
+consider deterministic gradient oracles, and do not provide convergence guarantees in terms ofF. Moreover,
+they prove a convergence guarantee ofO(k−1/4), whereas we show an improved guarantee of˜O(k−2/3)in
+the deterministic case.
+We note that there is a line of work that studies a diﬀerent version of the bilevel problem which has no
+coupling between two variablesx andy (e.g., see [14, 37, 26]). In [1, 2], the Lagrangian formulation is
+exploited with iteratively increasing multiplier. Note that the nature of single-variable bilevel formulation is
+diﬀerent from(P)as the former is only interesting when the lower-level problem allows a multiple (convex)
+solution set. To our best knowledge, the idea of iteratively increasingλk with its non-asymptotic guarantee is
+newinthecontextofsolving (P),andhasthemeritofavoiding(possibly)expensivesecond-ordercomputation.
+2 Preliminaries
+We state several assumptions on(P)to specify the problem class of interest. We assume that optimal value of
+theouter-levelobjectiveisboundedbelow F∗ := arg minxF (x)>−∞. Weconsider (P)withthefollowing
+assumptions on objective functions:
+Assumption 1The following holds for objective functionsf andg:
+1. f is continuously diﬀerentiable andlf,1-smooth jointly in(x,y ).
+2. g is continuously diﬀerentiable andlg,1-smooth jointly in(x,y ).
+3. For every¯x∈X,‖∇yf(¯x,y )‖ is bounded bylf,0 for ally.
+Assumption 1 assumes the smoothness of both objective functions and boundedness of∇yf. This has
+been a standard assumption in bilevel optimization [16]. In this work, we focus on well-conditioned bilevel
+optimization problems,i.e.,whenF (x) is well-deﬁned, continuous and smooth. The following assumption
+has been the standard suﬃcient condition for well-conditioned bilevel problems [16]:
+Assumption 2The following holds for the lower-level objectiveg:
+1. For every¯x∈X,g(¯x,y ) isµg strongly-convex iny for someµg > 0.
+2. g is two-times continuously diﬀerentiable, and∇2g islg,2-Lipschitz jointly in(x,y ).
+We assume that we can access ﬁrst-order information of objective functions only through stochastic gradient
+oracles:
+Assumption 3Weaccessthegradientsofobjectivefunctionsviaunbiasedestimators ∇f(x,y ;ζ),∇g(x,y ;φ)
+where:
+E[∇f(x,y ;ζ)] =∇f(x,y ),
+E[∇g(x,y ;φ)] =∇g(x,y ),
+and the variances of stochastic gradient estimators are bounded:
+E[‖∇f(x,y ;ζ)−∇f(x,y )‖2]≤σ2
+f,
+E[‖∇g(x,y ;φ)−∇g(x,y )‖2]≤σ2
+g.
+4
+
+Throughoutthepaper, weassumethatAssumptions1-3holdunlessspeciﬁedotherwise. Weusethefollowing
+deﬁnition as the optimality criteria for solving (P):
+Deﬁnition 2.1 (ϵ-stationary point) Apoint xiscalled ϵ-stationaryif‖∇F (x)‖2≤ϵ. Astochasticalgorithm
+is said to achieve anϵ-stationary point inK iterations ifE[‖∇F (xK)‖2]≤ϵ where the expectation is over
+the stochasticity of the algorithm.
+Notation. We useOP(·) when we state the order of constants which depends on instance-dependent param-
+eters (e.g.,Lipschitz, strong-convexity, smoothness parameters). We sayak≍bk ifak andbk decreases (or
+increases) in the same rate ask→∞ ,i.e., limk→∞ak/bk = Θ(1). Throughout the paper,‖·‖ denotes the
+Euclidean norm on ﬁnite dimensional space.
+3 Algorithm
+In this section, we develop an algorithm that converges to a stationary point of the bilevel problem (i.e., a
+stationary point ofF (x) =f(x,y∗(x))) and makes use only of gradients off andg. Recall the equivalent
+formulation (P’). To see how we can avoid second-order derivatives, we observe the gradient of∇Lλ:
+∇xLλ(x,y ) =∇xf(x,y ) +λ(∇xg(x,y )−∇g∗(x)),
+∇yLλ(x,y ) =∇yf(x,y ) +λ∇yg(x,y ).
+Note that
+∇g∗(x) =∇xg(x,y∗(x)) +∇xy∗(x)∇yg(x,y∗(x)) =∇xg(x,y∗(x)),
+due to the optimality condition forg aty∗(x). Thus, we could consider optimizingLλ(x,y ) by introducing
+an auxiliary variablez that chasesy∗(x), and setting up an alternative bilevel formulation(P)with outer-level
+objectiveLλ(x′,z ), outer variablex′ = (x,y ), and inner variablez. However, such an approach settles in a
+diﬀerent landscape from that ofF (x), resulting in a bias. The question is how tightly we can control this
+bias without compromising too much smoothness of the alternative functionLλ, which aﬀects the overall
+step-size design and noise variance.
+To control the bias, we need a better understanding of how the functionsLλ andF (x) are related. Let us
+introduce an auxiliary functionL∗
+λ deﬁned as:
+L∗
+λ(x) := min
+y
+Lλ(x,y ).
+Note that ifλ > 2lf,1/µg, then for every¯x∈ X,Lλ(¯x,y ) is at least(λµg/2) strongly-convex iny, and
+therefore its minimizery∗
+λ(x) is uniquely well-deﬁned:
+y∗
+λ(x) := arg min
+y
+Lλ(x,y ). (2)
+SinceF (x) = limλ→∞L∗
+λ(x) for everyx∈X, we could expect thatL∗
+λ(x) is a well-deﬁned proxy ofF (x)
+for suﬃciently largeλ> 0. The following lemma conﬁrms this intuition.
+Lemma 3.1For anyx∈X andλ≥ 2lf,1/µg,∇L∗
+λ(x) is given by
+∇xLλ(x,y∗
+λ(x)) =∇xf(x,y∗
+λ(x)) +λ(∇xg(x,y∗
+λ(x))−∇xg(x,y∗(x))).
+Furthermore, we have
+‖∇F (x)−∇L∗
+λ(x)‖≤ Cλ/λ,
+whereCλ := 4lf,0lg,1
+µ2g
+(
+lf,1 + 2lf,0lg,2
+µg
+)
+.
+5
+
+Algorithm 1F2SA
+Input: step sizes:{αk,γk}, multiplier diﬀerence sequence:{δk}, inner-loop iteration count:T, step-size
+ratio: ξ, initializations:λ0,x 0,y 0,z 0
+1: fork = 0...K− 1 do
+2: zk,0←zk,yk,0←yk
+3: fort = 0...T− 1do
+4: zk,t+1←zk,t−γkhk,t
+gz
+5: yk,t+1←yk,t−αk(hk,t
+fy +λkhk,t
+gy )
+6: end for
+7: zk+1←zk,T,yk+1←yk,T
+8: xk+1←xk−ξαk(hk
+fx +λk(hk
+gxy−hk
+gxz))
+9: λk+1←λk +δk
+10: end for
+Importantly,∇L∗
+λ(x) can be computed only with ﬁrst-order derivatives of bothf andg. Thus any ﬁrst-order
+method that ﬁnds a stationary point ofL∗
+λ(x)approximately follows the trajectory ofxupdated with the exact
+∇F (x), with a bias ofO(1/λ).
+Ourstrategyistouse ∇L∗
+λ(x)asaproxyto ∇F (x)forgeneratingasequenceofiterates {xk}. Accordingly,
+we introduce sequences{yk} and{zk} that approximatey∗
+λk(xk) andy∗(xk), respectively. We gradually
+increaseλk withk, so that the bias in the sequence{xk} converges to 0.
+Our FullyFirst-order StochasticApproximation (F2SA) method is shown in Algorithm 1. We emphasize
+that the method works withstochasticgradients that are independent unbiased estimators of gradients,i.e.,
+hk,t
+gz :=∇yg(xk,zk,t;φk,t
+z ), hk,t
+fy :=∇yf(xk,yk,t;ζk,t
+y ),
+hk,t
+gy :=∇yg(xk,yk,t;φk,t
+y ),hk
+gxy :=∇xg(xk,yk+1;φk
+xy),
+hk
+fx :=∇xf(xk,yk+1;ζk
+x),hk
+gxz :=∇xg(xk,zk+1;φk
+xz).
+The algorithm can setT = 1 in conjunction with an appropriate choice ofξ, allowing a fully single-loop
+update for all variables.
+3.1 Step-Size Design Principle
+We describe how we design the step-sizes for Algorithm 1 to achieve convergence to aϵ-stationary point ofF.
+Severalconditionsmustbesatisﬁed. Aswillbeshownintheanalysis,with (λkµg/2)-strongconvexityof Lλk
+iny, one-step inner iteration ofyk,t is a contraction mapping towardy∗
+λ,k with rate1−O(µgβk). Henceforth,
+we often use the notatinoβk :=αkλk, which is the eﬀective step-size for updatingyk. For simplicity, we
+denotey∗
+λ,k :=y∗
+λk(xk) andy∗
+k :=y∗(xk).
+We now describe the speciﬁc rules. First, essentially the step size we use forxk is ξαk, and thus,
+αk = Ω(1/k)(otherwise,∑
+kαk <∞, andxk fails to converge). On the other hand, sinceβk =αkλk is the
+eﬀective step size for updatingyk, we needβk <O (1/lg,1) =O(1). Together, these observations imply that
+the maximum rate of growth forλk cannot exceedO(k).
+Second, note that‖xk+1−xk‖is (roughly) proportional to
+‖∇F (xk)‖ +Cλ/λk +λk‖yk−y∗
+λ,k‖ +λk‖zk−y∗
+k‖.
+This rate is optimized when‖yk−y∗
+λ,k‖ ≍ ‖zk−y∗
+k‖ ≍λ−2
+k . Thus, the ideal growth rate forλk is
+‖yk−y∗
+λ,k‖1/2 or‖zk−y∗
+k‖1/2. We will design the rate of convergence ofyk andzk to be the same,i.e.,
+6
+
+Figure 1:yk should move faster thany∗
+λk(xk) moves, and stay withinO(1/λk)-ball aroundy∗
+λk(xk).
+βk≍γk. Forinstance, whenwehavestochasticnoisesinthegradientestimateof g,i.e.,σ2
+g > 0, theexpected
+convergence rate of‖yk−y∗
+λk‖2 isO(βk), since the sequence is optimized for strongly convex functions.
+This suggestsλk≍β−1/4
+k as the ideal rate of growth forλk.
+The crux of Algorithm 1 is how wellyk (andzk) can chasey∗
+λk(xk) (resp. y∗(xk)) whenxk andλk are
+changing at every iteration. We characterize ﬁrst how fasty∗
+λ(x) moves in relation to the movements ofλ and
+x.
+Lemma 3.2For anyx1,x 2∈X and for anyλ2≥λ1≥ 2lf,1/µg, we have
+‖y∗
+λ1(x1)−y∗
+λ2(x2)‖≤ 2(λ2−λ1)
+λ1λ2
+lf,0
+µg
++lλ,0‖x2−x1‖,
+for somelλ,0≤ 3lg,1/µg.
+For Algorithm 1 to converge to a desired point,yk should move suﬃciently fast toward the current targety∗
+λ,k
+every iteration, dominating the movement of targety∗
+λ,k that results from updates toxk andλk (see Figure 1).
+At a minimum, the following condition should hold (in expectation):
+‖yk+1−y∗
+λ,k‖<‖yk−y∗
+λ,k−1‖.
+Since‖yk+1−y∗
+λ,k‖2 can be bounded withT-steps of1−O(µgβk) contractions, starting fromyk, we
+require
+(1−O(Tµgβk))‖yk−y∗
+λ,k‖2<‖yk−y∗
+λ,k−1‖2.
+Now, applying the bound in Lemma 3.2, the minimal condition is given by:
+‖y∗
+λ,k−1−y∗
+λ,k‖≤ (lf,0/µg)· (δk/λ2
+k) +lλ,0‖xk−xk−1‖≤ Tµgβk‖yk−y∗
+λ,k−1‖.
+Notethat‖yk+1−y∗
+λ,k‖shoulddecayfasterthan λ−1
+k . Otherwise,thebiasinupdating xk usingyk (toestimate
+∇L∗
+λk) is larger thanλk‖yk+1−y∗
+λ,k‖, and this amount might blow up. Also, it can be easily seen that
+‖xk−xk−1‖ = Ω(ξβk‖yk−y∗
+λ,k−1‖). We can thus derive two simple conditions:
+δk
+λk
+≤OP(1)·βk, ξ
+T <O P(1),
+7
+
+Algorithm 2F3SA
+Input: step sizes:{αk,γk}, multiplier diﬀerence sequence:{δk}, momentum-weight sequence{ηk}, step-
+size ratio:ξ, initialization:λ0,x 0,y 0,z 0
+1: fork = 0...K− 1 do
+2: zk+1←zk−γk˜hk
+gz
+3: yk+1←yk−αk(˜hk
+fy +λk˜hk
+gy)
+4: xk+1←xk−ξαk(˜hk
+fx +λk(˜hk
+gxy− ˜hk
+gxz))
+5: λk+1←λk +δk
+6: end for
+whereOP(1) are instance-dependent constants. Ifλk grows in some polynomial rate, thenδk/λk =O(1/k)
+and the ﬁrst condition is satisﬁed provided thatβk = Ω(1/k). The second condition indicates the number
+of inner iterationsT required for each outer iteration. We can setT = 1 (thus making the algorithm single-
+loop) by settingξ suﬃciently small. Alternatively, we can setξ = 1 chooseT > 1 to depend on some
+instance-speciﬁc parameters.
+3.2 Extension: Integrating Momentum
+Given the simple structure of Algorithm 1, we can integrate variance-reduction techniques to improve the
+overall convergence rates. One relevant technique is the momentum-assisting technique of [27] for stochastic
+bilevel optimization. To simplify the presentation, we consider a fully single-loop variant by settingT = 1.
+To apply the momentum technique, we only need to replace the simple unbiased gradient estimatorsh
+with momentum-assisted gradient estimators˜h. For instance,˜hk
+z can be deﬁned with a proper momentum
+weight sequenceηk∈ (0, 1] as follows:
+˜hk
+z :=∇yg(xk,zk;φk
+z) + (1−ηk)
+(
+˜hk−1
+z −∇yg(xk−1,zk−1;φk
+z)
+)
+.
+Other quantities˜hfy, ˜hgy, ˜hfx, ˜hgxy, ˜hgxz are deﬁned similarly, with the same momentum-weight sequence.
+WedeferthefulldescriptionofthosequantitiestoAppendixC.Theversionofouralgorithmthatincorporates
+momentumiscalled Faster FullyFirst-order StochasticApproximation( F3SA);itisdescribedinAlgorithm2,
+where we simply replaceh with ˜h. Note that we have additional moment-weight parameters{ηk}.
+4 Main Results
+In this section, we provide non-asymptotic convergence guarantees of the proposed algorithms. For Algo-
+rithm1, weproveinTheorem4.1thattheweightedsumof ‖∇F (xk)‖2 inexpectationisboundedfromabove.
+Choosing suitable step sizes, the estimate guarantees the convergence rate, which depends on the presence of
+stochastic noises in Corollaries 4.2. The similar results with better convergence rates and weaker assumptions
+hold true for Algorithm 2, as shown in Theorem 4.3 and Corollary 4.4.
+4.1 Main Result for Algorithm 1
+Inthissectionweprovidenon-asymptoticconvergenceguaranteesoftheproposedalgorithms. ForAlgorithm1,
+we prove in Theorem 4.1 that the weighted sum of‖∇F (xk)‖2 in expectation is bounded from above. By
+choosing suitable step sizes, the estimate yields a convergence rate. Dependence on stochastic noises is
+explicatedinCorollaries4.2. Similarresultswithbetterconvergenceratesandweakerassumptionsareproved
+for Algorithm 2; see Theorem 4.3 and Corollary 4.4.
+8
+
+4.2 Main Result for Algorithm 1
+Two mild assumptions are required for exploiting the smoothness ofy∗
+λ(x).
+Assumption 4THe gradient with respect tox is bounded for functionsf andg:
+1. For every¯y,‖∇xf(x, ¯y)‖≤ lf,0 for allx∈X.
+2. For every¯y,‖∇xg(x, ¯y)‖≤ lg,0 for allx∈X.
+Assumption 5f is two-times continuously diﬀerentiable, and∇2f islf,2-Lipschitz in(x,y ).
+The smoothness ofy∗
+λ(x) is used to keep the number of eﬀective inner iterations constant throughout all
+outer-iterations, as in [8].
+Before we state our convergence result, let us deﬁne some additional notation. We denote the second-
+moment bound of thex update,xk+1−xk, asM := max(l2
+f,0 +σ2
+f,l 2
+g,0 +σ2
+g). We also denotel∗,0 =
+max(1,lλ0,0) andl∗,1 =lλ0,1 whereλ0 is the starting value of Lagrange multiplier.
+We are now ready to state our main results for Algorithm 1.
+Theorem 4.1Suppose that Assumptions 1 - 5 hold, and parameters and step-sizes are chosen such that
+λ0≥ 2lf,1/µg and
+βk≤γk≤ min
+( 1
+4lg,1
+, 1
+4Tµg
+)
+, αk≤ min
+( 1
+8lf,1
+, 1
+2ξlF,1
+)
+, (3a)
+ξ
+T <c ξµg· max
+(
+lg,1l2
+∗,0, l∗,1
+√
+M
+)−1
+, δk
+λk
+≤ Tµgβk
+16 (3b)
+for allk≥ 0 with a proper absolute constantcξ > 0. Then for anyK≥ 1, Algorithm 1 iterates satisfy
+K−1∑
+k=0
+ξαkE[‖∇F (xk)‖2]≤OP(1)·
+∑
+k
+ξαkλ−2
+k +OP(σ2
+f)·
+∑
+k
+α2
+kλk +OP(σ2
+g)·
+∑
+k
+γ2
+kλk +OP(1),
+whereOP(1) are instance-dependent constants.
+The proof of Theorem 4.1 is given in Appendix B. At a high level, our analysis investigates the decrease in
+expectation (withk) of the potential functionVk deﬁned by
+Vk :=(F (xk)−F∗) +lg,1λk‖yk−y∗
+λk(xk)‖2 + λklg,1
+2 ‖zk−y∗(xk)‖2, (4)
+whereF∗ is the minimum value ofF andy∗
+λ andy∗ are given in(2)and (P), respectively. That is, in addition
+to the decrease in values ofF andzk−y∗
+k which have been standardized in literature, we track the error
+betweenyk andy∗
+λk(xk) sincey∗
+λ,k is the key to compute true∇F (xk) only with gradients. It is also shown
+in the proof that the right scaling factor for the tracking errors isOP(λk).
+We now describe how we design step sizes. Note that the conditions(3a)are standard conditions on the
+step sizes for gradient-based methods with smooth functions. The conditions(3b)arise from the double-loop
+nature of the problem, as discussed in Section 3.1. In accordance with the step-size design rule(3), we
+propose the following:
+T = max
+(
+32, (cξµg)−1 max
+(
+lg,1l2
+∗,0,
+√
+Ml∗,1
+))
+,
+ξ = 1,αk = cα
+(k +k0)a, γk = cγ
+(k +k0)c, (5)
+9
+
+and for the multiplier increase sequence{δk},
+δk = min
+(Tµg
+16 αkλ2
+k, γk
+2αk
+−λk
+)
+, (6)
+with some rate constantsa,c∈ [0, 1]anda≥c. We design the starting valueλ0 of the Lagrange multiplier
+and the constants as
+k0≥ 4
+µg
+max
+(ξlF,1
+2 ,Tl g,1,lf,1
+)
+, λ0≥ 2lf,1
+µg
+,
+cγ = 1
+µgk1−c
+0
+, cα = 1
+2λ0µgk1−a
+0
+. (7)
+These choices simplify the convergence rate analysis, but any set of choices can be used as long as it satisﬁes
+(3). With the choices above, we can specify the rate of convergence in three diﬀerent regimes of stochastic
+noises.
+Corollary 4.2Suppose that the conditions of Theorem 4.1 hold, with step-sizes designed as in(5),(6), and
+(7). LetR be a random variable drawn from a uniform distribution over{0,...,K − 1}. Then the following
+convergence results hold afterK iterations of Algorithm 1.
+(a) Ifstochasticnoisesarepresentinbothupper-levelobjective f andlower-levelobjective g (i.e.,σ2
+f,σ 2
+g >
+0), then by settinga = 5/7andc = 4/7 in(5)and (7), we obtainE[‖∇F (xR)‖2]≍ logK
+K2/7,
+(b) If stochastic noises are present only inf (i.e.,σ2
+f > 0),σ2
+g = 0), then by settinga = 3/5 andc = 2/5
+in(5) and (7), we obtainE[‖∇F (xR)‖2]≍ logK
+K2/5,
+(c) If we have access to exact information aboutf andg (i.e.,σ2
+f =σ2
+g = 0), then by settinga = 1/3 and
+c = 0 in(5) and (7), we obtain‖∇F (xK)‖2≍ logK
+K2/3,
+As these results show, stronger convergence results can be proved when noise is present in fewer places in
+the problem. If stochastic noise is present only in the upper-level rather than in both levels, the rate can be
+improved fromO(k−2/7) toO(k−2/5). In deterministic settings (no noise), we get a rate ofO(k−2/3). This
+rate compares to theO(k−1) rate that can be obtained with second-order based methods.
+4.3 Main Result for Algorithm 2
+When we use the momentum-assisting technique, we require the stochastic functions to be well-behaved as
+well.
+Assumption 6Assumption 1 holds forf(x,y ;ζ) andg(x,y ;φ) with probability1.
+One technical beneﬁt of the momentum technique is that now we no longer require the bounded-gradient
+assumption w.r.t.x (Assumption 4) or the smoothness of Hessian off (Assumption 5) for the analysis, as we
+no longer make use of the smoothness ofy∗
+λ. We show the following convergence result for Algorithm 2.
+Theorem 4.3Suppose Assumptions 1-3 and 6 hold. If step-size parameters are chosen such thatλ0 ≥
+2lf,1/µg and
+βk≤γk≤ 1
+16lg,1
+, ξαk≤ 1
+lF,1
+, ξ≤cξ
+µg
+lg,1l2
+∗,0
+, δk
+λk
+≤ µgβk
+8 , (8a)
+10
+
+η0 =η1 = 1, max
+(
+2γk−1−γk
+γk−1
+,cη
+l3
+g,1
+µg
+γ2
+k
+)
+≤ηk+1≤ 1, δk/γk =o(1), (8b)
+with proper absolute constantscξ,cη > 0, then for anyK≥ 1, Algorithm 2 satisfy
+K−1∑
+k=0
+ξαkE[‖∇F (xk)‖2]≤OP(1)·
+∑
+k
+ξαkλ−2
+k +OP(σ2
+f)·
+∑
+k
+η2
+k+1
+γkλk
++OP(σ2
+g)·
+∑
+k
+η2
+k+1λk
+γk
++OP(1),
+whereOP(1) are instance-dependent constants.
+The proof of Theorem 4.3 appears in Appendix C. We introduce the following step-size design, consistent
+with (8).
+αk = cα
+(k +k0)a, γk = cγ
+(k +k0)c, ηk = (k + 1)−2c (9a)
+ξ≤cξ
+µg
+lg,1l2
+∗,0
+, δk = γk
+αk
+−λk, λ0≥ 2lf,1
+µg
+, (9b)
+k0≥ 128
+µg
+max
+(
+ξlF,1,lg,1
+√
+cηlg,1
+µg
+)
+,cγ = 8
+µgk1−c
+0
+, cα = 8
+µgλ0k1−a
+0
+, (9c)
+with some rate constantsa,c∈ [0, 1] anda≥c. As a corollary, we can obtain faster convergence rates for
+Algorithm 2 than Algorithm 1.
+Corollary 4.4Suppose the conditions of Theorem 4.3 hold. Suppose that Algorithm 2 is run with step-sizes
+are designed as in(9). LetR be a random variable drawn from a uniform distribution over{0,...,K − 1}.
+Then the following convergence results hold afterK iterations of Algorithm 2.
+(a) Ifstochasticnoisesarepresentinbothupper-levelobjective f andlower-levelobjective g (i.e.,σ2
+f,σ 2
+g >
+0), then by settinga = 3/5andc = 2/5 in(9), we obtainE[‖∇F (xR)‖2]≍ logK
+K2/5.
+(b) If stochastic noises are present only inf (i.e.,σ2
+f > 0),σ2
+g = 0), then by settinga = 1/2andc = 1/4
+in(9), we obtainE[‖∇F (xR)‖2]≍ logK
+K1/2.
+(c) If we have access to exact information aboutf andg (i.e.,σ2
+f =σ2
+g = 0), then by settinga = 1/3 and
+c = 0 in(9), we obtain‖∇F (xK)‖2≍ logK
+K2/3.
+The improvements in rates are diﬀerent in diﬀerent stochasticity regimes. For instance, the sample complexity
+required to achieveϵ-stationary point is˜OP(ϵ−7/2) without momentum and˜OP(ϵ−5/2) with momentum — a
+factor ofO(ϵ) improvement — when stochastic noises are present in both levels. In contrast, when stochastic
+noises are only in the upper-level objective, then the overall sample complexity is tightened from˜OP(ϵ−5/2)
+to ˜OP(ϵ−2), anO(ϵ−0.5) improvement. Whether Algorithm 2 achieves the optimal sample complexity for
+fully ﬁrst-order methods is an interesting topic for future work.
+4.4 Discussion
+Because our algorithms do not access second-order derivatives ofg, their iteration convergence rate is slower,
+decreasing fromO(k−1/2) (e.g., [8]) toO(k−2/7) for algorithms without momentum and fromO(k−2/3)
+(e.g., [27]) toO(k−2/5)for algorithms with momentum. This is not unexpected since we use less information.
+11
+
+(a) (b)
+Figure 2:Outer objective (validation) loss with label corruption rate: (a)p = 0.1, (b)p = 0.3.
+Our experiments, perhaps surprisingly, do not show a slowdown in the convergence speed. In fact, ﬁrst-
+order methods even outperform existing methods that use second-order information ofg, as we show in
+Section 5. We add that in practice, if a bias ofO(1/λ2)-bias in the solution is not critical to the overall
+performance, then we can setλk :=λconstant at all iterations and choose more aggressive step-sizes,e.g,
+αk≍k−1/2,γk≍k−1/2 as in [8]. Such a strategy yields faster convergence to a certain biased point.
+When deterministic gradient oracles are available, the authors in [45] employed the so calleddynamic-
+barriermethod[19]todecidethevalueof λk ateveryiteration, basedon ‖∇yg(xk,zk+1)−∇yg(xk,yk+1)‖.
+Suchanapproachrequirespreciseknowledgeofthelatterquantity,whichisnotavailableinstochasticsettings.
+Our result shows that a simple design of polynomial-rate growth ofλk is suﬃcient; an adaptive choice is not
+needed for good practical performance. Further, the convergence rate reported in [45] isk−1/4, while our
+result guaranteesk−2/3 convergence rate in deterministic settings.
+5 Experiments
+We demonstrate the proposed algorithms on a data hyper-cleaning task involving MNIST [13]. We are given
+a noisy training setDtrain :={(˜xi, ˜yi)}n
+i=1 with the label˜yi being randomly corrupted with probabilityp< 1.
+We are also given a small but clean validation setDval :={(xi,yi)}m
+i=1. The goal is to assign weights to each
+training data point so that the model trained on the weighted training set yields good performance on the
+validation set. This task can be formulated as bilevel opimization problem, as follows:
+min
+λ
+∑m
+i=1l(xi,yi;w∗)
+s.t. w∗∈ arg min
+w
+∑n
+i=1σ(λi)l(˜xi, ˜yi;w) +c‖w‖2.
+whereσ(·)isasigmoidfunction, l(x,y ;w)isalogisticlossfunctionwithparameter wandcisaregularization
+constant. We usen = 19000 training samples andm = 1000 clean validation samples with regularization
+parameterc = 0.01. We do not include momentum-assisted methods in our discussion, since we do not
+observe a signiﬁcant improvement over theF2SA approach of Algorithm 1 .
+We demonstrate the performance of Algorithm 1 (F2SA) and the second-order based method (SOBO)
+with batch sizes50 and 500. We note that several existing second-order methods are in principle the same
+12
+
+when momentum or variance-reduction techniques are omitted [16, 22, 8], so we use the implementation
+of stocBiO [25] as a representative of the other second-order methods. As a baseline, we also add a result
+from training without bilevel formulation (Without BO),i.e., train on all samples as usual, ignoring the label
+corruption. Results are shown in Figure 2.1
+Althoughiterationcomplexityisworseforﬁrst-ordermethodsthanSOBO,weobservethat F2SAisatleast
+on par with SOBO in this example. It can even give superior performance when the batch size is small. We
+conjecture that stochastic noises in Hessian become signiﬁcantly larger than those in gradients, degrading the
+performance of SOBO. In our experiment, we also observe that Neumann approximation [16] for estimating
+the Hessian-inverse may induce non-negligible bias in practice.2 In contrast, our fully ﬁrst-order method
+F2SA is much less sensitive to small batch sizes and free of bias.
+6 Future work
+We study fully ﬁrst-order methods for stochastic bilevel optimization and their non-asymptotic performance.
+We conclude the paper with discussions on several future directions.
+LowerBound Aswediscussed,weobserveagapbetweenthefullyﬁrst-ordermethodandexistingmethods
+that use second-order information ofg. We conjecture that this gap is fundamental, and it would be an
+interesting future question to investigate the fundamental limits of fully ﬁrst-order methods.
+More Lower-Level Problems There are already several recent work that considers a more challenging
+case when the lower-level optimization problem can be non-strongly-convex [31, 30, 4] and non-smooth
+[32]. The potential beneﬁt of the ﬁrst-order method over existing second-order based methods is that it can
+still be considered to tackle such scenarios, whereas the formula(1) is only available for well-conditioned
+lower-levelproblems. Webelieveitisanimportantfuturedirectiontostudyamoregeneralclassof (P)beyond
+strongly-convex lower-level problems with fully ﬁrst-order methods. Adding variable-dependent constraints
+to the lower-level problem would also lead to an interesting extension of fully ﬁrst-order approaches.
+References
+[1] M. Amini and F. Youseﬁan. An iterative regularized incremental projected subgradient method for a
+class of bilevel optimization problems. In2019 American Control Conference (ACC), pages 4069–4074.
+IEEE, 2019.
+[2] M.AminiandF.Youseﬁan. Aniterativeregularizedmirrordescentmethodforill-posednondiﬀerentiable
+stochastic optimization.arXiv preprint arXiv:1901.09506, 2019.
+[3] G. Anandalingam and D. White. A solution method for the linear static stackelberg problem using
+penalty functions.IEEE Transactions on automatic control, 35(10):1170–1173, 1990.
+[4] M. Arbel and J. Mairal. Non-convex bilevel games with critical point selection maps.arXiv preprint
+arXiv:2207.04888, 2022.
+[5] F. Bao, G. Wu, C. Li, J. Zhu, and B. Zhang. Stability and generalization of bilevel programming in
+hyperparameter optimization. Advances in Neural Information Processing Systems, 34:4529–4541,
+2021.
+1We report our best results obtained with diﬀerent hyper-parameters for each algorithm.
+2We used degree 5 approximation in our experiment. A larger degree approximation did not yield signiﬁcant improvement.
+13
+
+[6] J. Bracken and J. T. McGill. Mathematical programs with optimization problems in the constraints.
+Operations Research, 21(1):37–44, 1973.
+[7] T. Chen, Y. Sun, Q. Xiao, and W. Yin. A single-timescale method for stochastic bilevel optimization. In
+International Conference on Artiﬁcial Intelligence and Statistics, pages 2466–2488. PMLR, 2022.
+[8] T.Chen,Y.Sun,andW.Yin. Closingthegap: Tighteranalysisofalternatingstochasticgradientmethods
+for bilevel problems.Advances in Neural Information Processing Systems, 34:25294–25307, 2021.
+[9] B. Colson, P. Marcotte, and G. Savard. An overview of bilevel optimization.Annals of operations
+research, 153(1):235–256, 2007.
+[10] N. Couellan and W. Wang. Bi-level stochastic gradient for large scale support vector machine.Neuro-
+computing, 153:300–308, 2015.
+[11] N. Couellan and W. Wang. On the convergence of stochastic bi-level gradient methods.Optimization,
+2016.
+[12] M. Dagréou, P. Ablin, S. Vaiter, and T. Moreau. A framework for bilevel optimization that enables
+stochastic and global variance reduction algorithms.arXiv preprint arXiv:2201.13409, 2022.
+[13] L. Deng. The mnist database of handwritten digit images for machine learning research [best of the
+web]. IEEE signal processing magazine, 29(6):141–142, 2012.
+[14] M. C. Ferris and O. L. Mangasarian. Finite perturbation of convex programs.Applied Mathematics and
+Optimization, 23(1):263–273, 1991.
+[15] L. Franceschi, P. Frasconi, S. Salzo, R. Grazzi, and M. Pontil. Bilevel programming for hyperparameter
+optimization and meta-learning. InInternational Conference on Machine Learning, pages 1568–1577.
+PMLR, 2018.
+[16] S. Ghadimi and M. Wang. Approximation methods for bilevel programming. arXiv preprint
+arXiv:1802.02246, 2018.
+[17] G. Gidel, H. Berard, G. Vignoud, P. Vincent, and S. Lacoste-Julien. A variational inequality perspective
+on generative adversarial networks. InInternational Conference on Learning Representations, 2018.
+[18] T. Giovannelli, G. Kent, and L. N. Vicente. Bilevel stochastic methods for optimization and machine
+learning: Bilevel stochastic descent and darts.arXiv preprint arXiv:2110.00604, 2021.
+[19] C. Gong, X. Liu, and Q. Liu. Automatic and harmless regularization with constrained and lexicographic
+optimization: A dynamic barrier approach. Advances in Neural Information Processing Systems,
+34:29630–29642, 2021.
+[20] I.Goodfellow,J.Pouget-Abadie,M.Mirza,B.Xu,D.Warde-Farley,S.Ozair,A.Courville,andY.Bengio.
+Generative adversarial networks.Communications of the ACM, 63(11):139–144, 2020.
+[21] Z. Guo, Q. Hu, L. Zhang, and T. Yang. Randomized stochastic variance-reduced methods for multi-task
+stochastic bilevel optimization.arXiv preprint arXiv:2105.02266, 2021.
+[22] M. Hong, H.-T. Wai, Z. Wang, and Z. Yang. A two-timescale framework for bilevel optimization:
+Complexity analysis and application to actor-critic.arXiv preprint arXiv:2007.05170, 2020.
+14
+
+[23] F. Huang and H. Huang. Biadam: Fast adaptive bilevel optimization methods. arXiv preprint
+arXiv:2106.11396, 2021.
+[24] Y. Ishizuka and E. Aiyoshi. Double penalty method for bilevel optimization problems.Annals of
+Operations Research, 34(1):73–88, 1992.
+[25] K. Ji, J. Yang, and Y. Liang. Bilevel optimization: Convergence analysis and enhanced design. In
+International Conference on Machine Learning, pages 4882–4892. PMLR, 2021.
+[26] R. Jiang, N. Abolfazli, A. Mokhtari, and E. Y. Hamedani. A conditional gradient-based method for
+simple bilevel optimization with convex lower-level problem, 2022.
+[27] P. Khanduri, S. Zeng, M. Hong, H.-T. Wai, Z. Wang, and Z. Yang. A near-optimal algorithm for
+stochastic bilevel optimization via double-momentum.Advances in Neural Information Processing
+Systems, 34:30271–30283, 2021.
+[28] V. Konda and J. Tsitsiklis. Actor-critic algorithms.Advances in neural information processing systems,
+12, 1999.
+[29] G. Kunapuli, K. P. Bennett, J. Hu, and J.-S. Pang. Bilevel model selection for support vector machines.
+Data mining and mathematical programming, 45:129–158, 2008.
+[30] R. Liu, X. Liu, X. Yuan, S. Zeng, and J. Zhang. A value-function-based interior-point method for
+non-convex bi-level optimization. InInternational Conference on Machine Learning, pages 6882–6892.
+PMLR, 2021.
+[31] R. Liu, Y. Liu, S. Zeng, and J. Zhang. Towards gradient-based bilevel optimization with non-convex
+followers and beyond.Advances in Neural Information Processing Systems, 34:8662–8675, 2021.
+[32] Z.LuandS.Mei. First-orderpenaltymethodsforbileveloptimization. arXivpreprintarXiv:2301.01716 ,
+2023.
+[33] C. C. Margossian. A review of automatic diﬀerentiation and its eﬃcient implementation.Wiley
+interdisciplinary reviews: data mining and knowledge discovery, 9(4):e1305, 2019.
+[34] A.MehraandJ.Hamm. Penaltymethodforinversion-freedeepbileveloptimization. In AsianConference
+on Machine Learning, pages 347–362. PMLR, 2021.
+[35] Y. Nesterov et al.Lectures on convex optimization, volume 137. Springer, 2018.
+[36] A. Rajeswaran, C. Finn, S. M. Kakade, and S. Levine. Meta-learning with implicit gradients.Advances
+in neural information processing systems, 32, 2019.
+[37] M. Solodov. An explicit descent method for bilevel convex optimization.Journal of Convex Analysis,
+14(2):227, 2007.
+[38] D. Sow, K. Ji, Z. Guan, and Y. Liang. A constrained optimization approach to bilevel optimization with
+multiple inner minima.arXiv preprint arXiv:2203.01123, 2022.
+[39] H. v. Stackelberg et al. Theory of the market economy. 1952.
+[40] R. S. Sutton and A. G. Barto.Reinforcement learning: An introduction. MIT press, 2018.
+[41] L. Vicente, G. Savard, and J. Júdice. Descent approaches for quadratic bilevel programming.Journal of
+Optimization theory and applications, 81(2):379–399, 1994.
+15
+
+[42] D. J. White and G. Anandalingam. A penalty function approach for solving bi-level linear programs.
+Journal of Global Optimization, 3(4):397–419, 1993.
+[43] S. Wright, J. Nocedal, et al. Numerical optimization.Springer Science, 35(67-68):7, 1999.
+[44] J. Yang, K. Ji, and Y. Liang. Provably faster algorithms for bilevel optimization.Advances in Neural
+Information Processing Systems, 34:13670–13682, 2021.
+[45] M. Ye, B. Liu, S. Wright, P. Stone, and Q. Liu. Bome! bilevel optimization made easy: A simple
+ﬁrst-order approach.arXiv preprint arXiv:2209.08709, 2022.
+16
+
+Appendix A Auxiliary Lemmas
+All deferred proofs in the main text and appendix are directed to Appendix D.
+A.1 Additional Notation
+Symbol Meaning Less than
+lf,0 Bound of‖∇xf‖,‖∇yf‖ ·
+lf,1 Smoothness off ·
+lg,0 Bound of‖∇xg‖ ·
+lg,1 Smoothness ofg ·
+µg Strong-convexity ofg ·
+lg,2 Hessian-continuity ofg ·
+Mf Second-order moment of∇f(x,y ;ζ) l2
+f,0 +σ2
+f
+Mg Second-order moment of∇g(x,y ;φ) l2
+g,0 +σ2
+g
+lf,2 Hessian-continuity off (with Assumption 5) ·
+lF,1 Smoothness ofF (x) l∗,0
+(
+lf,1 +
+l2
+g,1
+µg + 2lf,0lg,1lg,2
+µ2g
+)
+lλ,0 Lipschitzness ofy∗
+λ(x) (for allλ≥ 2lf,1/µg) 3lg,1
+µg
+lλ,1 Smoothness ofy∗
+λ(x) (forλ≥ 2lf,1/µg with Assumption 5) 32(lg,2 +λ−1·lf,2)
+l2
+g,1
+µ3g
+l∗,0 = 1 + maxλ≥2lf,1/µglλ,0 ·
+l∗,1 = maxλ≥2lf,1/µglλ,1 ·
+Table 1:Meaning of Constants
+To simplify the representation for the movement of variables, we often useqx
+k,qy
+k andqz
+k deﬁned as
+qx
+k :=∇xf(xk,yk+1) +λk(∇xg(xk,yk+1)−∇xg(xk,zk+1)),
+qy
+k,t :=∇yf(xk,yk,t) +λk∇yg(xk,yk,t),
+qz
+k,t :=∇yg(xk,zk,t). (10)
+The above quantities are the expected movements ofxk,y (t)
+k ,z (t)
+k respectively if there are no stochastic noises
+in gradient oracles. We also summarize symbols and their meanings for instance-speciﬁc constants in Table 1.
+A.2 Auxiliary Lemmas
+We ﬁrst state a few lemmas that will be useful in our main proofs.
+Lemma A.1F (x) =f(x,y∗(x)) islF,1-smooth where
+lF,1≤l∗,0
+(
+lf,1 +
+l2
+g,1
+µg
++ 2lf,0lg,1lg,2
+µ2g
+)
+.
+Lemma A.2For anyx,y,λ> 0, the following holds:
+‖∇F (x)−∇xLλ(x,y ) +∇2
+xyg(x,y∗(x))⊤∇2
+yyg(x,y∗(x))−1∇yLλ(x,y )‖
+≤ 2(lg,1/µg)‖y−y∗(x)‖ (lf,1 +λ· min(2lg,1,lg,2‖y−y∗(x)‖)).
+17
+
+Lemma A.3Under Assumptions 1, 2 and 5, andλ >2lf,1/µg, a functiony∗
+λ(x) islλ,1-smooth: for any
+x1,x 2∈X, we have
+‖∇y∗
+λ(x1)−∇y∗
+λ(x2)‖≤ lλ,1‖x1−x2‖
+wherelλ,1≤ 32(lg,2 +λ−1lf,2)l2
+g,1/µ3
+g.
+Lemma A.4For any ﬁxedλ> 2lf,1/µg, at everyk iteration conditioned onFk, we have
+E[‖y∗(xk+1)−y∗(xk)‖2|Fk]≤ξ2l2
+∗,0
+(
+α2
+kE[‖qx
+k‖2|Fk] +α2
+kσ2
+f +β2
+kσ2
+g
+)
+.
+Lemma A.5At everykth iteration, conditioned onFk, letvk be a random vector decided before updating
+xk. Then for anyηk > 0, we have
+E[⟨vk,y∗(xk+1)−y∗(xk)⟩|Fk]≤ (ξαkηk +Mξ 2l2
+∗,1β2
+k)E[‖vk‖2|Fk]
++
+(
+ξαkl2
+∗,0
+4ηk
++ ξ2α2
+k
+4
+)
+E[‖qx
+k‖2|Fk] +ξ2
+4 (α2
+kσ2
+f +β2
+kσ2
+g),
+whereM := max
+(
+l2
+f,0 +σ2
+f,l 2
+g,0 +σ2
+g
+)
+.
+Lemma A.6Under Assumptions 1-5, at everykth iteration, conditioned onFk, letvk be a random vector
+decided before updatingxk. Then for anyηk > 0, we have
+E[⟨vk,y∗
+λk+1(xk+1)−y∗
+λk(xk)⟩|Fk]≤ (δk/λk +ξαkηk +Mξ 2l2
+λk,1β2
+k)E[‖vk‖2|Fk]
++
+(
+ξαkl2
+∗,0
+4ηk
++ ξ2α2
+k
+4
+)
+E[‖qx
+k‖2|Fk] +ξ2
+4 (α2
+kσ2
+f +β2
+kσ2
+g) +
+δkl2
+f,0
+λ3
+kµ2g
+,
+whereM := max
+(
+l2
+f,0 +σ2
+f,l 2
+g,0 +σ2
+g
+)
+.
+Appendix B Main Results for Algorithm 1
+In this section, we prove our key estimate, Theorem 4.1. Our aim is to ﬁnd the upper bound ofVk+1− Vk for
+the potential functionVk given in(4). Forxk andyk given in Algorithm 1, the following notations will be
+used:
+Ik :=‖yk−y∗
+λ,k‖2 andJk :=‖zk−y∗
+k‖2 (11)
+wherey∗
+λ,k :=y∗
+λk(xk),y∗
+k :=y∗(xk), andx∗ = arg minxF (x). Recall thaty∗
+λ andy∗ are given in(2)and
+(P), respectively. Using the above notation, the potential function given in (4) can be rewritten as
+Vk := (F (xk)−F (x∗)) +λklg,1Ik + λklg,1
+2 Jk (12)
+for eachk∈ N. In the following three subsections, we ﬁnd the upper bound ofVk+1− Vk in terms ofIk and
+Jk. The proof of Theorem 4.1 is given in Section B.4.
+18
+
+B.1 Estimation of F (xk+1)− F (xk)
+The step sizeαk is designed to satisfy
+(step-size rule): αk≤ 1
+2ξlF,1
+, (13)
+which is essential to obtain the negative term−ξαk
+4 ‖qx
+k‖2 on the right hand side of(15). This negativity plays
+an important role in the proof of Theorem 4.1 in Section B.4.
+On the other hand, we also impose
+(step-size rule): ξ
+T ≤ µg
+96lg,1
+. (14)
+The terms,‖yk+1−y∗
+λ,k‖2 and‖zk+1−y∗
+k‖2, in the upper bound(15)will be estimated in Lemma B.3 and
+Lemma B.5, respectively.
+Proposition B.1Under the step-size rules given in(13), and(14) andλk≥ 2lf,1/µg, it holds that for each
+k∈ N
+E[F (xk+1)−F (xk)|Fk]≤− ξαk
+4
+(
+2‖∇F (xk)‖2 +‖qx
+k‖2)
++ Tµgαkλ2
+k
+32
+(
+2‖yk+1−y∗
+λ,k‖2 +‖zk+1−y∗
+k‖2)
++ ξ2lF,1
+2 (α2
+kσ2
+f +β2
+kσ2
+g) +ξαk
+2 · 3C2
+λλ−2
+k , (15)
+whereqx
+k is given in(10), andCλ := 4lf,0lg,1
+µ2g
+(
+lf,1 + 2lf,0lg,2
+µg
+)
+.
+Proof. From the smoothness ofF,
+E[F (xk+1)−F (xk)|Fk]≤ E[⟨∇F (xk),xk+1−xk⟩ + lF,1
+2 ‖xk+1−xk‖2|Fk].
+Asqx
+k satisﬁesE[xk+1−xk|Fk] =αkqx
+k,
+E[F (xk+1)−F (xk)|Fk] =−ξαk⟨∇xF (xk),qx
+k⟩ + lF,1
+2 E[‖xk+1−xk‖2|Fk]
+=−ξαk
+2 (‖∇F (xk)‖2 +‖qx
+k‖2−‖∇F (xk)−qx
+k‖2) +lF,1
+2 E[‖xk+1−xk‖2|Fk].
+Note that
+E[‖xk+1−xk‖2]≤ξ2α2
+kE[‖qx
+k‖2 +ξ2(α2
+kσ2
+f +β2
+kσ2
+g),
+and thus with (13) we have
+E[F (xk+1)−F (xk)|Fk]≤− ξαk
+2 ‖∇F (xk)‖2− ξαk
+4 ‖qx
+k‖2
++ ξαk
+2 ‖∇F (xk)−qx
+k‖2 + ξ2lF,1
+2 (α2
+kσ2
+f +β2
+kσ2
+g).
+Next, we bound‖∇F (xk)−qx
+k‖using the triangle inequality:
+‖qx
+k−∇F (xk)‖ =‖qx
+k−∇L∗
+λk(xk) +∇L∗
+λk(xk)−∇F (xk)‖
+19
+
+≤‖∇ xf(xk,yk+1)−∇xf(xk,y∗
+λ,k)‖ +λk‖∇xg(xk,yk+1)−∇xg(xk,y∗
+λ,k)‖
++λk‖∇xg(xk,zk+1)−∇xg(xk,y∗
+k)‖ +‖∇L∗
+λk(xk)−∇F (xk)‖.
+From Lemma 3.1, the term‖∇L∗
+λk(xk)−∇F (xk)‖is bounded byCλ/λk. Combining with the regularity of
+f andg yields the following:
+‖qx
+k−∇F (xk)‖≤ 2lg,1λk‖yk+1−y∗
+λ,k‖ +lg,1λk‖zk+1−y∗
+k‖ +Cλ/λk. (16)
+Note thatλk≥ 2lf,1/µg, and thuslf,1<l g,1λk.
+Finally, from Cauchy-Schwartz inequality(a +b +c)2≤ 3(a2 +b2 +c2), we get
+E[F (xk+1)−F (xk)|Fk]≤− ξαk
+2 ‖∇F (xk)‖2− ξαk
+4 ‖qx
+k‖2 (17)
++ ξαk
+2 · 3C2
+λλ−2
+k + 3ξαklg,1λ2
+k‖zk+1−y∗
+k‖2 + 6ξαklg,1λ2
+k‖yk+1−y∗
+λ,k‖2 + ξ2lF,1
+2 (α2
+kσ2
+f +β2
+kσ2
+g).
+The step-size condition (14) concludes our claim. □
+B.2 Descent Lemma for yk towards y∗
+λ,k
+In this section, the upper bounds ofIk+1 and‖yk+1−y∗
+λ,k‖are provided, respectively, in Lemma B.2 and
+Lemma B.3. The following rule is required to ensure that‖yk+1−yλ,k+1‖2 contracts:
+(step-size rule): δk
+λk
+≤ Tβkµg
+32 , and 2ξ2Ml 2
+∗,1β2
+k <Tβ kµg/16. (18)
+The ﬁrst condition holds directly from (3b), and the second condition holds sinceβk≤ 1
+4Tµ g and also
+ξ2
+T 2≤ µ2
+g
+8 (Ml 2
+∗,l)−1,
+which also holds by (3b) with suﬃciently smallcξ.
+Lemma B.2Under the step-size rule(18), it holds that for eachk∈ N
+E[Ik+1|Fk]≤ (1 +Tβkµg/4) E[‖yk+1−y∗
+λ,k‖2|Fk]
++O
+(
+ξ2l2
+∗,0α2
+k
+µgTβk
+)
+E[‖qx
+k‖2|Fk] +O
+(
+δk
+λ3
+k
+l2
+f,0
+µ2g
+)
++O(ξ2l2
+∗,0)· (α2
+kσ2
+f +β2
+kσ2
+g). (19)
+whereIk andqx
+k are given in(11)and (10), respectively.
+Proof. We can start from
+‖yk+1−y∗
+λ,k+1‖2 =‖yk+1−y∗
+λ,k‖2
+| {z }
+(i)
++‖y∗
+λ,k+1−y∗
+λ,k‖2
+| {z }
+(ii)
+− 2⟨yk+1−y∗
+λ,k,y∗
+λ,k+1−y∗
+λ,k⟩
+| {z }
+(iii)
+.
+The upper bound of(i) is given in Lemma B.3 below. To bound(ii), we invoke Lemma 3.2 to get
+(ii) : E[‖y∗
+λ,k+1−y∗
+λ,k‖2|Fk]≤ 4δ2
+k
+λ2
+kλ2
+k+1
+l2
+f,0
+µ2g
++l2
+∗,0E[‖xk+1−xk‖2|Fk]
+20
+
+≤ 4δ2
+k
+λ4
+k
+l2
+f,0
+µ2g
++ξ2l2
+∗,0(α2
+kE[‖qx
+k‖2] +α2
+kσ2
+f +β2
+kσ2
+f).
+For (iii),recallthesmoothnessof y∗
+λ(x)inLemmaA.3,andthusLemmaA.6. Bysetting v =yk+1−y∗
+λ,k
+andηk =Tµgλk/(16ξ), and get
+(iii)≤ (2δk/λk +Tβkµg/8 + 2Mξ 2l2
+∗,1β2
+k)E[‖yk+1−y∗
+λ,k‖2|Fk]
++ξ2
+(
+α2
+k
+2 +
+8α2
+kl2
+∗,0
+µgTβk
+)
+‖qx
+k‖2 + ξ2
+2 (α2
+kσ2
+f +β2
+kσ2
+g) + 2δk
+λ3
+k
+l2
+f,0
+µ3g
+.
+We sum up the(i), (ii), (iii) to conclude
+E[Ik+1|Fk]≤
+(
+1 + 2δk/λk +Tβkµg/8 + 2Mξ 2l2
+∗,1β2
+k
+)
+E[‖yk+1−y∗
+λ,k‖2]
++O
+(
+ξ2l2
+∗,0α2
+k
+µgTβk
+)
+‖qx
+k‖2 +O
+(
+δk
+λ3
+k
+l2
+f,0
+µ2g
+)
++O(ξ2l2
+∗,0)· (α2
+kσ2
+f +β2
+kσ2
+g). (20)
+Lastly, the step-size rule (18) yields our conclusion. □
+Next, we note thatαk andβk are chosen to satisfy
+(step size rules): αk≤ 1
+8lf,1
+andβk≤ 1
+8lg,1
+, (21)
+Note thatβk≤ 1
+8lg,1
+is given from the step-size condition(3a), andαk≤ 1
+8lg,1λk
+≤ 1
+8lf,1
+sinceλk≥lf,1/µg.
+Lemma B.3Under the step-size rule given in(21), it holds that for eachk∈ N
+E[‖yk+1−y∗
+λ,k‖2|Fk]≤ (1− 3Tµgβk/4)Ik +T (α2
+kσ2
+f +β2
+kσ2
+g). (22)
+Proof. Since E[y(t+1)
+k −y(t)
+k |Fk] =−αk∇yq(t)
+k =−αk∇yLλk(xk,y (t)
+k ), we have
+E[‖y(t+1)
+k −y∗
+λ,k‖2|Fk] =‖y(t)
+k −y∗
+λ,k‖2− 2αk⟨∇yq(t)
+k ,y (t)
+k −y∗
+λ,k⟩ + E[‖y(t+1)
+k −y(t)
+k ‖2|Fk].
+As we start fromλ0≥ 2µf/µg, allLk is (λkµg/2)-strongly convex iny, and we have
+max
+(λkµg
+2 ‖y(t)
+k −y∗
+λ,k‖2, 1
+lf,1 +λklg,1
+‖∇yq(t)
+k ‖2
+)
+≤⟨∇ yq(t)
+k ,y (t)
+k −y∗
+λ,k⟩.
+Using E[‖y(t+1)
+k −y(t)
+k ‖2|Fk]≤α2
+k‖∇yq(t)
+k ‖2 +α2
+kσ2
+f +β2
+kσ2
+g, have
+(i) : E[‖y(t+1)
+k −y∗
+λ,k‖2|Fk]≤ (1− 3µgβk/4)‖y(t)
+k −y∗
+λ,k‖2 + (α2
+kσ2
+f +β2
+kσ2
+g),
+whereweuse αk(lf,1 +λklg,1) =αklf,1 +βklg,1≤ 1/4ifwehave (21). RepeatingthisT times, weget(22).
+Note thatyk+1 =y(T )
+k andyk =y(0)
+k . □
+21
+
+B.3 Descent Lemma for zk towards y∗
+k
+Similar to the previous section, we provide the upper bound ofJk+1 ﬁrst and then estimate‖zk+1−y∗
+k‖that
+appears in the upper bound. We work with the following step-size condition:
+(step-size rule): 2Ml 2
+∗,1ξ2β2
+k≤Tµgγk/16, (23)
+This condition holds sinceβk≤γk, andβk≤ 1
+4Tµ g and ξ2
+T 2≤
+µ2
+g
+8 (Ml 2
+∗,1)−1.
+Lemma B.4Under the step-size rule(23), at eachkth iteration, the following holds:
+E[Jk+1|Fk]≤
+(
+1 + 3Tγkµg
+8
+)
+· E[‖zk+1−y∗
+k‖2|Fk]
++O
+(
+ξ2α2
+kl2
+∗,0
+Tµgγk
+)
+‖qx
+k‖2 +O
+(
+ξ2l2
+∗,0
+)
+(α2
+kσ2
+f +β2
+kσ2
+g). (24)
+Proof. We estimate each term in the following simple decomposition.
+‖zk+1−y∗
+k+1‖2 =‖zk+1−y∗
+k‖2
+| {z }
+(i)
++‖y∗
+k+1−y∗
+k‖2
+| {z }
+(ii)
+−2⟨zk+1−y∗
+k,y∗
+k+1−y∗
+k⟩| {z }
+(iii)
+.
+Lemma 3.2 implies that
+(ii) : E[‖y∗
+k+1−y∗
+k‖2|Fk]≤l2
+∗,0ξ2(α2
+k‖∇xqk‖2 +α2
+kσ2
+f +β2
+kσ2
+g).
+For (iii), we recall Lemma A.5 withvk =zk+1−y∗
+k andηk =Tµgγk/(8ξαk), we have
+(iii) :⟨zk+1−y∗
+k,y∗
+k+1−y∗
+k⟩≤ (Tγkµg/8 +Mξ 2l2
+∗,1β2
+k)E[‖zk+1−y∗
+k‖2|Fk]
++
+(
+ξ2α2
+k
+4 + 2ξ2α2
+kl2
+∗,0
+Tµgγk
+)
+‖qx
+k‖2 + ξ2
+4 (α2
+kσ2
+f +β2
+kσ2
+g).
+The above bounds and Lemma B.5 imply that
+E[Jk+1|Fk]≤
+(
+1 +Tγkµg
+4 + 2Mξ 2l2
+∗,1β2
+k
+)
+· E[‖zk+1−y∗
+k‖2|Fk]
++ξ2α2
+k·
+(
+l2
+∗,0 + 4l2
+∗,0
+Tµgγk
++ 1
+2
+)
+‖qx
+k‖2 +ξ2·
+(1
+2 +l2
+∗,0
+)
+(α2
+kσ2
+f +β2
+kσ2
+g). (25)
+Using (23), we conclude. □
+Next,γk is chosen to satisfy the following step-size rules:
+(step-size rule): lg,1γk≤ 1/4, Tµ gγk≤ 1/4, (26)
+which directly comes from (3a).
+Lemma B.5If (26) holds, then for eachk∈ N, the following holds:
+E[‖zk+1−y∗
+k‖2|Fk]≤ (1− 3Tµgγk/4)Jk +Tγ 2
+kσ2
+g. (27)
+22
+
+Proof. We analyze one step iteration of the inner loop: for eacht = 0,··· ,T − 1,
+‖z(t+1)
+k −y∗
+k‖2 =‖z(t)
+k −y∗
+k‖2 +‖z(t+1)
+k −z(t)
+k ‖2 + 2⟨z(t+1)
+k −z(t)
+k ,z (t)
+k −y∗
+k⟩
+=‖z(t)
+k −y∗
+k‖2 +γ2
+k‖hk,t
+gz‖2− 2γk⟨hk,t
+gz,zk−y∗
+k⟩.
+Here, zk+1 = z(T )
+k andzk = z(0)
+k . Note that E[hk,t
+gz ] = ∇yg(xk,z (t)
+k ) = ∇ygk(z(t)
+k ) wheregk(z(t)
+k ) :=
+g(xk,z (t)
+k ). Taking expectation,
+E[‖z(t+1)
+k −y∗
+k‖2|Fk]≤‖z(t)
+k −y∗
+k‖2 +γ2
+k‖∇gk(z(t)
+k )‖2 +γ2
+kσ2
+g− 2γk⟨∇gk(z(t)
+k ),z (t)
+k −y∗
+k⟩.
+The strong convexity and smoothness ofgk imply the coercivity and co-coercivity [35], that is,
+max
+(
+µg‖z(t)
+k −y∗
+k‖2, 1
+lg,1
+‖∇gk(z(t)
+k )−∇gk(y∗
+k)‖2
+)
+≤⟨∇gk(z(t)
+k )−∇gk(y∗
+k),z (t)
+k −y∗
+k⟩.
+Note thaty∗
+k minimizesgk(y). Use this to cancel outγ2
+k‖∇gk(z(t)
+k )‖2, yielding
+E[‖z(t+1)
+k −y∗
+k‖2|Fk]≤‖z(t)
+k −y∗
+k‖2 +γ2
+kσ2
+g−γk(1−lg,1γk)⟨∇gk(z(t)
+k ),z (t)
+k −y∗
+k⟩
+≤ (1− 3µgγk/4)‖z(t)
+k −y∗
+k‖2 +γ2
+kσ2
+g.
+For this to hold, we need a step-size condition(26). We can repeat this relation forT times, and we get(27).
+□
+B.4 Proof of Theorem 4.1
+Recall Vk given in (4). In what follows, we examine
+Vk+1− Vk =F (xk+1)−F (xk) +λk+1lg,1Ik+1−λklg,1Ik
++ λk+1lg,1
+2 Jk+1− λklg,1
+2 Jk.
+Using the estimate ofF (xk+1)−F (xk) given in Proposition B.1 and rearranging the terms, we have
+E[Vk+1− Vk|Fk]≤− ξαk
+2 ‖∇F (xk)‖2− ξαk
+4 E[‖qx
+k‖2|Fk] +ξαk
+2 · 3C2
+λλ−2
+k + ξ2lF,1
+2 (α2
+kσ2
+f +β2
+kσ2
+g)
++lg,1 E[λk+1Ik+1 + λkTβkµg
+16 ‖yk+1−y∗
+λ,k‖2−λkIk|Fk]
+| {z }
+(i)
++ lg,1
+2 E[λk+1Jk+1 + λkTγkµg
+32 ‖zk+1−y∗
+k‖2−λkJk|Fk]
+| {z }
+(ii)
+Estimation of(i): From Lemma B.2, andλk+1 =λk +δk yield that
+(i)≤λk
+(
+1 + 5Tβkµg
+16 + δk
+λk
+)
+E[‖yk+1−y∗
+λ,k‖2|Fk]−λkIk
++O(ξ2l2
+λ,0) λkα2
+k
+µgTβk
+‖qx
+k‖2 +O(ξ2l2
+∗,0)λk(α2
+kσ2
+f +β2
+kσ2
+g) +O
+(
+l2
+f,0
+µ3g
+)
+· δk
+λ2
+k
+| {z }
+(iii)
+.
+23
+
+Given the step-size rules (18), we obtain
+(i)≤λk
+(
+1 +Tβkµg
+2
+)
+E[‖yk+1−y∗
+λ,k‖2|Fk]−λkIk + (iii).
+The estimation of‖yk+1−y∗
+λ,k‖2 from Lemma B.3 yields that
+(i)≤− λkTµgβk
+4 Ik +O(ξ2l2
+∗,0) αk
+µgT + (iii),
+=−λkTµgβk
+4 Ik +O(ξ2l2
+∗,0) αk
+µgT +O(T +ξ2l2
+∗,0)λk(α2
+kσ2
+f +β2
+kσ2
+g) +O
+(
+l2
+f,0
+µ3g
+)
+· δk
+λ2
+k
+.
+Here, we use(1 +a/2)(1− 3a/4)≤ 1−a/4 fora> 0.
+Estimation of(ii): Lemma B.4 yields that
+(ii)≤λk
+(
+1 + δk
+λk
++ 3Tγkµg
+8 + λkTβkµg
+32
+)
+E[‖zk+1−y∗
+k‖2|Fk]−λkJk
++O(ξ2l2
+∗,0)λk+1α2
+k
+Tµgγk
+‖qx
+k‖2 +O(ξ2λk+1l2
+∗,0)(α2
+kσ2
+f +β2
+kσ2
+g)
+| {z }
+(iv)
+.
+Withβk≤γk, and thusδk/λk <Tµ gγk/32, we have that
+(ii)≤λk
+(
+1 +Tγkµg
+2
+)
+E[‖zk+1−y∗
+k‖2|Fk]−λkJk + (iv)
+Similar to the argument for(i) above, Lemma B.5 yields
+(ii)≤− λkTµgγk
+4 Jk +O(ξ2l2
+∗,0) αkβk
+Tµgγk
+‖qx
+k‖2 +O(ξ2λkl2
+∗,0)(α2
+kσ2
+f +β2
+kσ2
+g) +O(λk)Tγ 2
+kσ2
+g.
+Plug the bound for(i) and (ii), after rearranging terms, we get
+E[Vk+1− Vk|Fk]≤− ξαk
+2 ‖∇F (xk)‖2 + ξαk
+2 · 3C2
+λλ−2
+k + ξ2lF,1
+2 (α2
+kσ2
+f +β2
+kσ2
+g)
+− ξαk
+4
+(
+1−O
+(
+ξlg,1l2
+∗,0βk
+µgTγk
+)
+−O
+(
+ξlg,1l2
+∗,0
+µgT
+))
+E[‖qx
+k‖2|Fk]
+− λklg,1Tµgβk
+4 Ik− λklg,1Tµgγk
+4 Jk
++O(T +ξ2l2
+∗,0)·lg,1λk(α2
+kσ2
+f + (β2
+k +γ2
+k)σ2
+g) +O
+(
+lg,1l2
+f,0
+µ3g
+)
+δk
+λ2
+k
+,
+A crucial step here is to ensure that terms driven byE[‖qx
+k‖2] is negative. To ensure this, we require
+(step-size rules): ξlg,1l2
+∗,0βk≤c1µgTγk,
+ξlg,1l2
+∗,0≤c2µgT,
+24
+
+forsomeabsoluteconstants c1,c 2> 0,whichholdsby βk≤γk and(3b)withsuﬃcientlysmall cξ > 0. Once
+this holds, we can conclude that
+E[Vk+1− Vk|Fk]≤− ξαk
+2 ‖∇F (xk)‖2− λkTµgγk
+4 ‖zk−y∗
+k‖2− λkTµgβk
+4 ‖yk−y∗
+λ,k‖2
++O(ξC 2
+λ)αk
+λ2
+k
++O
+(
+lg,1l2
+f,0
+µ3g
+)
+δk
+λ2
+k
++O(ξ2lF,1)(α2
+kσ2
+f +β2
+kσ2
+g)
++O(T +ξ2l2
+∗,0)·lg,1λk(α2
+kσ2
+f + (β2
+k +γ2
+k)σ2
+g).
+We can sum overk = 0 toK− 1, and leaving only dominating terms, since∑
+kδk/λ2
+k =O(1) (because
+δk/λk =O(1/k) andλk = poly(k)), we have the theorem.
+B.5 Proof of Corollary 4.2
+We ﬁrst show that with the step-size design in theorem,λk =γk/(2αk) for allk. To check this, by design,
+λ0 =γ0/(2α0) and by mathematical induction,
+Tµg
+16 αkλ2
+k = T
+32
+cγ
+2cα
+(k +k0)−2c+a,
+and
+cγ
+2cα
+((k +k0 + 1)a−c− (k +k0)a−c)≤ (a−c)cγ
+2cα
+(k +k0)−1−c+a.
+As long as−2c +a≥− 1−c +a, or equivalently,c≤ 1 andT≥ 32, it always holds that
+λk+1 = cγ
+2cα
+(k +k0 + 1)a−c = γk+1
+2αk+1
+. (28)
+Now applying the step-size designs, we obtain the following:
+K−1∑
+k=0
+E[‖∇F (xk)‖2]
+(k +k0)a ≤OP(1)·
+∑
+k
+1
+(k +k0)3a−2c +OP(σ2
+f)·
+∑
+k
+1
+(k +k0)a+c
++OP(σ2
+g)·
+∑
+k
+1
+(k +k0)3c−a +OP(1). (29)
+Wedecide therates a,c∈ [0, 1]will bedecided diﬀerently fordiﬀerent stochasticity. Letb =a−c. Notethat
+with the step size deisng, we haveλk =γk/(2αk) = 2λ0
+ka−c
+0
+(k +k0)a−c =O(kb). LetRbe a random variable
+uniformly distributed over{0, 1,...,K}. Note that the left hand side is larger than
+K
+(K +k0)a
+K−1∑
+k=1
+1
+K E[‖∇F (xk)‖2]≥K1−a· E[‖∇F (xR)‖2].
+We consider three regimes:
+Stochasticity in both upper-level and lower-level objectives:σ2
+f,σ 2
+g > 0. In this case, we seta =
+5/7,c = 4/7, and thusλk =k1/7. The dominating term isσ2
+g·∑
+k(γ2
+kλk) =∑
+kO(k−1) =O(logK) and
+C2
+λ·∑
+k(αkλ−2
+k ) =O(logK). From the left-hand side, we haveK1−a =K2/7. Therefore,
+E[‖∇F (xR)‖2] =O
+(logK
+K2/7
+)
+.
+25
+
+Stochasticityonlyintheupper-level: σ2
+f > 0,σ 2
+g = 0. In this case, we can takea = 3/5,c = 2/5. When
+σ2
+g = 0, the dominating term isσf·∑
+k(α2
+kλk) = ∑
+kO(k−1) = O(logK) andO(C2
+λ)·∑
+k(αkλ−2
+k ) =∑
+kO(k−1) =O(logK). SinceK1−a =O(K2/5), yielding
+E[‖∇F (xR)‖2] =O
+(logK
+K2/5
+)
+.
+Deterministic case: σ2
+f = 0,σ 2
+g = 0 . Here, we can takea = 1/3,c = 0 with a dominating term∑
+k(αkλ−2
+k ) =O(logK). Since there is no stochasticity in the algorithm, we have
+‖∇F (xK)‖2 =O
+(logK
+K2/3
+)
+.
+Appendix C Main Results for Algorithm 2
+We start with a few deﬁnitions and additional auxiliary lemmas. We ﬁrst deﬁne the momentum-assisted
+moving direction of variables. They can be recursively deﬁned as
+˜hk
+z :=∇yg(xk,zk;φk
+z) + (1−ηk)
+(
+˜hk−1
+z −∇yg(xk−1,zk−1;φk
+z)
+)
+,
+˜hk
+fy :=∇yf(xk,yk;ζk
+y ) + (1−ηk)
+(
+˜hk−1
+fy −∇yf(xk−1,yk−1;ζk
+y )
+)
+,
+˜hk
+gy :=∇yg(xk,yk;φk
+y) + (1−ηk)
+(
+˜hk−1
+gy −∇yg(xk−1,yk−1;φk
+y)
+)
+,
+for the inner variable updates, and
+˜hk
+fx :=∇xf(xk,yk+1;ζk
+x) + (1−ηk)
+(
+˜hk−1
+fx −∇xf(xk−1,yk;ζk
+x)
+)
+,
+˜hk
+gxy :=∇xg(xk,yk+1;φk
+x) + (1−ηk)
+(
+˜hk−1
+gxy−∇xg(xk−1,yk;φk
+x)
+)
+,
+˜hk
+gxz :=∇xg(xk,zk+1;φk
+x) + (1−ηk)
+(
+˜hk−1
+gxz −∇xg(xk−1,zk;φk
+x)
+)
+.
+for the outer variable update with some proper choice ofηk. We also deﬁne stochastic error terms incurred by
+random sampling:
+˜ex
+k := ˜hk
+fx +λk(˜hk
+gxy− ˜hk
+gxz)−qx
+k,
+˜ey
+k := (˜hk
+fy +λk˜hk
+gy)−qy
+k,
+˜ez
+k := ˜hk
+z−qz
+k, (30)
+whereqx
+k,qy
+k,qz
+k are deﬁned in (10) (we droppedt from subscript since here we considerT = 1).
+C.1 Additional Auxiliary Lemmas
+The following lemmas are analogous of Lemma A.4.
+Lemma C.1At everyk iteration conditioned onFk, we have
+E[‖y∗(xk+1)−y∗(xk)‖2|Fk]≤ 2ξ2l2
+∗,0α2
+k
+(
+E[‖qx
+k‖2|Fk] + E[‖˜ex
+k‖2]
+)
+.
+Lemma C.2At everyk iteration conditioned onFk, we have
+E[‖y∗
+λk+1(xk+1)−y∗
+λk(xk)‖2|Fk]≤ 4ξ2l2
+∗,0α2
+k
+(
+E[‖qx
+k‖2|Fk] + E[‖˜ex
+k‖2]
+)
++
+8δ2
+kl2
+f,0
+λ4
+kµ2g
+.
+26
+
+C.2 Descent Lemma for Noise Variances
+A major change in the proof is that now we also track the decrease in stochastic error terms. Speciﬁcally, we
+show the following lemmas.
+Lemma C.3
+E[‖˜ez
+k+1‖2]≤ (1−ηk+1)2(1 + 8l2
+g,1γ2
+k)E[‖˜ez
+k‖2] + 2η2
+k+1σ2
+g
++ 8l2
+g,1(1−ηk+1)2(
+ξ2α2
+kE[‖qx
+k‖2] +ξ2α2
+kE[‖˜ex
+k‖2] +γ2
+kE[‖qz
+k‖2]
+)
+,
+E[‖˜ey
+k+1‖2]≤ (1−ηk+1)2(1 + 96l2
+g,1β2
+k)E[‖˜ey
+k‖2] + 2η2
+k+1(σ2
+f +λ2
+k+1σ2
+g) + 12δ2
+kσ2
+g
++ 96l2
+g,1(1−ηk+1)2β2
+k(ξ2‖qx
+k‖2 +ξ2‖˜ex
+k‖2 +‖qy
+k‖2).
+Lemma C.4
+E[‖˜ex
+k+1‖2]≤ (1−ηk+1)2(1 + 240l2
+g,1ξ2β2
+k)E[‖˜ex
+k‖2] + 6η2
+k+1(σ2
+f +λ2
+k+1σ2
+g) + 80δ2
+kσ2
+g
++ 240l2
+g,1(1−ηk+1)2λ2
+k
+(
+ξ2α2
+k‖qx
+k‖2 +α2
+k(‖qy
+k‖2 +‖˜ey
+k‖2) +γ2
+k(‖qz
+k‖2 +‖˜ez
+k‖2)
+)
+.
+Equipped with these lemmas, we can now proceed as previously in the main proof for Algorithm 1.
+C.3 Descent Lemma for zk towards y∗
+k
+Lemma C.5Ifγkµg < 1/8, then
+E[‖zk+1−y∗
+k+1‖2|Fk]≤ (1 +γkµg/4)E[‖zk+1−y∗
+k‖2|Fk]
++O
+(
+ξ2α2
+kl2
+∗,0
+γkµg
+)
+· (E[‖qx
+k‖2|Fk] + E[‖˜ex
+k‖2|Fk]).
+Proof. As before, we can decompose‖zk+1−y∗
+k+1‖2 as
+‖zk+1−y∗
+k+1‖2 =‖zk+1−y∗
+k‖2 +‖y∗
+k+1−y∗
+k‖2− 2⟨zk+1−y∗
+k,y∗
+k+1−y∗
+k⟩
+≤‖zk+1−y∗
+k‖2 +
+(
+1 + 1
+8γkµg
+)
+‖y∗
+k+1−y∗
+k‖2 + 4γkµg‖zk+1−y∗
+k‖2,
+where we used a general inequality|⟨a,b⟩|≤ c‖a‖2 + 1
+4c‖b‖2. We can apply Lemma C.1 for‖y∗
+k+1−y∗
+k‖2,
+yielding the lemma. □
+Lemma C.6Ifγk≤ 1/(16lg,1), then
+E[‖zk+1−y∗
+k‖2|Fk]≤ (1−γkµg/2)E[‖zk−y∗
+k‖2|Fk]− γk
+lg,1
+‖qz
+k‖2 +O
+(γk
+µg
+)
+E[‖˜ez
+k‖2|Fk]).
+Proof. Note that
+‖zk+1−y∗
+k‖2 =‖zk−y∗
+k‖2 +γ2
+k‖˜hk
+z‖2− 2γk⟨˜hk
+z,zk−y∗
+k⟩
+≤‖zk−y∗
+k‖2 + 2γ2
+k(‖qz
+k‖2 +‖˜ez
+k‖2)− 2γk⟨qz
+k,zk−y∗
+k⟩− 2γk⟨˜ez
+k,zk−y∗
+k⟩.
+Sinceqz
+k =∇yg(xk,zk) by deﬁnition, by coercivity and co-coercivity of strongly-convex functions, we have
+(
+µg‖zk−y∗
+k‖2, 1
+lg,1
+‖qz
+k‖2
+)
+≤⟨qz
+k,zk−y∗
+k⟩,
+27
+
+and thus, givenγk≤ 1/(16lg,1), we have
+E[zk+1−y∗
+k‖2|Fk]≤ (1− 3γkµg/4)E[‖zk−y∗
+k‖2|Fk]− γk
+lg,1
+‖qz
+k‖2 + 2γ2
+kE[‖˜ez
+k‖2|Fk]− 2γk⟨˜ez
+k,zk−y∗
+k⟩.
+Finally, we can use general inequality|⟨a,b⟩|≤ c‖a‖2 + 1
+4c‖b‖2 to get
+−2γk⟨˜ez
+k,zk−y∗
+k⟩≤ γkµg
+4 ‖zk−y∗
+k‖2 + 4γk
+µg
+‖˜ez
+k‖2.
+Plugging this back, withγ2
+k≪ γk
+µg, we get the lemma. □
+C.4 Descent Lemma for yk towards y∗
+λ,k
+Lemma C.7Ifβkµg < 1/8, then
+E[‖yk+1−y∗
+λ,k+1‖2|Fk]≤ (1 +βkµg/4)E[‖yk+1−y∗
+λ,k‖2|Fk]
++O
+(
+ξ2α2
+kl2
+∗,0
+βkµg
+)
+· (E[‖qx
+k‖2|Fk] + E[‖˜ex
+k‖2|Fk]) +O
+(
+δ2
+kl2
+f,0
+λ4
+kµ2g
+)
+.
+Proof. As before, we can decompose‖yk+1−y∗
+λ,k+1‖2 as
+‖yk+1−y∗
+λ,k+1‖2 =‖yk+1−y∗
+λ,k‖2 +‖y∗
+k+1−y∗
+λ,k‖2− 2⟨yk+1−y∗
+λ,k,y∗
+λ,k+1−y∗
+λ,k⟩
+≤‖yk+1−y∗
+λ,k‖2 +
+(
+1 + 1
+8βkµg
+)
+‖y∗
+λ,k+1−y∗
+λ,k‖2 + 4βkµg‖yk+1−y∗
+λ,k‖2,
+whereweusedageneralinequality |⟨a,b⟩|≤ c‖a‖2 + 1
+4c‖b‖2. WecanapplyLemmaC.2for ‖y∗
+λ,k+1−y∗
+λ,k‖2,
+sinceβkµg≤ 1/16, we get the lemma. □
+Lemma C.8Ifβk≤ 1/(16lg,1), then
+E[‖yk+1−y∗
+λ,k‖2|Fk]≤ (1−βkµg/2)E[‖yk−y∗
+λ,k‖2|Fk]− αk
+λklg,1
+‖qy
+k‖2 +O
+( α2
+k
+µgβk
+)
+E[‖˜ey
+k‖2|Fk]).
+Proof. Note that
+‖yk+1−y∗
+λ,k‖2 =‖yk−y∗
+λ,k‖2 + 2α2
+k(‖qy
+k‖2 +‖˜ey
+k‖2)− 2αk⟨qy
+k,yk−y∗
+λ,k⟩− 2αk⟨˜ey
+k,yk−y∗
+λ,k⟩,
+where we usedyk+1−yk =qy
+k + ˜ey
+k. Sinceqy
+k =∇yLλk by deﬁnition, again by coercivity and co-coercivity
+of strongly-convexLλk(xk,·), we have
+max
+(λkµg
+2 ‖yk−y∗
+λ,k‖2, 1
+lf,1 +λklg,1
+‖qy
+k‖2
+)
+≤⟨qy
+k,yk−y∗
+λ,k⟩,
+and thus, givenαkλk≤ 1/(16lg,1) andlf,1≤λklg,1, we have
+E[yk+1−y∗
+λ,k‖2|Fk]≤ (1− 3βkµg/4)E[‖zk−y∗
+k‖2|Fk]− αk
+λklg,1
+‖qy
+k‖2
++ 2α2
+kE[‖˜ey
+k‖2|Fk]− 2αkE[⟨˜ey
+k,yk−y∗
+λ,k⟩|Fk].
+Finally, we can use general inequality|⟨a,b⟩|≤ c‖a‖2 + 1
+4c‖b‖2 to get
+−2αk⟨˜ey
+k,yk−y∗
+λ,k⟩≤ βkµg
+4 ‖yk−y∗
+λ,k‖2 + 4α2
+k
+βkµg
+‖˜ey
+k‖2.
+Plugging this back, withβkµg≪ 1, we get the lemma. □
+28
+
+C.5 Descent Lemma for F (xk)
+Lemma C.9IfξαklF,1< 1, then
+E[F (xk+1)−F (xk)|Fk]≤− ξαk
+4 ‖∇F (xk)‖2− ξαk
+4 E[‖qx
+k‖2|Fk] + 2ξαk· E[‖˜ex
+k‖2|Fk]
++ 3ξαk
+2
+(
+4l2
+g,1λ2
+k‖yk+1−y∗
+λ,k‖2 +l2
+g,1λ2
+k‖zk+1−y∗
+k‖2 +C2
+λ/λ2
+k
+)
+.
+Proof. Using the smoothness ofF,
+F (xk+1)−F (xk)≤⟨∇F (xk),xk+1−xk⟩ + lF,1
+2 ‖xk+1−xk‖2.
+Note thatxk+1−xk =ξαk(qx
+k + ˜ex
+k), and thus
+F (xk+1)−F (xk)≤−ξαk⟨∇xF (xk),qx
+k⟩− ξαk⟨∇xF (xk), ˜ex
+k⟩ + lF,1
+2 ‖xk+1−xk‖2
+≤− ξαk
+2 (‖∇F (xk)‖2 +‖qx
+k‖2−‖∇F (xk)−qx
+k‖2)−ξαk⟨∇xF (xk), ˜ex
+k⟩ +ξ2α2
+klF,1(‖qx
+k‖2 +‖˜ex
+k‖2).
+Using|⟨a,b⟩|≤ c‖a‖2 + 1
+4c‖b‖2, we have
+−ξαk⟨∇F (xk), ˜ex
+k⟩≤ ξαk
+4 ‖∇xF (xk)‖2 +ξαk‖˜ex
+k‖2.
+Finally, recall (16). Using(a +b +c)2≤ 3(a2 +b2 +c2), we have
+‖∇F (xk)−qx
+k‖2≤ 3(4l2
+g,1λ2
+k‖yk+1−y∗
+λ,k‖2 +l2
+g,1λ2
+k‖zk+1−y∗
+k‖2 +C2
+λ/λ2
+k).
+Combining all, withξαklF,1< 1, we get the lemma. □
+C.6 Decrease in Potential Function
+Deﬁne the potential functionVk as the following:
+Vk :=F (xk) +lg,1λk‖yk−y∗
+λ,k‖2 + lg,1λk
+2 ‖zk−y∗
+k‖2 + 1
+cηl2
+g,1γk−1
+(‖˜ex
+k‖2
+λk
++‖˜ey
+k‖2
+λk
++λk‖˜ez
+k‖2
+)
+,
+with some absolute constantcη > 0. We bound the diﬀerence in potential function:
+E[Vk+1− Vk|Fk]≤− ξαk
+4 ‖∇F (xk)‖2− ξαk
+4 E[‖qx
+k‖2|Fk] +ξαk
+2
+3C2
+λ
+λ2
+k
++lg,1λk
+((
+1 + δk
+λk
+)
+‖yk+1−y∗
+λ,k+1‖2 + 6ξαkλklg,1‖yk+1−y∗
+λ,k‖2−‖yk−y∗
+λ,k‖2
+)
+| {z }
+(i)
++ lg,1λk
+2
+((
+1 + δk
+λk
+)
+‖zk+1−y∗
+k+1‖2 + 3ξαkλklg,1‖zk+1−z∗
+k‖2−‖zk−y∗
+k‖2
+)
+| {z }
+(ii)
++ 1
+cηl2
+g,1
+(
+E[‖˜ex
+k+1‖2|Fk]
+γkλk
+− E[‖˜ex
+k‖2|Fk]
+γk−1λk
+)
+| {z }
+(iii)
++2ξαkE[‖˜ex
+k‖2|Fk]
+29
+
++ 1
+cηl2
+g,1
+(
+E[‖˜ey
+k+1‖2|Fk]
+γkλk
+− E[‖˜ey
+k‖2|Fk]
+γk−1λk
+)
+| {z }
+(iv)
++ λk
+cηl2
+g,1
+(
+E[‖˜ez
+k+1‖2|Fk]
+γk
+− E[‖˜ez
+k‖2|Fk]
+γk−1
+)
+| {z }
+(v)
+.
+Using Lemmas C.7, C.8, C.5 and C.6, given thatδk/λk <µ gβk/8, (i) and (ii) are bounded by
+(i)≤− µgβk
+8 ‖yk−y∗
+λ,k‖2− αk
+λklg,1
+‖qy
+k‖2 +O
+(
+ξ2α2
+kl2
+∗,0
+βkµg
+E[‖qx
+k‖2 +‖˜ex
+k‖2|Fk] +
+δ2
+kl2
+f,0
+λ4
+kµ3g
++ α2
+k
+βkµg
+E[‖˜ey
+k‖2|Fk]
+)
+,
+(ii)≤− µgγk
+8 ‖zk−y∗
+k‖2− γk
+lg,1
+‖qz
+k‖2 +O
+(
+ξ2α2
+kl2
+∗,0
+γkµg
+E[‖qx
+k‖2 +‖˜ex
+k‖2|Fk] +γk
+µg
+E[‖˜ez
+k‖2|Fk]
+)
+,
+We can use Lemma C.4 to bound(iii), (iv) and (v). Using the step-size condition given in (8b), we have
+(1−ηk+1)
+γk
+− 1
+γk−1
+=
+γk−1−γk
+γk−1
+−ηk+1
+γk
+≤−ηk+1
+2γk
+.
+Note that by the same step-size condition,ηk+1≫O(l2
+g,1γ2
+k), and thus,
+(iii)≤− ηk+1
+2γkλk
+E[‖˜ex
+k‖2|Fk] +O(σ2
+f)· η2
+k+1
+λkγk
++O(σ2
+g)·
+(
+η2
+k+1λk
+γk
++ δ2
+k
+γkλk
+)
++O(l2
+g,1)·
+(
+ξ2αk‖qx
+k‖2 +αk(‖qy
+k‖2 +‖˜ey
+k‖2) +γkλk(‖qz
+k‖2 +‖˜ez
+k‖2)
+)
+.
+Similarly, we can use Lemma C.3 and show that
+(iv)≤− ηk+1
+2γkλk
+E[‖˜ey
+k‖2|Fk] +O(σ2
+f)· η2
+k+1
+λkγk
++O(σ2
+g)·
+(
+η2
+k+1λk
+γk
++ δ2
+k
+γkλk
+)
++O(l2
+g,1)αk·
+(
+ξ2‖qx
+k‖2 +ξ2‖˜ex
+k‖2 +‖qy
+k‖2)
+,
+(v)≤− ηk+1
+2γk
+E[‖˜ez
+k‖2|Fk] +O(σ2
+g)· η2
+k+1
+γk
++O(l2
+g,1)·
+(ξ2α2
+k
+γk
+‖qx
+k‖2 + ξ2α2
+k
+γk
+‖˜ex
+k‖2 +γk‖qz
+k‖2
+)
+.
+Plugging inequalities for(i)− (v) back and arranging terms, we get
+E[Vk+1− Vk|Fk]≤− ξαk
+4 ‖∇F (xk)‖2− ξαk
+4 E[‖qx
+k‖2|Fk] + 3C2
+λ
+2
+ξαk
+λ2
+k
+−lg,1λk(i) +lg,1λk
+2 (ii)
++ 1
+cηl2
+g,1
+(iii) + 2ξαkE[‖˜ex
+k‖2|Fk] + 1
+cηl2
+g,1
+(iv) + λk
+cηl2
+g,1
+(v)
+≤− ξαk
+4 ‖∇F (xk)‖2− λklg,1µgβk
+4 ‖yk−y∗
+λ,k‖2− λklg,1µgγk
+4 ‖zk−y∗
+k‖2
+− ξαk
+4 E[‖qx
+k‖2|Fk]
+(
+1−O(ξlg,1l2
+∗,0/µg)−O(ξc−1
+η )
+)
+−αkE[‖qy
+k‖2|Fk]
+(
+1−O(c−1
+η )
+)
+− γkλk
+2 E[‖qz
+k‖2|Fk]
+(
+1−O(c−1
+η )
+)
++O
+(
+C2
+λξαk
+λ2
+k
++
+l2
+f,0lg,1δ2
+k
+µ3gλ3
+k
+)
++noise variance terms,
+30
+
+where noise variance terms are
+noise terms=− E[‖˜ex
+k‖2|Fk]
+cηl2
+g,1
+( ηk+1
+2γkλk
+−O
+(
+l2
+g,1ξ2αk
+)
+− (cηξαkl2
+g,1)
+)
+− E[‖˜ey
+k‖2|Fk]
+l2
+g,1cη
+( ηk+1
+2γkλk
+−O(l2
+g,1)αk−O(cηl3
+g,1/µg)αk
+)
+− λkE[‖˜ez
+k‖2|Fk]
+l2
+g,1cη
+(ηk+1
+2γk
+−O(l2
+g,1)γk−O(cηl3
+g,1/µg)γk
+)
++ 1
+cηl2
+g,1
+(
+O(σ2
+f)· η2
+k+1
+λkγk
++O(σ2
+g)·
+(
+η2
+k+1λk
+γk
++ δ2
+k
+γkλk
+))
+.
+For the all squared terms, with careful design of step-sizes, we can make the coeﬃcient negative. Speciﬁcally,
+we need
+ξlg,1l2
+∗,0/µg≪ 1, cη≫ 1,
+to negateq(·)
+k terms, and
+1>η k+1≫cηγ2
+k(l3
+g,1/µg),
+to suppress noise variance terms, as required in our step-size rules (8). Then, we can simplify the bound for
+the potential function diﬀerence:
+E[Vk+1− Vk|Fk]≤− ξαk
+4 ‖∇F (xk)‖2 +O(ξC 2
+λ)· αk
+λ2
+k
++O(l2
+f,0lg,1/µ3
+g)· δ2
+k
+λ3
+k
++ 1
+cηl2
+g,1
+(
+O(σ2
+f)· η2
+k+1
+λkγk
++O(σ2
+g)·
+(
+η2
+k+1λk
+γk
++ δ2
+k
+γkλk
+))
+.
+Proof of Theorem 4.3 Summing the above over allk = 0 to K− 1, usingδk/λk = O(1/k) and
+1/λk,δk/γk =o(1), we obtain Theorem 4.3.
+C.7 Proof of Corollary 4.4
+Using the step-sizes speciﬁed in(9), sinceλk =γk/2αk≍ka−c,δk≍ka−c−1. As long asa−c− 1<−c,
+which is satisﬁed ifa< 1, we haveδk/γk =o(1). We can also check that
+δk
+λk
+≤ (k +k0 + 1)−1< µgβk
+8 = (k +k0)−c
+k1−c
+0
+,
+as long as andc< 1. Given the above, we have
+K−1∑
+k=0
+E[‖∇F (xk)‖2]
+(k +k0)a ≤OP(1)·
+∑
+k
+1
+(k +k0)3a−2c +OP(σ2
+f)·
+∑
+k
+1
+(k +k0)−2c−a
++OP(σ2
+g)·
+∑
+k
+1
+(k +k0)−4c+a +OP(1).
+Again, we consider three regimes:
+31
+
+Stochasticity in both upper-level and lower-level objectives:σ2
+f,σ 2
+g > 0. In this case, we seta =
+3/5,c = 2/5, and thusλk≍k1/5, which yields
+E[‖∇F (xR)‖2]≍ logK
+K2/5.
+Stochasticity only in the upper-level:σ2
+f > 0,σ 2
+g = 0. In this case, we can takea = 2/4,c = 1/4, and
+thusλk≍k1/4, which yields
+E[‖∇F (xR)‖2]≍ logK
+K2/4.
+Deterministic case:σ2
+f = 0,σ 2
+g = 0. Here, we can takea = 1/3,c = 0 and since there is no stochasticity
+in the algorithm, we have
+‖∇F (xK)‖2≍ logK
+K2/3.
+Appendix D Deferred Proofs for Lemmas
+D.1 Proofs for Main Lemmas
+D.1.1 Proof of Lemma 3.1
+Proof. Lety∗
+λ(x) := arg minyLλ(x,y ). Note that∇yLλ(x,y∗
+λ(x)) = 0, and thus
+∇L∗
+λ(x) =∇xLλ(x,y∗
+λ(x)) +∇xy∗
+λ(x)⊤∇yLλ(x,y∗
+λ(x)) =∇xLλ(x,y∗
+λ(x)).
+To compare this to∇F (x), we can invoke Lemma A.2 which gives
+‖∇F (x)−∇xLλ(x,y∗
+λ(x))‖
+≤ 2(lg,1/µg)‖y∗
+λ(x)−y∗(x)‖ (lf,1 +λ· min(2lg,1,lg,2‖y∗(x)−y∗
+λ(x)‖)).
+From Lemma 3.2, we use‖y∗
+λ(x)−y∗(x)‖≤ 2lf,0
+λµg , and get
+‖∇F (x)−∇xLλ(x,y∗
+λ(x))‖≤ 1
+λ· 4lf,0lg,1
+µ2g
+(
+lf,1 + 2lf,0lg,2
+µg
+)
+.
+□
+D.1.2 Proof of Lemma 3.2
+Proof. Note thatLλ(x,y ) is at leastλµg
+2 strongly-convex iny onceλ≥ 2lf,1µg. To see this,
+Lλ(x,y ) =f(x,y ) +λ(g(x,y )−g∗(x)),
+whichisatleast −lf,1+λµg-stronglyconvexin y. Ifλ> 2lf,1/µg,thisimpliesatleast λµg/2strong-convexity
+ofLλ(x,y ) iny.
+By the optimality condition aty∗
+λ1(x1) withx1,λ 1, we have
+∇yf(x1,y∗
+λ1(x1)) +λ1∇yg(x1,y∗
+λ1(x1)) = 0,
+32
+
+which also implies that‖g(x1,y∗
+λ1(x1))‖≤ lf,0/λ1. Observe that
+∇yf(x2,y∗
+λ1(x1)) +λ2∇yg(x2,y∗
+λ1(x1))
+= (∇yf(x2,y∗
+λ1(x1))−∇yf(x1,y∗
+λ1(x1))) +∇yf(x1,y∗
+λ1(x1))
++λ2(∇yg(x2,y∗
+λ1(x1))−∇yg(x1,y∗
+λ1(x1))) +λ2∇yg(x1,y∗
+λ1(x1))
+= (∇yf(x2,y∗
+λ1(x1))−∇yf(x1,y∗
+λ1(x1))) +λ2(∇yg(x2,y∗
+λ1(x1))−∇yg(x1,y∗
+λ1(x1)))
++ (λ2−λ1)∇yg(x1,y∗
+λ1(x1)),
+where in the last equality, we applied the optimality condition fory∗
+λ1(x1). Then applying the Lipschitzness
+of∇yf and∇yg inx, we have
+‖∇yf(x2,y∗
+λ1(x1)) +λ2∇yg(x2,y∗
+λ1(x1))‖≤ lf,1‖x1−x2‖ +lg,1λ2‖x2−x1‖ + (λ2−λ1)lf,0
+λ1
+.
+SinceLλ2(x2,y ) isλ2µg/2-strongly convex iny, from the coercivity property of strongly-convex functions,
+along with the optimality condition withy∗
+λ2(x2), we have
+λ2µg
+2 ‖y∗
+λ1(x1)−y∗
+λ2(x2)‖≤‖∇ yLλ2(x2,y∗
+λ1(x1))‖≤ (lf,1 +λ2lg,1)‖x1−x2‖ + λ2−λ1
+λ1
+lf,0.
+Dividing both sides by(λ2µg/2) concludes the ﬁrst part of the proof. Note thaty∗(x) = limλ→∞y∗
+λ(x).
+Thus, for anyx and ﬁniteλ≥ 2lf,1/µg,
+‖y∗
+λ(x)−y∗(x)‖≤ 2lf,0
+λµg
+.
+□
+D.2 Proofs for Auxiliary Lemmas
+D.2.1 Proof of Lemma A.1
+Proof. TheproofcanbealsofoundinLemma2.2in[ 16]. Weprovidetheproofforthecompleteness. Recall
+that∇F (x) is given by
+∇F (x) =∇xf(x,y∗(x))−∇ 2
+xyg(x,y∗(x))∇2
+yyg(x,y∗(x))−1∇yf(x,y∗(x)).
+Using the smoothness of functions and Hessian-continuity ofg in assumptions, for anyx1,x 2∈X, we get
+‖∇F (x1)−∇F (x2)‖≤
+(
+lf,1 + lf,0
+µg
+lg,2 + lg,1
+µg
+lg,1
+)
+(‖x1−x2‖ +‖y∗(x1)−y∗(x2)‖)
++lg,1lf,0‖∇2
+yyg(x1,y∗(x1))−1−∇ 2
+yyg(x2,y∗(x2))−1‖
+≤
+(
+lf,1 + lf,0
+µg
+lg,2 + lg,1
+µg
+)
+l∗,0‖x1−x2‖ + lg,1lf,0
+µ2g
+lg,2l∗,0‖x1−x2‖.
+Thus,
+lF,1≤l∗,0
+(
+lf,1 + lf,0lg,2 +l2
+g,1
+µg
++ lf,0lg,1lg,2
+µ2g
+)
+≤l∗,0
+(
+lf,1 + l2
+g,1
+µg
++ 2lf,0lg,1lg,2
+µ2g
+)
+,
+where in the last inequality we usedlg,1/µg≥ 1. □
+33
+
+D.2.2 Proof of Lemma A.2
+We use a short-handy∗ =y∗(x).
+∇xLλ(x,y ) =∇xf(x,y ) +λ(∇xg(x,y )−∇xg(x,y∗))
+∇yLλ(x,y ) =∇yf(x,y ) +λ∇yg(x,y ).
+Check that
+∇F (x)−∇xLλ(x,y ) =∇xf(x,y∗)−∇xf(x,y )
+−∇ 2
+xyg(x,y∗)∇2
+yyg(x,y∗)−1∇yf(x,y∗)−λ(∇xg(x,y )−∇xg(x,y∗)). (31)
+We can rearrange terms for(∇xg(x,y )−∇xg(x,y∗)) as the following:
+∇xg(x,y )−∇xg(x,y∗) =∇xg(x,y )−∇xg(x,y∗)−∇xyg(x,y∗)⊤(y−y∗)
++∇xyg(x,y∗)⊤(y−y∗). (32)
+Note that from the optimality condition fory∗,∇yg(x,y∗) = 0 and from∇xf(x,y ) + λ∇yg(x,y ) =
+∇yL(x,y ), we can expressy−y∗ as
+y−y∗ =−∇yyg(x,y∗)−1(∇yg(x,y )−∇yg(x,y∗)−∇yyg(x,y∗)(y−y∗))
++ 1
+λ∇yyg(x,y∗)−1 (∇yL(x,y )−∇yf(x,y )). (33)
+Plugging (32) and (33) back to (31), we have
+∇F (x)−∇xLλ(x,y ) = (∇xf(x,y∗)−∇xf(x,y ))−∇ 2
+xyg(x,y∗)∇2
+yyg(x,y∗)−1(∇yf(x,y∗)−∇yf(x,y ))
+−∇ 2
+xyg(x,y∗)∇2
+yyg(x,y∗)−1∇yL(x,y )
+−λ(∇xg(x,y )−∇xg(x,y∗)−∇ 2
+xyg(x,y∗)⊤(y−y∗))
++λ∇2
+xyg(x,y∗)∇2
+yyg(x,y∗)−1(∇yg(x,y )−∇yg(x,y∗)−∇ 2
+yyg(x,y∗)(y−y∗)).
+By the smootheness of∇g from Assumption 1, we have
+‖∇yg(x,y )−∇yg(x,y∗)−∇ 2
+yyg(x,y∗)(y−y∗)‖≤ lg,2‖y−y∗‖2.
+When‖y−y∗‖ is too large, the smoothness ofg can be more useful:
+‖∇yg(x,y )−∇yg(x,y∗)−∇ 2
+yyg(x,y∗)(y−y∗)‖≤ 2lg,1‖y−y∗‖.
+Similarly, we have
+‖∇xg(x,y )−∇xg(x,y∗)−∇ 2
+xyg(x,y∗)⊤(y−y∗)‖≤ min
+(
+lg,2‖y−y∗‖2, 2lg,1‖y−y∗‖
+)
+.
+On the other hand, by smootheness off, we also have
+‖∇xf(x,y∗)−∇xf(x,y )‖≤ lf,1‖y−y∗‖,‖∇yf(x,y∗)−∇yf(x,y )‖≤ lf,1‖y−y∗‖.
+We can conclude that
+‖∇F (x)−∇xLλ(x,y ) +∇2
+xyg(x,y∗)∇2
+yyg(x,y∗)−1∇yL(x,y )‖
+≤lf,1(1 +lg,1/µg)‖y−y∗‖ +λ(1 +lg,1/µg)‖y−y∗‖ min(lg,2‖y−y∗‖, 2lg,1).
+We know thatlg,1/µg≥ 1 and thus, we have
+‖∇F (x)−∇xLλ(x,y ) +∇2
+xyg(x,y∗)∇2
+yyg(x,y∗)−1∇yL(x,y )‖
+≤ 2(lg,1/µg)‖y−y∗‖ (lf,1 +λ· min(2lg,1,lg,2‖y−y∗‖)),
+yielding the lemma.
+34
+
+D.2.3 Proof of Lemma A.3
+Proof. Lipschitzness ofy∗
+λ(x) is immediate from Lemma 3.2. By the optimality condition for∇y∗
+λ(x), we
+have
+∇yLλ(x,y∗
+λ(x)) =∇yf(x,y∗
+λ(x)) +λ∇yg(x,y∗
+λ(x)) = 0.
+Taking derivative with respect tox, we get
+(∇2
+yyf(x,y∗
+λ(x)) +λ∇2
+yyg(x,y∗
+λ(x)))∇y∗
+λ(x) =−(∇2
+xyf(x,y∗
+λ(x)) +λ∇2
+xyg(x,y∗
+λ(x))).
+Asλ> 2lf,1/µg, the left-hand side is positive deﬁnite with mininum eigenvalue larger thanλµg/2, and we
+have
+∇y∗
+λ(x) =−
+( 1
+λ∇2
+yyf(x,y∗
+λ(x)) +∇2
+yyg(x,y∗
+λ(x))
+)−1( 1
+λ∇2
+xyf(x,y∗
+λ(x)) +∇2
+xyg(x,y∗
+λ(x))
+)
+.
+To get the smoothness result, we compare this atx1 andx2, yielding
+λµg
+2 ‖∇y∗
+λ(x1)−∇y∗
+λ(x2)‖≤ (lf,2 +λlg,2)(‖x1−x2‖ +‖y∗
+λ(x1)−y∗
+λ(x2)‖) max
+x∈X
+‖∇y∗
+λ(x)‖
++ (lf,2 +λlg,2)(‖x1−x2‖ +‖y∗
+λ(x1)−y∗
+λ(x2)‖)
+≤ (lf,2 +λlg,2)(1 +lλ,0)2‖x1−x2‖.
+Arranging this, we get
+‖∇y∗
+λ(x1)−∇y∗
+λ(x2)‖≤ 32
+(lf,2
+λ +lg,2
+)l2
+g,1
+µ3g
+‖x1−x2‖.
+□
+D.2.4 Proof of Lemma A.4
+Proof. This is immediate from Lipschitz continuity in Lemma 3.2 with sendingλ1 =λ2 to inﬁnity.
+E[‖y∗(xk+1)−y∗(xk)‖2|Fk]≤l2
+∗,0E[‖xk+1−xk‖2|Fk]
+≤l2
+∗,0ξ2α2
+k(E[‖qx
+k‖2|Fk] +α2
+kσ2
+f +β2
+kσ2
+g).
+□
+D.2.5 Proof of Lemma A.5
+Proof. We can use the smoothness property ofy∗(x)as in [8], which is crucial to control the noise variance
+induced from updatingx. We can start with the following:
+⟨vk,y∗
+k+1−y∗
+k⟩ =⟨vk,∇y∗(xk)(xk+1−xk)⟩
++⟨vk,y∗(xk+1)−y∗(xk)−∇y∗(xk)(xk+1−xk)⟩.
+On the ﬁrst term, taking expectation and using⟨a,b⟩≤ c‖a‖2 + 1
+4c‖b‖2,
+E[⟨vk,∇y∗(xk)(xk+1−xk)⟩|Fk] =−ξαkE[⟨vk,∇y∗(xk)qx
+k⟩|Fk]
+35
+
+≤ξαkηkE[‖vk‖2|Fk] +ξαk
+4ηk
+E[‖∇y∗(xk)qx
+k‖2|Fk]
+≤ξαkηkE[‖vk‖2|Fk] +
+ξαkl2
+∗,0
+4ηk
+E[‖qx
+k‖2|Fk],
+where we used the Lipschitz continuity ofy∗(x). For the second term, using smoothness ofy∗(x),
+E[⟨vk,y∗(xk+1)−y∗(xk)−∇y∗(xk)(xk+1−xk)⟩|Fk]
+≤ l∗,1
+2 E[‖vk‖‖xk+1−xk‖2|Fk]
+≤ l∗,1
+4 E
+[(
+l∗,1‖vk‖2 + 1
+l∗,1
+)
+·‖xk+1−xk‖2|Fk
+]
+≤ l2
+∗,1
+4 E[‖vk‖2· E
+[
+‖xk−xk+1‖2|F′
+k
+]
+|Fk]
++ ξ2
+4
+(
+α2
+kE[‖qx
+k‖2] +α2
+kσ2
+f +β2
+kσ2
+g
+)
+,
+whereF′
+k is a sigma-algebra generated by stochastic noises up tokth iteration andvk. Note that
+E
+[
+‖xk−xk+1‖2|F′
+k
+]
+≤ξ2α2
+kE
+[
+‖qx
+k‖2|Fk
+]
++ξ2(α2
+kσ2
+f +β2
+kσ2
+g),
+and from boundedness of∇xf and∇xg in Assumption 4, we haveαk‖qx
+k‖ ≤αklf,0 + 2βklg,0. With
+Mf =l2
+f,0 +σ2
+f,Mg =l2
+g,0 +σ2
+g, andM = max(Mf,Mg), we get
+E
+[
+‖xk−xk+1‖2|F′
+k
+]
+≤ 2ξ2(Mfα2
+k + 2Mgβ2
+k)≤ 4Mξ 2l2
+∗,1β2
+k,
+which yields
+E[⟨vk,y∗(xk+1)−y∗(xk)−∇y∗(xk)(xk+1−xk)⟩|Fk]
+≤Mξ 2l2
+∗,1β2
+kE[‖vk‖2|Fk] +ξ2
+4
+(
+α2
+kE[‖qx
+k‖2|Fk] +α2
+kσ2
+f +β2
+kσ2
+g
+)
+.
+Combining all, we obtain the desired result. □
+D.2.6 Proof of Lemma A.6
+Proof. We can start with the following decomposition:
+⟨vk,y∗
+λk+1(xk+1)−y∗
+λk(xk)⟩ =⟨vk,y∗
+λk+1(xk+1)−y∗
+λk(xk+1)⟩
++⟨vk,∇y∗
+λk(xk)(xk+1−xk)⟩
++⟨vk,y∗
+λk(xk)−y∗
+λk(xk)−∇y∗
+λk(xk)(xk+1−xk)⟩.
+For the second and third terms, we can apply the smoothness ofyλ(x) similarly in the proof in D.2.5.
+On the ﬁrst term, taking expectation and using⟨a,b⟩≤ c‖a‖2 + 1
+4c‖b‖2,
+E[⟨vk,y∗
+λk+1(xk+1)−y∗
+λk(xk+1)⟩|Fk]≤cE[‖vk‖2] + 1
+4c E[‖y∗
+λk+1(xk+1)−y∗
+λk(xk+1)‖2]
+≤cE[‖vk‖2] + 1
+c
+δ2
+k
+λ2
+kλ2
+k+1
+l2
+f,0
+µ2g
+,
+36
+
+where we applied Lemma 3.2. Takec = δk
+λk
+, getting
+E[⟨vk,y∗
+λk+1(xk+1)−y∗
+λk(xk+1)⟩|Fk]≤ δk
+λk
+E[‖vk‖2] +
+l2
+f,0δk
+µ2gλ3
+k
+.
+Adding this with bounds on other two terms, we get the lemma. □
+D.3 Proofs for Auxiliary Lemmas with Momentum
+D.3.1 Proof of Lemma C.1
+Due to Lipschitz continuity ofy∗(x), we have
+E[‖y∗(xk+1)−y∗(xk)‖2]≤l2
+∗,0E[‖xk+1−xk‖2]
+≤ξ2α2
+kl2
+∗,0E[‖qx
+k + ˜ex
+k‖2]≤ 2ξ2α2
+kl2
+∗,0(E[‖qx
+k‖2] + E[‖˜ex
+k‖2]).
+D.3.2 Proof of Lemma C.2
+Using Lemma 3.2, we have
+E[‖y∗
+λk+1(xk+1)−y∗
+λk(xk)‖2]≤ 8δ2
+k
+λ2
+kλ2
+k+1
++ 2l2
+λ,0E[‖xk+1−xk‖2]
+≤ 4ξ2α2
+kl2
+∗,0(E[‖qx
+k‖2] + E[‖˜ex
+k‖2]) + 8δ2
+k
+λ4
+k
+.
+D.3.3 Proof of Lemma C.3
+We can start with unfolding the expression forE[‖˜ez
+k+1‖2].
+E[‖˜ez
+k+1‖2] = E[‖˜hk+1
+z −qz
+k+1‖2]
+= E[‖∇yg(xk+1,zk+1;φk+1
+z ) + (1−ηk+1)(˜hk
+z−∇yg(xk,zk;φk+1
+z ))−qz
+k+1‖2]
+= E[‖(1−ηk+1)˜ez
+k +∇yg(xk+1,zk+1;φk+1
+z )
++ (1−ηk+1)(qz
+k−∇yg(xk,zk;φk+1
+z ))−qz
+k+1‖2]
+= (1−ηk+1)2E[‖˜ez
+k‖2] + E[‖ηk(∇yg(xk+1,zk+1;φk+1
+z )−qz
+k+1)
++ (1−ηk+1)(∇yg(xk+1,zk+1;φk+1
+z )−∇yg(xk,zk;φk+1
+z ) +qz
+k−qz
+k+1)‖2].
+In the last equality, we used
+E[E[⟨˜ez
+k,∇yg(xk+1,zk+1;φk+1
+z )−qz
+k+1⟩|Fk+1]] = 0,
+E[E[⟨˜ez
+k,∇yg(xk,zk;φk+1
+z )−qz
+k⟩|Fk+1]] = 0.
+Also note that
+E[‖∇yg(xk+1,zk+1;φk+1
+z )−qz
+k+1‖2]≤σ2
+g,
+from the variance boundedness (Assumption 3). We also observe that
+E[‖∇yg(xk+1,zk+1;φk+1
+z )−∇yg(xk,zk;φk+1
+z )‖2]≤l2
+g,1(‖xk+1−xk‖2 +‖zk+1−zk‖2)
+37
+
+=l2
+g,1(ξ2α2
+k‖qx
+k + ˜ex
+k‖2 +γ2
+k‖qz
+k + ˜ez
+k‖2),
+due to Assumption 6. The same inequality holds forqz
+k+1−qz
+k:
+E[‖qz
+k+1−qz
+k‖2]≤l2
+g,1(ξ2α2
+k‖qx
+k + ˜ex
+k‖2 +γ2
+k‖qz
+k + ˜ez
+k‖2).
+Now we plug these inequalities and using‖a +b‖2≤ 2(‖a‖2 +‖b‖2) multiple times, we have
+E[‖˜ez
+k+1‖2]≤ (1−ηk+1)2(1 + 8l2
+g,1γ2
+k)E[‖˜ez
+k‖2] + 2η2
+k+1σ2
+g
++ 8l2
+g,1(1−ηk+1)2(
+ξ2α2
+kE[‖qx
+k‖2] +ξ2α2
+kE[‖˜ex
+k‖2] +γ2
+kE[‖qz
+k‖2]
+)
+.
+Similarly, we can repeat similar steps for˜ey
+k+1. To simplify the notation, with slight abuse in notation, we
+letqy
+k(ζ,φ ) :=∇yf(xk,yk;ζ) +λk∇yg(xk,yk;φ). Note thatqy
+k = E[qy
+k(ζ,φ )]. Then we can get a similar
+bound forE[‖˜ey
+k+1‖2]:
+E[‖˜ey
+k+1‖2]≤ (1−ηk+1)2E[‖˜ey
+k‖2] + 2η2
+k+1E[‖qy
+k+1(ζk+1
+y ,φk+1
+y )−qy
+k+1‖2]
++ 2(1−ηk+1)2E[‖(qy
+k+1(ζk+1
+y ,φk+1
+y )−qy
+k(ζk+1
+y ,φk+1
+y )) + (qy
+k−qy
+k+1)‖2].
+Using the variance bound similarly, we have
+E[‖qy
+k+1(ζk+1
+y ,φk+1
+y )−qy
+k+1‖2]≤σ2
+f +λ2
+k+1σ2
+g.
+Then, we unfold the last term such that
+E[‖(qy
+k+1(ζk+1
+y ,φk+1
+y )−qy
+k(ζk+1
+y ,φk+1
+y )) + (qy
+k−qy
+k+1)‖2]
+= E[‖(∇yf(xk+1,yk+1;ζk+1
+y )−∇yf(xk,yk;ζk+1
+y ) +∇yf(xk,yk)−∇yf(xk+1,yk+1))
++λk(∇yg(xk+1,yk+1;φk+1
+y )−∇yg(xk,yk;φk+1
+y ) +∇yg(xk,yk)−∇yg(xk+1,yk+1))
++δk(∇yg(xk+1,yk+1;φk+1
+y )−∇yg(xk+1,yk+1) +∇yg(xk,yk)−∇yg(xk,yk;φk+1
+y ))‖2]
+≤ 12(l2
+f,1 +l2
+g,1λ2
+k)(‖xk+1−xk‖2 +‖yk+1−yk‖2) + 12δ2
+kσ2
+g
+≤ 24(l2
+f,1α2
+k +l2
+g,1β2
+k)(ξ2‖qx
+k‖2 +ξ2‖˜ex
+k‖2 +‖qy
+k‖2 +‖˜ey
+k‖2) + 12δ2
+kσ2
+g.
+We note that we setλk≥ 2lf,1/µg, and thuslf,1≤λklg,1. In total, we get
+E[‖˜ey
+k+1‖2]≤ (1−ηk+1)2(1 + 96l2
+g,1β2
+k)E[‖˜ey
+k‖2] + 2η2
+k+1(σ2
+f +λ2
+k+1σ2
+g) + 24δ2
+kσ2
+g
++ 96(1−ηk+1)2l2
+g,1β2
+k(ξ2‖qx
+k‖2 +ξ2‖˜ex
+k‖2 +‖qy
+k‖2).
+D.3.4 Proof of Lemma C.4
+Similarly to the case for‖˜ey
+k+1‖2, let us deﬁneqx
+k(ζ,φ ) := ∇xf(xk,yk+1;ζ) +λk(∇xg(xk,yk+1;φ)−
+∇xg(xk,zk+1;φ)). We note thatζk
+x,φk
+x are sampled afteryk+1,zk+1 is updated but beforexk is updated.
+Hence,
+E[E[⟨˜ex
+k,qx
+k+1(ζk+1
+x ,φk+1
+x )−qx
+k+1⟩|F′
+k+1]] = 0,
+E[E[⟨˜ex
+k,qx
+k(ζk+1
+x ,φk+1
+x )−qx
+k⟩|F′
+k+1]] = 0.
+Thus, following similar procedure, we have
+E[‖˜ex
+k+1‖2] = E[‖qx
+k+1(ζk+1
+x ,φk+1
+x ) + (1−ηk+1)(qx
+k + ˜ex
+k−qx
+k(ζk+1
+x ,φk+1
+x ))−qx
+k+1‖2]
+38
+
+≤ (1−ηk+1)2E[‖˜ex
+k‖2] + 2η2
+kE[‖qx
+k+1(ζk+1
+x ,φk+1
+x )−qx
+k+1‖2]
++ 2(1−ηk+1)2E[‖(qx
+k+1(ζk+1
+x ,φk+1
+x )−qx
+k(ζk+1
+x ,φk+1
+x )) + (qx
+k−qx
+k+1)‖2].
+Note that
+E[‖qx
+k+1(ζk+1
+x ,φk+1
+x )−qx
+k+1‖2]
+= E[‖(∇xf(xk+1,yk+2;ζk+1
+x )−∇xf(xk+1,yk+2))
++λk(∇xg(xk+1,yk+2;φk+1
+x )−∇xg(xk+1,yk+2)) +λk(∇xg(xk+1,zk+2;φk+1
+x )−∇xg(xk+1,zk+2))‖2]
+≤ 3(σ2
+f +λ2
+kσ2
+g).
+Finally, we have
+E[‖(qx
+k+1(ζk+1
+x ,φk+1
+x )−qx
+k(ζk+1
+x ,φk+1
+x )) + (qx
+k−qx
+k+1)‖2]
+= E[‖(∇xf(xk+1,yk+2;ζk+1
+x )−∇xf(xk,yk+1;ζk+1
+x ) +∇yf(xk,yk+1)−∇yf(xk+1,yk+2))
++λk(∇xg(xk+1,yk+2;φk+1
+x )−∇xg(xk,yk+1;φk+1
+x ) +∇xg(xk,yk+1)−∇xg(xk+1,yk+2))
++λk(∇xg(xk+1,zk+2;φk+1
+x )−∇xg(xk,zk+1;φk+1
+x ) +∇xg(xk,zk+1)−∇xg(xk+1,zk+2))
++δk(∇yg(xk+1,yk+2;φk+1
+x )−∇yg(xk+1,yk+2) +∇xg(xk,yk+1)−∇xg(xk,yk+1;φk+1
+x ))
++δk(∇xg(xk+1,zk+2;φk+1
+x )−∇xg(xk+1,zk+2) +∇xg(xk,zk+1)−∇xg(xk,zk+1;φk+1
+x ))‖2].
+Using Cauchy-Schwartz inequality, we get
+E[‖(qx
+k+1(ζk+1
+x ,φk+1
+x )−qx
+k(ζk+1
+x ,φk+1
+x )) + (qx
+k−qx
+k+1)‖2]
+≤ 30(l2
+f,1 +l2
+g,1λ2
+k)(‖xk+1−xk‖2 +‖yk+2−yk+1‖2 +‖zk+2−zk+1‖2) + 40δ2
+kσ2
+g
+≤ 120l2
+g,1λ2
+k(ξ2α2
+k(‖qx
+k‖2 +‖˜ex
+k‖2) +α2
+k+1(‖qy
+k‖2 +‖˜ey
+k‖2) +γ2
+k+1(‖qz
+k‖2 +‖˜ez
+k‖2)) + 40δ2
+kσ2
+g.
+Combining all, we obtain the result.
+39

@@ -1,0 +1,148 @@
+{
+  "allowed_tools": [
+    "python",
+    "numpy",
+    "first_order_oracle"
+  ],
+  "artifacts": [
+    {
+      "artifact_id": "functional_constraint_2024",
+      "available_at_utc": "2024-09-10T14:05:12Z",
+      "kind": "paper",
+      "provenance_url": "https://arxiv.org/abs/2409.06530v1",
+      "search_text_path": "realpilot_nonconvex_simple/artifacts/functional_constraint_2024.txt",
+      "search_text_sha256": "3c78de2d153f014e3122122e611260db5398a48392f41f4896c942f1696d0d3f",
+      "snapshot_path": "realpilot_nonconvex_simple/artifacts/functional_constraint_2024.pdf",
+      "snapshot_sha256": "1222d80553d2a2ccae2e9a66097ece9f2e502e2e8aa9d75fb529cdbde853c174",
+      "title": "Functionally Constrained Algorithm Solves Convex Simple Bilevel Problems",
+      "version": "v1"
+    },
+    {
+      "artifact_id": "near_optimal_simple_2024",
+      "available_at_utc": "2024-09-13T16:07:48Z",
+      "kind": "paper",
+      "provenance_url": "https://arxiv.org/abs/2409.08948v1",
+      "search_text_path": "realpilot_nonconvex_simple/artifacts/near_optimal_simple_2024.txt",
+      "search_text_sha256": "87fe8a11d6f4970cfe1be324948999244b018c403ebbc088aed2e50616ae8c46",
+      "snapshot_path": "realpilot_nonconvex_simple/artifacts/near_optimal_simple_2024.pdf",
+      "snapshot_sha256": "44efc8ef6193bb22b0d4319b51c37536ca8415c057546cbbbfe5f3e6cbc7d360",
+      "title": "A Near-Optimal Algorithm for Convex Simple Bilevel Optimization under Weak Assumptions",
+      "version": "v1"
+    },
+    {
+      "artifact_id": "small_hypergradients_2023",
+      "available_at_utc": "2023-01-02T15:09:12Z",
+      "kind": "paper",
+      "provenance_url": "https://arxiv.org/abs/2301.00712v1",
+      "search_text_path": "realpilot_nonconvex_simple/artifacts/small_hypergradients_2023.txt",
+      "search_text_sha256": "5bbb6e94f3814326fb813d7b0812dd79ffbdf0ae6e0056df84ebd27a69bdc299",
+      "snapshot_path": "realpilot_nonconvex_simple/artifacts/small_hypergradients_2023.pdf",
+      "snapshot_sha256": "efab88d4eb793ea6b3602bf0010bfbb2a06d613a8d3c59e99e55ebe6234b44dd",
+      "title": "On Finding Small Hyper-Gradients in Bilevel Optimization: Hardness Results and Improved Analysis",
+      "version": "v1"
+    }
+  ],
+  "capsule_id": "realpilot_nonconvex_simple",
+  "cutoff_utc": "2024-09-29T20:43:52Z",
+  "environment_lock_path": "realpilot_nonconvex_simple/environment/environment.lock",
+  "environment_lock_sha256": "97072427cc2b868f0ef64378a55e5e93315682fc567d14874479f8892ff31155",
+  "field": "bilevel_stackelberg_alignment_optimization",
+  "public_problem": "Design a target-neutral first-order bilevel optimization procedure for the supplied oracle family. Return one point for each of four fixed seeds within 4,000 oracle calls. The hidden evaluator checks lower-level validity, upper-level progress, finite outputs and seed reproducibility. You may use only the frozen pre-cutoff evidence in this capsule and the declared Python interface. Both upper and lower objectives may be nonconvex.",
+  "research_context": {
+    "assumptions": [
+      "Both objectives are differentiable with Lipschitz gradients on a bounded domain.",
+      "The lower objective has a nonempty solution set, but convexity is not assumed.",
+      "The algorithm receives first-order oracle access and a fixed oracle-call budget."
+    ],
+    "available_datasets": [],
+    "available_environments": [
+      {
+        "environment_id": "vse_hidden_smooth_family_v1",
+        "interface": "student_api_v1"
+      }
+    ],
+    "baseline_code": [
+      {
+        "artifact_id": "functional_constraint_2024",
+        "baseline_id": "precutoff_penalty_synthesis_1",
+        "implementation_note": "Target-neutral engineering baseline; source paper is frozen in this capsule."
+      },
+      {
+        "artifact_id": "near_optimal_simple_2024",
+        "baseline_id": "precutoff_penalty_synthesis_2",
+        "implementation_note": "Target-neutral engineering baseline; source paper is frozen in this capsule."
+      },
+      {
+        "artifact_id": "small_hypergradients_2023",
+        "baseline_id": "precutoff_penalty_synthesis_3",
+        "implementation_note": "Target-neutral engineering baseline; source paper is frozen in this capsule."
+      }
+    ],
+    "candidate_metrics": [
+      "upper_residual",
+      "lower_residual",
+      "oracle_calls",
+      "seed_reproducibility"
+    ],
+    "claim_evidence_graph": [
+      {
+        "claim": "Pre-cutoff methods for convex simple bilevel problems use weak solution concepts and functional constraints to avoid an unavailable exact lower optimum.",
+        "locator": "abstract and method sections in frozen arXiv v1 snapshot",
+        "source_id": "functional_constraint_2024"
+      },
+      {
+        "claim": "Pre-cutoff hardness results show that a small hyper-gradient alone is not a reliable universal target without additional structure.",
+        "locator": "abstract and method sections in frozen arXiv v1 snapshot",
+        "source_id": "near_optimal_simple_2024"
+      }
+    ],
+    "compute_budget": {
+      "cpu_hours": 2,
+      "gpu_hours": 0,
+      "oracle_calls_per_seed": 4000
+    },
+    "formal_problem": "Given smooth nonconvex functions f and g, minimize f(z) over points that minimize g(z). A candidate returns one point per seed after a fixed number of first-order oracle calls. The evaluator separately measures upper descent residual and lower stationarity residual.",
+    "known_failures_and_conflicts": [
+      {
+        "failure_id": "simple_failure_01",
+        "summary": "Optimizing only the lower objective can converge to a lower stationary point with poor upper objective value."
+      },
+      {
+        "failure_id": "simple_failure_02",
+        "summary": "Optimizing only the upper objective can violate the lower optimality requirement."
+      }
+    ],
+    "known_results": [
+      {
+        "claim_id": "known_simple_01",
+        "summary": "Pre-cutoff methods for convex simple bilevel problems use weak solution concepts and functional constraints to avoid an unavailable exact lower optimum."
+      },
+      {
+        "claim_id": "known_simple_02",
+        "summary": "Pre-cutoff hardness results show that a small hyper-gradient alone is not a reliable universal target without additional structure."
+      }
+    ],
+    "research_question": "How should a first-order method balance upper and lower objectives to reach a reproducible joint-stationary point when both objectives are nonconvex?",
+    "source_manifest": [
+      {
+        "artifact_id": "functional_constraint_2024",
+        "git_commit": null,
+        "sha256": "1222d80553d2a2ccae2e9a66097ece9f2e502e2e8aa9d75fb529cdbde853c174"
+      },
+      {
+        "artifact_id": "near_optimal_simple_2024",
+        "git_commit": null,
+        "sha256": "44efc8ef6193bb22b0d4319b51c37536ca8415c057546cbbbfe5f3e6cbc7d360"
+      },
+      {
+        "artifact_id": "small_hypergradients_2023",
+        "git_commit": null,
+        "sha256": "efab88d4eb793ea6b3602bf0010bfbb2a06d613a8d3c59e99e55ebe6234b44dd"
+      }
+    ]
+  },
+  "schema_version": 1,
+  "semantic_leak_review_digest": "",
+  "split": "dev",
+  "target_commitment": "7952b39260361bd12146a59dad111840489abe381bfc308ea48adc1c1c8c88b8"
+}

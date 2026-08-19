@@ -1,0 +1,44 @@
+{
+  "algorithm_names": [],
+  "capsule_id": "realpilot_nonconvex_simple",
+  "code_fingerprints": [],
+  "distinctive_phrases": [],
+  "first_public_at_utc": "2025-03-28T20:43:52Z",
+  "forbidden_terms": [
+    "DBGD variant for joint stationarity in nonconvex simple bilevel optimization"
+  ],
+  "hidden_claims": [
+    {
+      "claim": "A first-order method can find an approximate joint-stationary solution of a smooth nonconvex simple bilevel problem in polynomially many iterations under the stated regularity conditions.",
+      "claim_id": "simple_01",
+      "metric": "joint_epsilon_f_epsilon_g_stationarity"
+    }
+  ],
+  "hidden_result_spec": {
+    "metric_rules": [
+      "upper_residual",
+      "lower_residual",
+      "oracle_calls",
+      "reproducibility"
+    ],
+    "target_code_snapshot": {
+      "git_commit": "d9dd7aed2caad6a759c4fe6c8886a34f5b115341",
+      "path": "realpilot_nonconvex_simple/target_code.tar.gz",
+      "repository": "https://github.com/jimz7/On-the-Complexity-of-Finding-Stationary-Points-in-Nonconvex-Simple-Bilevel-Optimization",
+      "sha256": "aa6f80a5ab5de106a9e2d2896fe5a84c46ca5dcbea030af2d8008fc9a8ea6507"
+    },
+    "trusted_scorer": "trusted_evaluator.py:realpilot_nonconvex_simple"
+  },
+  "identifiers": [
+    "2507.23155",
+    "https://proceedings.neurips.cc/paper_files/paper/2025/hash/2e2ac035e8f2c4e357e6242805540423-Abstract-Conference.html",
+    "https://github.com/jimz7/On-the-Complexity-of-Finding-Stationary-Points-in-Nonconvex-Simple-Bilevel-Optimization",
+    "sedMS4kPz2"
+  ],
+  "numeric_fingerprints": [],
+  "salt": "a117bbf9f36a87d8d17f32cda74a4ba2ccf9d8ac0373a54b78922045cbcb522b",
+  "target_id": "neurips2025_nonconvex_simple_stationarity",
+  "target_snapshot_path": "realpilot_nonconvex_simple/target.pdf",
+  "target_snapshot_sha256": "e33be8c060a65ec606aaa7d54ba36bbbd8788747b1ab0278042a1cbd88cd2381",
+  "title": "On the Complexity of Finding Stationary Points in Nonconvex Simple Bilevel Optimization"
+}

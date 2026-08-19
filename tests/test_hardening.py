@@ -337,6 +337,111 @@ class HardeningTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 export_sft(tampered, root / "invalid.jsonl")
 
+    def test_real_pilot_proposal_binds_implementation(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            implementation = root / "solution.py"
+            implementation.write_text("def solve(*args):\n    return {}\n")
+            proposal = {
+                "schema_version": 1,
+                "case_id": "realpilot_flatness_penalty",
+                "model_digest": "a" * 64,
+                "algorithm_family": "test",
+                "hypothesis": "A sufficiently long target-neutral test hypothesis.",
+                "implementation": "solution.py",
+                "implementation_sha256": file_hash(implementation),
+                "seeds": [1031, 2063, 4099, 8191],
+                "oracle_budget": 4000,
+            }
+            proposal_path = root / "proposal.json"
+            proposal_path.write_text(json.dumps(proposal))
+            command = [
+                "python",
+                str(
+                    REPO_ROOT
+                    / "v0.1.2_real_pilot_bundle"
+                    / "scripts"
+                    / "proposal_digest.py"
+                ),
+                str(proposal_path),
+            ]
+            self.assertEqual(
+                subprocess.run(command, check=False, capture_output=True).returncode,
+                0,
+            )
+            implementation.write_text("def solve(*args):\n    return {'tampered': True}\n")
+            self.assertNotEqual(
+                subprocess.run(command, check=False, capture_output=True).returncode,
+                0,
+            )
+
+    def test_trusted_producer_rejects_conflicting_network_flags(self) -> None:
+        with self.assertRaises(ValueError):
+            run_trusted_process(
+                stage="generation",
+                capsule_digest="capsule",
+                proposal_digest="proposal",
+                command=(
+                    "docker",
+                    "run",
+                    "--network",
+                    "none",
+                    "--network",
+                    "host",
+                    "sha256:" + "a" * 64,
+                ),
+                container_digest="sha256:" + "a" * 64,
+                trust_key=b"k" * 32,
+                runtime_mode="docker",
+            )
+
+    def test_evaluator_attestation_binds_trust_anchor(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            image_digest = root / "image.txt"
+            image_digest.write_text("sha256:" + "a" * 64 + "\n")
+            trust_digest = root / "trust.txt"
+            trust_digest.write_text("b" * 64 + "\n")
+            findings = root / "findings.txt"
+            findings.write_text("")
+            command = [
+                "python",
+                str(
+                    REPO_ROOT
+                    / "v0.1.2_real_pilot_bundle"
+                    / "scripts"
+                    / "attest_evaluator.py"
+                ),
+                "--bundle-root",
+                str(REPO_ROOT / "v0.1.2_real_pilot_bundle"),
+                "--run-root",
+                str(root),
+                "--image-digest-file",
+                str(image_digest),
+                "--trust-anchor-digest-file",
+                str(trust_digest),
+                "--reviewer-id",
+                "independent-reviewer",
+                "--evaluator-version",
+                "review-v1",
+                "--decision",
+                "pass",
+                "--findings-file",
+                str(findings),
+                "--attest-independent-of-target",
+                "--attest-independent-of-capsule",
+                "--attest-independent-of-student",
+            ]
+            self.assertEqual(
+                subprocess.run(command, check=False, capture_output=True).returncode,
+                0,
+            )
+            receipt = json.loads((root / "evaluator_review_receipt.json").read_text())
+            self.assertEqual(receipt["trusted_producer_key_digest"], "b" * 64)
+            declared = receipt["receipt_digest"]
+            receipt["receipt_digest"] = ""
+            self.assertEqual(content_hash(receipt), declared)
+
     def test_three_case_vertical_slice_and_negative_gate(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             base = Path(raw)
@@ -432,13 +537,26 @@ class HardeningTests(unittest.TestCase):
                 (sealed_case / "target.json").write_text(
                     json.dumps(asdict(target), sort_keys=True)
                 )
+                generation_artifact = base / "proposals" / case_id / "generation.artifact"
+                generation_artifact.parent.mkdir(parents=True, exist_ok=True)
+                generation_implementation = generation_artifact.parent / "generation_solution.py"
+                generation_implementation.write_text("def solve():\n    return None\n")
+                generation_proposal = {
+                    "implementation": generation_implementation.name,
+                    "implementation_sha256": file_hash(generation_implementation),
+                }
                 generation_producer = run_trusted_process(
                     stage="generation",
                     capsule_digest=capsule.digest,
                     proposal_digest=f"proposal-{index}",
-                    command=("python", "-c", "pass"),
-                    container_digest="sha256:test-container",
+                    command=(
+                        "python", "-c",
+                        "from pathlib import Path; "
+                        f"Path({str(generation_artifact)!r}).write_text({json.dumps(generation_proposal)!r})",
+                    ),
+                    container_digest="sha256:" + "a" * 64,
                     trust_key=trust_key,
+                    artifact_path=generation_artifact,
                 )
                 generation_producer_path = public_case / "generation.producer.json"
                 generation_producer_path.write_text(json.dumps(asdict(generation_producer), sort_keys=True))
@@ -450,14 +568,19 @@ class HardeningTests(unittest.TestCase):
                     "producer_execution_digest": generation_producer.execution_digest,
                     "producer_stdout_digest": generation_producer.stdout_digest,
                     "runtime_container_digest": generation_producer.container_digest,
+                    "producer_artifact_digest": generation_producer.artifact_digest,
                 })
                 execution_producer = run_trusted_process(
                     stage="execution",
                     capsule_digest=capsule.digest,
                     proposal_digest=f"proposal-{index}",
-                    command=("python", "-c", "pass"),
-                    container_digest="sha256:test-container",
+                    command=(
+                        "python", "-c",
+                        f"from pathlib import Path; Path({str(public_case / 'execution.artifact')!r}).write_text('execution')",
+                    ),
+                    container_digest="sha256:" + "a" * 64,
                     trust_key=trust_key,
+                    artifact_path=public_case / "execution.artifact",
                 )
                 execution_producer_path = public_case / "execution.producer.json"
                 execution_producer_path.write_text(json.dumps(asdict(execution_producer), sort_keys=True))
@@ -465,20 +588,25 @@ class HardeningTests(unittest.TestCase):
                     "capsule_digest": capsule.digest,
                     "proposal_digest": f"proposal-{index}",
                     "network_policy": "none",
-                    "container_digest": "container",
+                    "container_digest": "sha256:" + "a" * 64,
                     "execution_digest": f"execution-{index}",
                     "producer_receipt_digest": content_hash(asdict(execution_producer)),
                     "producer_execution_digest": execution_producer.execution_digest,
                     "producer_stdout_digest": execution_producer.stdout_digest,
                     "runtime_container_digest": execution_producer.container_digest,
+                    "producer_artifact_digest": execution_producer.artifact_digest,
                 })
                 evaluation_producer = run_trusted_process(
                     stage="evaluation",
                     capsule_digest=capsule.digest,
                     proposal_digest=f"proposal-{index}",
-                    command=("python", "-c", "pass"),
-                    container_digest="sha256:test-container",
+                    command=(
+                        "python", "-c",
+                        f"from pathlib import Path; Path({str(public_case / 'evaluation.artifact')!r}).write_text('evaluation')",
+                    ),
+                    container_digest="sha256:" + "a" * 64,
                     trust_key=trust_key,
+                    artifact_path=public_case / "evaluation.artifact",
                 )
                 evaluation_producer_path = public_case / "evaluation.producer.json"
                 evaluation_producer_path.write_text(json.dumps(asdict(evaluation_producer), sort_keys=True))
@@ -492,6 +620,7 @@ class HardeningTests(unittest.TestCase):
                     "producer_execution_digest": evaluation_producer.execution_digest,
                     "producer_stdout_digest": evaluation_producer.stdout_digest,
                     "runtime_container_digest": evaluation_producer.container_digest,
+                    "producer_artifact_digest": evaluation_producer.artifact_digest,
                 })
                 for name, value in (
                     ("generation", generation),
@@ -515,12 +644,20 @@ class HardeningTests(unittest.TestCase):
                     "generation_producer_receipt_digest": content_hash(asdict(generation_producer)),
                     "execution_producer_receipt_digest": content_hash(asdict(execution_producer)),
                     "evaluation_producer_receipt_digest": content_hash(asdict(evaluation_producer)),
+                    "generation_artifact": f"proposals/{case_id}/generation.artifact",
+                    "execution_artifact": f"{case_id}/execution.artifact",
+                    "evaluation_artifact": f"{case_id}/evaluation.artifact",
                 })
             manifest = base / "manifest.json"
             manifest.write_text(json.dumps({
                 "pilot_id": "pilot",
                 "trusted_test_runtime": True,
                 "trust_anchor_digest": hashlib.sha256(trust_key).hexdigest(),
+                "stage_container_digests": {
+                    "generation": "sha256:" + "a" * 64,
+                    "execution": "sha256:" + "a" * 64,
+                    "evaluation": "sha256:" + "a" * 64,
+                },
                 "cases": cases,
             }))
             report = run_vertical_slice(
@@ -532,6 +669,7 @@ class HardeningTests(unittest.TestCase):
             self.assertTrue(report.passed, report.failures)
 
             bad_path = public / "pilot-0" / "evaluation.json"
+            original_evaluation = bad_path.read_text()
             bad = json.loads(bad_path.read_text())
             bad["hard_pass"] = False
             bad["receipt_digest"] = ""
@@ -547,6 +685,34 @@ class HardeningTests(unittest.TestCase):
             self.assertTrue(
                 any("hard_failure_did_not_zero_vds" in item for item in failed.failures)
             )
+            bad_path.write_text(original_evaluation)
+            artifact_path = public / "pilot-0" / "evaluation.artifact"
+            artifact_path.write_text("tampered")
+            artifact_failed = run_vertical_slice(
+                manifest,
+                public_root=public,
+                sealed_root=sealed,
+                trust_key=trust_key,
+            )
+            self.assertFalse(artifact_failed.passed)
+            self.assertTrue(
+                any(
+                    "evaluation_artifact_digest_mismatch" in item
+                    for item in artifact_failed.failures
+                )
+            )
+            artifact_path.write_text("evaluation")
+            manifest_value = json.loads(manifest.read_text())
+            manifest_value["stage_container_digests"]["generation"] = "sha256:invalid"
+            manifest.write_text(json.dumps(manifest_value))
+            digest_failed = run_vertical_slice(
+                manifest,
+                public_root=public,
+                sealed_root=sealed,
+                trust_key=trust_key,
+            )
+            self.assertFalse(digest_failed.passed)
+            self.assertIn("generation_container_digest_invalid", digest_failed.failures)
 
 
 if __name__ == "__main__":

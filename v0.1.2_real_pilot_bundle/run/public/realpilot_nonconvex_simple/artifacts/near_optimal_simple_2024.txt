@@ -1,0 +1,1776 @@
+A Near-Optimal Algorithm for Convex Simple Bilevel Optimization
+under Weak Assumptions
+Rujun Jiang ∗ Xu Shi † Jiulin Wang‡
+September 16, 2024
+Abstract
+Bilevel optimization provides a comprehensive framework that bridges single- and multi-objective
+optimization, encompassing various formulations, including standard nonlinear programs. This paper
+focuses on a specific class of bilevel optimization known as simple bilevel optimization. In these problems,
+the objective is to minimize a composite convex function over the optimal solution set of another composite
+convex minimization problem. By reformulating the simple bilevel problem as finding the left-most root
+of a nonlinear equation, we employ a bisection scheme to efficiently obtain a solution that is ϵ-optimal
+for both the upper- and lower-level objectives. In each iteration, the bisection narrows down an interval
+by assessing the feasibility of a discriminating criterion. By introducing a novel dual approach and
+employing the Accelerated Proximal Gradient (APG) method, we demonstrate that each subproblem
+in the bisection scheme can be solved in O(
+p
+(Lg1 + 2DzLf1 + 1)/ϵ| logϵ|2) oracle queries under weak
+assumptions. Here, Lf1 and Lg1 represent the Lipschitz constants of the gradients of the upper- and
+lower-level objectives’ smooth components, and Dz is the upper bound of the optimal multiplier of the
+subproblem. Considering the number of binary searches, the total complexity of our proposed method is
+O(
+p
+(Lg1 + 2DzLf1 + 1)/ϵ| logϵ|3). Our method achieves near-optimal complexity results, comparable
+to those in unconstrained smooth or composite convex optimization when disregarding the logarithmic
+terms. Numerical experiments also demonstrate the superior performance of our method compared to the
+state-of-the-art.
+1 Introduction
+Bilevel optimization problems are hierarchically structured, consisting of two nested optimization tasks: the
+upper- and lower-level problems. The upper-level problem aims to find an optimal solution within the feasible
+region defined by the solutions set of the lower-level problem. Originating in game theory, these problems
+have been extensively studied since the 1950s, as documented by foundational works such as [ 14, 15]. Recent
+applications have expanded into diverse areas of machine learning, including hyperparameter optimization
+[22, 49, 21], meta-learning [ 22, 5, 45], data poisoning attacks [ 38, 40], reinforcement learning [ 31, 26], and
+adversarial learning [ 8, 56, 57]. Additionally, the study of variational inequality formulations of bilevel
+problems has garnered significant interest [ 20, 7, 32, 28, 43]. For a recent and comprehensive review of bilevel
+optimization and its applications, one may refer to [ 15] and the references therein. Further discussions on
+various applications pertinent to this paper can be found in recent literature [1, 63, 51].
+∗School of Data Science, Fudan University, Shanghai, China, rjjiang@fudan.edu.cn
+†School of Data Science, Fudan University, Shanghai, China, xshi22@m.fudan.edu.cn
+‡School of Mathematical Sciences, Nankai University, Tianjin, China, wangjiulin@nankai.edu.cn
+1
+arXiv:2409.08948v1  [math.OC]  13 Sep 2024
+
+In this paper, we focus on a specific class of bilevel optimization problems where the lower-level problem
+does not depend parametrically on the variables of the upper-level problem. This class, often referred to as
+“simple bilevel optimization” in the literature [17, 19, 50, 27, 58, 13], is a subset of general bilevel optimization
+problems. It has also garnered significant interest in the machine learning community, with applications in
+dictionary learning [3, 27], lexicographic optimization [ 29, 24], lifelong learning [ 37, 27], and the applications
+mentioned above. Specifically, we are interested in the following convex composite minimization problem:
+min
+x∈Rn
+f(x) ≜f1(x) +f2(x)
+s.t. x∈ arg min
+z∈Rn
+g(z) ≜g1(z) +g2(z). (1)
+Here, functions f1 and g1 : X→ R are convex and continuously differentiable over an open set X⊆ Rn.
+Their gradients, ∇f1 and∇g1, are Lf1- and Lg1-Lipschitz continuous, respectively. Functions f2 and
+g2 : Rn→ R∪{∞} are proper lower semicontinuous (l.s.c.) convex functions with tractable proximal
+operators. We assume that g is not strongly convex and that the lower-level problem has multiple optimal
+solutions [27, 58, 13]. In other words, the optimal solution set of the lower-level problem, denoted as X∗
+g , is
+not a singleton. Otherwise, the optimal minimum is determined by the lower-level problem.
+Particularly, letp∗ be the optimal value of Problem (1) and g∗ be the optimal value of the unconstrained
+lower-level problem
+min
+x∈Rn
+g(x) ≜g1(x) +g2(x). (2)
+The goal of this paper is to find an ( ϵf,ϵg)-optimal solution bx of Problem (1) defined as follows.
+Definition 1 ((ϵf,ϵg)-optimal solution). A point bx is called an (ϵf,ϵg)-optimal solution of Problem (1), if it
+satisfies
+f(bx)−p∗≤ϵf and g(bx)−g∗≤ϵg.
+A potential approach to solving Problem (1) involves reformulating it as a single-level constrained convex
+optimization problem, followed by the application of primal-dual methods. Specifically, Problem (1) can be
+transformed into a constrained convex optimization problem as follows:
+min
+x∈Rn
+f(x) s .t. g(x)≤g∗. (3)
+When directly implementing primal-dual-type methods, a critical concern is the noncompliance of Problem (3)
+with the necessary regularity conditions for convergence. This issue arises from the absence of strict feasibility,
+leading to the failure of Slater’s condition. Moreover, traditional first-order algorithms, such as projected
+gradient descent, often prove impractical due to the computational complexity involved in orthogonally
+projecting onto the level set of the subordinated objective. To mitigate this issue, one might consider relaxing
+the constraint to ensure strict feasibility,
+min
+x∈Rn
+f(x) s .t. g(x)≤g∗ +ε, (4)
+the challenge remains. Indeed, as ε approaches zero, rendering the problem nearly degenerate, the dual optimal
+variable may tend toward infinity. This phenomenon impedes convergence and leads to numerical instability
+[9]. Consequently, Problem (1) cannot be directly addressed as a conventional constrained optimization
+problem; it necessitates the development of new theories and algorithms tailored to its hierarchical structure.
+2
+
+1.1 Our Approach
+We first exchange the roles of the upper- and lower-level objectives in Problem (1) and consider the following
+single-level convex optimization problem:
+min
+x∈Rn
+g(x), s.t. f(x)≤c. (5)
+We then recast Problem (1) in terms of the value function for Problem (5):
+¯g(c) := min
+x∈Rn
+{g(x)| f(x)≤c}. (6)
+The univariate value function ¯g(c) is non-increasing and convex [ 46]. Furthermore, the optimal value of
+Problem (1) is the left-most root of the following nonlinear equation:
+¯g(c) =g∗. (7)
+This observation leads to a general framework for solving Problem (1), where any root-finding algorithm may
+be applied. Given that the lower-level problem has multiple optimal solutions, multiple roots must exist for
+(7). However, only the left-most root is valid. Several root-finding algorithms can locate the left-most root of
+Problem (7), such as the bisection method, Newton’s method, secant method, and their variants [ 30]. In this
+paper, we select the bisection method as the root-finding algorithm, while the Newton and secant methods
+will be explored in future work. To determine the left-most root of Problem (7), our bisection approach
+checks the feasibility of the following system:
+f(x)≤c, g(x)≤g∗. (8)
+We assume that the exact values of both ¯g(c) and the optimal value g∗ from the unconstrained lower-level
+problem (2) are given. If ¯g(c)>g∗, System (8) is infeasible, and c acts as a lower bound for p∗. Conversely,
+if ¯g(c) =g∗, System (8) is feasible, and c acts as an upper bound for p∗.
+The feasibility of System (8) can be assessed by solving Problem (5). The following text provides a
+comprehensive description of our algorithm, which accounts for the inherent imprecision in solving Problem
+(5). Furthermore, by applying Accelerated Proximal Gradient (APG) methods [ 42, 4, 34] to the solvability
+of Problem (5) and establishing initial lower and upper bounds for c, we derive a near-optimal complexity
+analysis for our algorithm.
+Moreover, [58] has developed a bisection-based method for solving Problem (1) under specific assumptions,
+termed ‘Bisec-BiO’. Specifically, for any fixed c, Problem (5) is reformulated into the following form:
+min
+x∈Rn
+gc(x) ≜g1(x) +g2(x) + ILevf(c)(x), (9)
+where I Levf(c)(x) is the indicator function of Levf(c). In [ 58, Assumption 1(iv)], they assume that the
+function hc(x) =g2(x) + ILevf(c)(x) is proximal-friendly, and subsequently employ the Accelerated Proximal
+Gradient (APG) method [ 42, 4, 34] to solve Problem (9) as a subroutine in the bisection scheme. However,
+the assumption that the function hc(x) = g2(x) + ILevf(c)(x) is proximal-friendly can be challenging (for
+example, when the upper-level objective is the least square loss function). In this paper, we propose an
+alternative reformulation of Problem (5) to address Problem (1) under more general settings while maintaining
+comparable complexity results.
+1.1.1 Overview of The Proposed Method
+As previously discussed, [ 58, Assumption 1(iv)] may be challenging to fulfill in the context of a complex
+upper-level objective. To address this issue, we employ a dual approach to solve the following perturbed
+3
+
+strongly convex problem of (5) with a given error tolerance ϵ> 0:
+min
+x∈Rn
+Gϵ(x) ≜gϵ(x) +g2(x)
+s.t. f c(x) =f1(x)−c +f2(x)≤ 0,
+(10)
+wheregϵ(x) =g1(x) +ϵ
+2∥x−x0∥2 and x0 is a point that belongs to a level set of the unconstrained lower-level
+problem (2).
+The Lagrange-dual reformulation of Problem (10) is
+min
+x∈Rn
+max
+z≥0
+Lϵ(x,z ) ≜Gϵ(x) +zfc(x) =gϵ(x) +z(f1(x)−c) +g2(x) +zf2(x), (11)
+wherez≥ 0 is the multiplier. In this scenario, it suffices to assume that the proximal mapping ofg2(x)+zf2(x)
+is proximal-friendly [10, 33, 13], which is a less restrictive requirement than [58, Assumption 1(iv)].
+To solve Problem (11), we first identify an interval that encompasses the optimal multiplier of Problem
+(10) (cf. Algorithm 3). Within this interval, we then perform a binary search to obtain an approximate
+solution that satisfies the approximate Karush-Kuhn-Tucker (KKT) conditions of Problem (10) (cf. Algorithm
+4). This approximate solution is also shown to be equivalent to an approximate solution of Problem (5). For
+further details, please refer to Sections 3 and 4.
+1.2 Related Work
+One category of algorithms for solving Problem (1) is based on solving the Tikhonov-type regularization [ 54]:
+min
+x∈Rn
+ϕk(x) ≜g(x) +λkf(x), (12)
+for each regularization parameter λk > 0. Here, λk satisfies the “slow condition” that limk→∞λk = 0 andP∞
+k=1λk =∞. [ 52] introduced the Iterative Regularized Projected Gradient (IR-PG) method, which applies
+a projected gradient step to the Tikhonov-type regularization problem (12) at each iteration. This method
+assumes that the upper-level objective is L-smooth and the non-smooth term of the lower-level objective is the
+indicator function of a closed convex set. Under the same non-smooth term of the lower-level objective and
+the additional assumption that both the upper- and lower-level objectives have bounded (sub)gradients, [ 25]
+proposed a three-step variation of theϵ-subgradient method, which involves accelerated-gradient, (sub)gradient
+or proximal gradient, and projection steps. Additionally, [ 24] presented the dynamic barrier gradient descent
+(DBGD) method for continuously differentiable upper- and lower-level objectives, which also converges to the
+optimal set of Problem (1). However, these algorithms do not offer non-asymptotic guarantees for either the
+upper or lower-level objective. For a comprehensive overview of these methods, please refer to [ 18, 27] and
+the references therein.
+Another class of algorithms establishes a non-asymptotic convergence rate for the lower-level objective
+and an asymptotic convergence rate for the upper-level objective of Problem (1). [ 3] introduced the minimal
+norm gradient (MNG) method for cases where the upper-level objective is differentiable and strongly convex,
+and the lower-level objective is smooth. They proved that MNG asymptotically converges to the optimal
+solution of Problem (1) and achieves a convergence rate of O(L2
+g1/ϵ2) to reach an ϵ-optimal solution for
+the lower-level problem. Building on the sequential averaging method (SAM) framework, [ 47] developed
+the bilevel gradient sequential averaging method (BiG-SAM) for cases with a strongly convex upper-level
+objective and a composite lower-level objective. They achieved a convergence rate of O(Lg1/ϵ) to reach an
+ϵ-optimal solution for the lower-level problem. They also demonstrated that by replacing the upper-level
+objective with its Moreau envelope [ 2, Definition 6.52] when the upper-level objective is non-smooth, the
+4
+
+convergence rate of BiG-SAM to reach an ϵ-optimal solution for the lower-level objective is O(Lg1/ϵδ2),
+where δ >0 is the parameter in the Moreau envelope of the upper-level objective. [ 1] extended the IR-PG
+[52] method for cases with a strongly convex but not necessarily differentiable upper-level objective and a
+finite-sum lower-level objective. They proposed the iterative regularized incremental projected (sub)gradient
+(IR-IG) method, which achieves a convergence rate of O(1/ϵ
+1
+0.5−b ) to reach an ϵ-optimal solution for the
+lower-level objective, where b∈ (0, 0.5). Assuming that both objectives are composite, [ 37] studied a version
+of Tseng’s accelerated gradient method that achieves a convergence rate of O(1/ϵ) to produce an ϵ-optimal
+solution for the lower-level problem. Therefore, previous studies have mainly focused on the convergence
+rates of the lower-level problem while largely neglecting those for the upper-level objective.
+Recently, several algorithms have been developed to analyze non-asymptotic convergence rates for both
+upper- and lower-level objectives. Within the Lipschitz continuity of the objectives, [ 28] demonstrated
+that their averaging iteratively regularized gradient (a-IRG) method can achieve a convergence rate of
+O(max{1/ϵ
+1
+0.5−b
+f , 1/ϵ
+1
+b
+g}) to obtain an (ϵf,ϵg)-optimal solution of Problem (1), whereb∈ (0, 0.5). By assuming
+a global error-bound condition and a “norm-like” property for the upper-level objective (e.g., the elastic-net
+∥x∥1 +ρ∥x∥2), [18] introduced the iterative approximation and level set expansion (ITALEX) scheme to
+tackle Problem (1) with composite objectives. Their algorithm demonstrates a convergence rate of O(1/ϵ2)
+to produce an ( ϵ,ϵ )-optimal solution of Problem (1). Inspired by [ 28], [ 39] proposed a bi-sub-gradient
+(Bi-SG) method under a quasi-Lipschitz assumption for the upper-level objective, achieving a convergence
+rate of O(max{1/ϵ
+1
+1−a
+f , 1/ϵ
+1
+a
+g}) to achieve an ( ϵf,ϵg)-optimal solution of Problem (1), where a∈ (0.5, 1).
+Furthermore, when the upper-level objective is assumed to be µ-strongly convex, the convergence rate
+of the upper-level objective can be improved to be linear. [ 27] introduced a conditional gradient-based
+bilevel optimization (CG-BiO) method, which necessitates O(max{Lf1/ϵf,Lg1/ϵg}) iterations to achieve an
+(ϵf,ϵg)-optimal solution of Problem (1). In their problem setting, both the upper- and lower-level objectives
+are smooth, and the domain of the lower-level objective is compact. Within similar problem settings of [ 27],
+[23] proposed an iteratively regularized conditional gradient (IR-CG) method, ensuring a convergence rate of
+O(max{1/ϵ
+1
+1−p
+f , 1/ϵ
+1
+p
+g}) to produce an (ϵf,ϵg)-optimal solution of Problem (1), wherep∈ (0, 1). [ 51] combined
+an online framework with the mirror descent algorithm, establishing a convergence rate of O(max{1/ϵ3
+f,ϵ 3
+g})
+to produce an (ϵf,ϵg)-optimal solution of Problem (1), assuming a compact domain and boundedness of the
+functions and gradients at both upper- and lower-level objectives. Additionally, they demonstrated that the
+convergence rate can be enhanced to O(max{1/ϵ2
+f, 1/ϵ2
+g}) under additional structural assumptions.
+Very recently, several papers have proposed significantly improved complexity results. By assuming
+weak-sharp minima [53] for the lower-level problem, [48] introduced a regularized accelerated proximal method
+(R-APM) to address the Tikhonov-type regularization problem (12). They demonstrated convergence rates
+ofO(ϵ−0.5) for both upper and lower-level objectives in achieving an ϵ-optimal solution of Problem (1).
+Assuming the α-H¨ olderian error bound condition of the lower-level objective withα≥ 1, [13] proposed a
+penalty-based accelerated proximal gradient (PB-APG) method. This method exhibited convergence rates of
+O(
+p
+Lf1/ϵ +
+q
+lmax{α,β}
+f Lg1/ϵmax{α,β}) for both upper and lower-level objectives to find an ( ϵ,ϵβ)-optimal
+solution of Problem (1) for any given β >0. Here, lf represents the upper bound of the (sub)gradients of the
+upper-level objective. If the upper-level objective is assumed to be µ-strongly convex, the complexity can be
+enhanced to ˜O(
+p
+Lf1/µ +
+q
+lmax{α,β}
+f Lg1/ϵmax{α−1,β−1}), where ˜O omits a logarithmic term. Furthermore,
+in cases where both the lower- and upper-level objectives are non-smooth, the convergence rate is O(l2
+f2/ϵ2 +
+lmax{2α,2β}
+f2
+l2
+g2/ϵmax{2α,2β}), where lf2 and lg2 are the Lipschitz constants of the upper- and lower-level
+objectives, respectively. Following the same assumptions adopted in [ 27], the accelerated gradient method for
+bilevel optimization (AGM-BiO) proposed by [ 11] achieved convergence rates of O(max{1/√ϵf, 1/ϵg}) to
+5
+
+achieve an (ϵf,ϵg)-optimal solution of Problem (1). By incorporating an additional α-H¨ olderian error bound
+condition of the lower-level objective, their complexity can be improved to O(max{1/ϵ
+− 2α−1
+2α
+f , 1/ϵ
+− 2α−1
+2α
+g }).
+For a comprehensive overview of the methods above (including only non-asymptotic convergence rates for
+both upper- and lower-level objectives), detailing their underlying assumptions and resulting convergence
+outcomes, please refer to Table 1.
+Table 1: Summary of simple bilevel optimization algorithms. The abbreviations “SC”, “C”, “diff”, “comp”, “Lip”,
+“WS”, “C3”, and “α-HEB” represent “strongly convex”, “convex”, “differentiable”, “composite”, “Lipschitz”, “weak
+sharpness”, “Convex objective with Convex Compact constraints”, and “H¨ olderian error bound with exponent
+parameter α”, respectively. Notations lf, Lf1, and Lg1 are the Lipschitz constants of f, ∇f1, and ∇g1, respectively.
+We include the Lipschitz constant only when its relevance to complexity is evident; otherwise, we omit it.
+Methods Upper-level Lower-level ( ϵf,ϵg)-optimal Convergence Rates
+Objectivef Objectiveg Solution Upper-level Lower-level
+IR-CG [23] C, smooth C3, smooth ( ϵf,ϵg) O
+
+max{1/ϵ
+1
+1−p
+f ,1/ϵ
+1
+p
+g}
+
+,p∈(0,1)
+ITALEX [18] C, comp C, comp ( ϵ,ϵ2) O 1/ϵ2
+a-IRG [28] C, Lip C, Lip ( ϵf,ϵg) O
+
+max{1/ϵ
+1
+0.5−b
+f ,1/ϵ
+1
+bg}
+
+,b∈(0,0.5)
+CG-BiO [27] C, smooth C3, smooth ( ϵf,ϵg) O(max{Lf1/ϵf,Lg1/ϵg})
+Bi-SG [39]
+C, quasi-Lip/comp C, comp ( ϵf,ϵg) O
+
+max{1/ϵ
+1
+1−a
+f ,1/ϵ
+1
+ag}
+
+,a∈(0.5,1)
+µ-SC, comp C, comp ( ϵf,ϵg) O
+
+max{
+log 1/ϵf
+µ
+ 1
+1−a
+,1/ϵ
+1
+ag}
+
+,a∈(0.5,1)
+Online Framework [51] C, Lip C3, Lip ( ϵf,ϵg) O
+
+max{1/ϵ3f,1/ϵ3g}
+
+R-APM [48] C, smooth C, comp, WS ( ϵ,ϵ) O max{Lf1/ϵ0.5,Lg1/ϵ0.5}
+PB-APG [13]
+C, comp, Lip C, comp, α-HEB ( ϵ,l−β
+f ϵβ) O
+ 
+max{
+qLf1
+ϵ ,
+r
+lmax{α,β}
+f Lg1
+ϵmax{α,β} }
+!
+µ-SC, comp, Lip C, comp,α-HEB ( ϵ,l−β
+F ϵβ) O
+qLf1
+µ log1
+ϵ
+
++O
+q
+lmax{α,β}
+F Lg1
+ϵmax{α−1,β−1} log1
+ϵ
+
+AGM-BiO [11] C, smooth C3, smooth ( ϵf,ϵg) ˜O max{1/√ϵf,1/ϵg}
+C, smooth C, smooth, α-HEB ( ϵf,ϵg) ˜O
+
+max{1/ϵ−2α−1
+2α
+f ,1/ϵ−2α−1
+2αg }
+
+Bisec-BiO [58] C, comp C, comp ( ϵf,ϵg) O
+
+max{pLf1/ϵf,pLg1/ϵg}|logϵf|
+
+BiVFA (Ours) C, comp C, comp ( ϵ,ϵ) O
+p(Lg1 + 2DzLf1 + 1)/ϵ|logϵ|3
+
+1.3 Contributions and Outline
+This paper proposes a Biection method based Value Function Algorithm (BiVFA) for solving Problem
+(1). The method employs a bisection scheme to find the left-most root of a nonlinear equation iteratively
+and incorporates a novel dual approach to address Problem (5) as a subroutine. Our proposed method
+demonstrates superior convergence rates compared to existing literature, as detailed in Table 1. The specific
+contributions are outlined below.
+• We introduce a bisection scheme that efficiently determines an ( ϵ,ϵ )-optimal solution for Problem (1),
+achieving a convergence rate ofO(
+p
+(Lg1 + 2DzLf1 + 1)/ϵ| logϵ|3). Our method provides a near-optimal
+complexity guarantee for both upper- and lower-level problems. Specifically, our rate aligns with the
+optimal rate observed in unconstrained smooth or composite convex optimization when omitting the
+logarithmic terms [41, 59].
+• Our proposed method employs weak assumptions. Specifically, it does not require strong convexity or
+smoothness of the upper-level objective, nor does it necessitate a bounded domain or smoothness of the
+lower-level objective, as commonly assumed in existing literature.
+6
+
+• We perturb the subproblem in our algorithm as a functionally constrained strongly convex problem
+and introduce a dual approach to solve it efficiently. We present the best-known complexity results for
+the functionally constrained strongly convex subproblem without assuming a bounded domain for the
+lower-level objective, as in [61, Assumption 2].
+• The experimental results on various practical application problems demonstrate the superior performance
+of our proposed method compared to the state-of-the-art techniques.
+The remaining sections of the paper are organized as follows. Section 2 revisits the Accelerated Proximal
+Gradient algorithms for both strongly convex and convex problems, along with their respective convergence
+rates. Section 3 introduces the bisection scheme proposed for solving Problem (1) and outlines the basic
+assumptions made in this paper. Section 4 presents a detailed dual approach for solving the subproblem,
+including the necessary preparatory results for algorithm design. The primary algorithm and its corresponding
+complexity analysis for addressing Problem (1) are presented in Section 5. Section 6 contains the results of
+numerical experiments and comparisons with existing methods.
+Notations
+In this paper, we adopt the following standard notation: Vectors and matrices are represented in bold. The
+indicator function of a closed and convex set C is denoted by IC with the definition that IC = 0 if x∈C and
+IC = +∞ otherwise. The orthogonal projection of x ontoC is denoted by PC(x) = arg min{∥y−x∥2 : y∈C},
+and the distance between x and C is denoted by dist(x,C ). Furthermore, if C is compact, we define its
+diameter as DC = max{∥x− y∥ :∀x, y∈C}. For a given function f and a constant c, we denote its level
+set by Levf(c) ={x :f(x)≤c} and its domain by dom(f). The subdifferential set of f at the point x is
+denoted as ∂f (x). For a vector x∈ Rn and a matrix A∈ Rm×n, let∥x∥ and∥A∥ represent the ℓ2-norm of
+them. Regarding matrix A, its minimum and maximum eigenvalues are denoted as λmin(A) and λmax(A),
+respectively. For a real number a, we denote [a]+ = max{a, 0}, and⌈a⌉+ is the smallest nonnegative integer
+greater than or equal to a. Moreover, we use O and ˜O with their standard meanings, where in the context of
+complexity results, ˜O has a similar meaning to O but suppresses logarithmic terms.
+2 Preliminaries
+In this paper, we utilize the Accelerated Proximal Gradient (APG) algorithm [ 55, 4, 35, 12, 34, 61] to
+approximately solve composite subproblems of the following form:
+min
+x∈Rn
+φ(x) ≜φ1(x) +φ2(x), (13)
+where the function φ1 : X → R is µφ1-strongly convex and continuously differentiable on an open set
+X ⊂ Rn. The gradient ∇φ1 is Lφ1-Lipschitz continuous. The function φ2 : Rn→ R∪{∞} is proper,
+lower semicontinuous, convex, possibly non-smooth, and proximal-friendly. Here, a function ψ is considered
+proximal-friendly for a given t> 0 if the proximal mapping of t·ψ, defined as
+proxtψ(y) ≜ arg min
+x∈Rn
+ψ(x) + 1
+2t∥x− y∥2, (14)
+is easy to compute.
+In this paper, for solving Problem (13), we employ the accelerated proximal gradient (APG) framework
+outlined in [61] as described in Algorithm 1, when the strongly convex parameter µφ1 > 0. For convenience,
+7
+
+we denote this algorithm as bx = APGµ(φ1,φ 2,L min,µφ1,γ 1,γ 2, y0,ϵ ). When µφ1 = 0 (i.e., φ1 is convex but
+not strongly convex), we adopt the fast iterative shrinkage-thresholding algorithm (FISTA) with backtracking
+[4], as presented in Algorithm 2, and denote it as bx = APG0(φ1,φ 2,L 0,η, x0,ϵ ).
+Algorithm 1 APG for strongly convex composite problem: bx = APGµ(φ1,φ 2,L min,µφ1,γ 1,γ 2, y0,ϵ )
+Input: Strongly convex parameter µφ1, minimum Lipschitz constant Lmin > 0, increase rate γ1 > 1,
+decrease rate γ2≥ 1, initial point y0, and error tolerance ϵ> 0. Let ˜L =Lmin/γ1.
+1: repeat
+2: ˜L =γ1 ˜L and let ˜x = prox 1
+˜Lφ2(y0− 1
+˜L∇φ1(y0))
+3: untilφ1(˜x)≤φ1(y0) +⟨∇φ1(y0), ˜x− y0⟩ +
+˜L
+2∥˜x− y0∥2
+4: Let x−1 = x0 = ˜x, L0 = max(Lmin, ˜L/γ2), and α−1 = 1
+5: for k = 0,1,. . . do
+6: ˜L =Lk/γ1
+7: repeat
+8: ˜L =γ1 ˜L, αk =
+q
+µφ1/˜L, and ˜y = xk + αk(1−αk−1)
+αk−1(1+αk)(xk− xk−1)
+9: Let ˜x = prox 1
+˜Lφ2(˜y− 1
+˜L∇φ1(˜y))
+10: untilφ1(˜x)≤φ1(˜y) +⟨∇φ1(˜y), ˜x− ˜y⟩ +
+˜L
+2∥˜x− ˜y∥2
+11: bL = ˜L/γ1
+12: repeat
+13: Increase bL =γ1bL
+14: Letbx = prox 1
+˜Lφ2(˜x− 1
+bL∇φ1(˜x)) ▷ modified step to guarantee near-stationarity at bx
+15: untilφ1(bx)≤φ1(˜x) +⟨∇φ1(˜x),bx− ˜x⟩ +
+bL
+2∥bx− ˜x∥2
+16: Set xk+1 = ˜x,bxk+1 =bx, and Lk+1 = max{Lmin, ˜L/γ2}
+17: if dist(0,∂φ (bx))≤ϵ then
+18: Returnbx and stop
+19: end if
+20: end for
+The convergence result of Algorithm 1 has been established in [ 61, Corollary 2.3]. In this paper, without
+assuming a bounded domain of φ2 in Problem (13), we introduce several technological modifications and
+provide a similar convergence result for Algorithm 1, as detailed in Section 4.1.1. Additionally, the convergence
+result of Algorithm 2 has been provided in [ 4, Theorem 4.4]. For the sake of compactness, we recapitulate
+this theorem as follows.
+Lemma 2.1. [4, Theorem 4.4] Denote X∗
+φ as the optimal solution set of Problem (13) and x∗
+φ∈ X∗
+φ be
+any optimal solution. Let xφ
+0∈ Rn be an initial point, suppose that there exists a constant R≥ 0 such that
+∥xφ
+0− x∗
+φ∥≤ R. Let {xk} be the sequence generated by Algorithm 2. Then for any k≥ 1, we have
+φ(xk)−φ(x∗
+φ)≤ 2ηLφ1
+(k + 1)2R2.
+3 Bisection Scheme for Solving Simple Bilevel Problems
+According to [ 58, Algorithm 1], the algorithm proposed in this paper also employs a bisection scheme.
+However, our paper distinguishes [ 58] through a unique reformulation of the subproblem (5) and different
+8
+
+Algorithm 2 APG for convex composite problem: bx = APG0(φ1,φ 2,L 0,η, x0,ϵ )
+Input: initial Lipschitz constant L0 > 0, increase rate η >1, initial step-size t1 = 1, initial points y1 = x0,
+and error tolerance ϵ> 0
+1: for k = 1,··· do
+2: Find the smallest nonnegative integer value ik such that with ¯L =ηikLk−1,
+φ(p¯L(yk))≤Q¯L(p¯L(yk), yk),
+where QL(x, y) =φ1(y) +∇f(y)⊤(x− y) + L
+2∥x− y∥2 +φ2(x), and pL(y) = arg minxQL(x, y).
+3: Lk =ηikLk−1,
+4: xk =pLk(yk),
+5: tk+1 =
+1+
+√
+1+4t2
+k
+2
+6: yk+1 = xk + tk−1
+tk+1
+(xk− xk−1)
+7: if 2ηLφ1
+(k+1)2R2≤ϵ then
+8: Returnbx = xk and stop
+9: end if
+10: end for
+underlying assumptions. Specifically, as demonstrated in [ 58, Assumption 1(iv)], the proximal mapping of
+g2 + ILevf(c) is assumed to be proximal-friendly. This assumption becomes challenging to fulfill when dealing
+with complex upper-level objectives, such as linear regression loss or logistic loss functions. Our algorithm
+relaxes this assumption and proposes a novel dual approach that achieves comparable complexity results.
+Problem (5) is equivalent to the following problem,
+min
+x∈Rn
+g(x) =g1(x) +g2(x)
+s.t. f c(x) ≜f1(x)−c +f2(x)≤ 0.
+(15)
+Consequently, if we considerfc(x)≤ 0 as an inequality constraint, it is advisable to employ the dual approach
+for its resolution. In the subsequent sections, we present a technique utilizing a bisection framework to
+identify an approximate optimal solution to this problem efficiently.
+3.1 Assumptions
+In this paper, we initially adopt the following basic assumptions regarding the fundamental properties of
+objective functions.
+Assumption 1. (i) Functionsf1 and g1 are convex and continuously differentiable. The gradients of the
+functions f1, g1, denoted by ∇f1 and∇g1, are Lf1- and Lg1-Lipschitz continuous, respectively.
+(ii) Functions f2 and g2 are proper, lower semicontinuous, convex, possibly non-smooth, and proximal-
+friendly.
+(iii) Function f2 is lf2-Lipschitz continuous on dom(f2).
+(iv) For any fixed γ≥ 0, the function g2 +γf2 is proximal-friendly.
+9
+
+(v) Denote X ≜ dom(f)∩ dom(g). The optimal values of the upper- and lower-level problems are lower
+bounded, i.e.,
+f∗ ≜ inf
+x∈X
+f(x)>−∞, g∗ ≜ inf
+x∈X
+g(x)>−∞.
+Furthermore, the proximal mappings, i.e.,
+proxtf2(y) ≜ arg min
+x∈X
+f2(x) + 1
+2t∥x− y∥2, and proxtg2(y) ≜ arg min
+x∈X
+g2(x) + 1
+2t∥x− y∥2,
+have closed-form solutions for all t> 0.
+(vi) There exists a constant ∆> 0 independent of the error tolerance, such that p∗−f∗≥ ∆.
+In addition, we also assume that the optimal solution set of g is nonempty and not a singleton [ 27, 58, 13];
+otherwise, the optimal minimum is determined by the lower-level problem.
+Remark 1. • In Assumption 1(i), we posit that the upper-level problem involves minimizing a composite
+convex function comprising a smooth convex component and a potentially non-smooth convex component.
+This hypothesis is less stringent compared to the strong convexity assumption proposed in previous studies
+[3, 47, 1]. Moreover, it offers more flexibility than the requirement for the upper-level objective function
+to be smooth [ 47, 23, 27, 48, 11]. Similarly, we assume that the lower-level problem involves composite
+convex minimization (cf. Assumption 1(ii)), which is less restrictive than the smoothness assumption
+made in [ 3, 23, 27]. Furthermore, this assumption is less demanding than the conditions necessitating
+the lower-level objective to be convex with compact convex constraints, as outlined in [1, 23, 27, 51].
+• Assumption 1(iii) concerns the Lipschitz continuity of the non-smooth term in the upper-level objective
+function. This condition is considered less restrictive compared to the commonly assumed Lipschitz
+continuity of the entire upper-level objective function, as evidenced by prior studies [ 28, 39, 51, 13].
+Moreover, this assumption is applicable in a wide range of scenarios, including those involving ℓ1 and
+ℓ2 norms.
+• As adopted in [ 58, Assumption 1(iv)], it assumes that the proximal mapping involving the sum of g2
+and the indicator function of the upper-level objective’s level set can be computed efficiently. Specifically,
+when g2≡ 0, the proximal mapping of this function corresponds to projecting onto the upper-level
+objective’s level set. This can present challenges in scenarios with a complex upper-level objective,
+such as the least squares or logistic loss function. This assumption indicates that Assumption 1(iv) is
+significantly less restrictive than it. Moreover, prior studies on simple bilevel optimization have also
+leveraged Assumption 1(iv) [10, 33, 13].
+• Assumption 1(vi) is justifiable, considering that the feasible region of Problem (1) is more constrained
+than that of the unconstrained upper-level problem. Additionally, if p∗ =f∗, it implies that the lower-
+level problem has no impact on the simple bilevel problem, which contradicts the essence of the bilevel
+setting.
+3.2 Bisection Scheme
+In this section, following [ 58, Section 3.1], we employ a bisection scheme for solving Problem (1), i.e., finding
+the left-most root of the nonlinear equation (7), whose heart is the resolution of Problem (15).
+Firstly, letf∗ be the optimal value of the unconstrained upper-level problem
+min
+x∈Rn
+f(x) ≜f1(x) +f2(x). (16)
+10
+
+Recall the definition of ¯g(c) in (6). It holds that ¯g(c) is a univariate function of c on the interval (f∗, +∞),
+exhibiting properties similar to those described in [58, Section 3.1].
+Proposition 3.1. Under Assumption 1, the function ¯g(c) has the following properties:
+• ¯g(c) is convex [46, Theorem 5.3];
+• ¯g(c) decreases as the feasible set of Problem (15) expands, specifically, ¯g(c) decreases asc increases;
+• If f∗ <c<p ∗, then the inequality ¯g(c)>g∗ holds; otherwise, if c≥p∗, then ¯g(c) =g∗ =g(p∗).
+• p∗ is the left-most root of the equation ¯g(c) =g∗.
+To illustrate the basic idea of our method, following [ 58, Section 3.1], we make an ideal assumption that
+the exact values of g∗ and ¯g(c) can be obtained. It can be observed that if the condition ¯g(c)>g∗ holds,
+then c serves as a lower bound for p∗; otherwise, c acts as an upper bound for p∗, where p∗ represents the
+optimal value of Problem (1) mentioned above. We illustrate the graph of ¯g(c) in Figure 1.
+¯g(c)
+f∗ p∗
+ϵg p∗ p∗ +ϵf
+g∗
+c
+Figure 1: Variation of ¯g(c) over (f ∗, +∞)
+However, the assumption that the exact values of g∗ and ¯g(c) can be obtained is not realistic. Instead, we
+solve Problem (2) and Problem (15) to approximate them, respectively. For Problem (2), given the error toler-
+ance ϵ< 1, L0 > 0, η >1, and an initial point xg
+0. Let ϵg = 3ϵ, by invoking ˜xg = APG0(g1,g 2,L 0,η, xg
+0,ϵg/3)
+to solve it, we obtain an approximate solution ˜xg that satisfies
+0≤g(˜xg)−g∗≤ 1
+3ϵg. (17)
+Furthermore, givenc>f ∗ and the error tolerance ϵ, we can design an algorithm (cf. Algorithm 4) to solve
+Problem (15) and obtain an approximate optimal solution ˜xc that satisfies the following conditions,
+f(˜xc)−c≤ϵ, g(˜xc)− ¯g(c)≤ϵ. (18)
+Let ϵf = 4ϵ, Condition (18) are equivalent to
+f(˜xc)−c≤ 1
+4ϵf, g(˜xc)− ¯g(c)≤ 1
+3ϵg. (19)
+To assess the feasibility of System (8), we refer to Proposition 3.1. This involves analyzing the relationship
+between ¯g(c) and g∗. However, the condition ¯g(c)>g∗ cannot be verified directly because their exact values
+are not attainable. Similar to [58, Condition (12)], we replace it with the following verifiable condition:
+g(˜xc)>g (˜xg) + 1
+3ϵg. (20)
+11
+
+Let p∗
+ϵg represent the optimal value of Problem (4) with ε =ϵg. By confirming the validity of Condition 20,
+we have the following observations, which are similar to [58, Lemma 1].
+Lemma 3.2. Suppose that Assumption 3.1 holds. For any fixed c, if Condition (20) is satisfied, then c is
+a lower bound of p∗. If Condition (20) is not satisfied, then f(˜xc) is an upper bound of p∗
+ϵg and ˜xc is an
+ϵg-optimal solution of the unconstrained lower-level problem (2).
+Proof. If Condition (20) is satisfied, it holds that
+¯g(c)
+(19)
+≥ g(˜xc)− 1
+3ϵg
+(20)
+> g(˜xg)
+(17)
+≥ g∗,
+which implies that System (8) is infeasible, and therefore c is a lower bound of p∗ by Proposition 3.1.
+If Condition (20) is not satisfied, it holds that g(˜xc)≤g(˜xg) +ϵg/3 and therefore
+g(˜xc) + 1
+3ϵg≤g(˜xg) + 2
+3ϵg
+(17)
+≤ g∗ +ϵg,
+which demonstrates that ˜xc is an ϵg-optimal solution of the unconstrained lower-level problem (2).
+Notably, we cannot confirm that System (8) is feasible since we do not have ¯g(c)≤g∗. However, we can
+conclude that f(˜xc) serves as an upper bound for p∗
+ϵg, where p∗
+ϵg is the optimal value of Problem (4) with
+ε =ϵg. We complete the proof.
+To utilize the bisection method, it is essential to identify an initial interval [l0,u 0]. To begin, given L0 > 0,
+η > 1, and an initial point xf
+0, we invoke ˜xf = APG0(f1,f 2,L 0,η, xf
+0,ϵf/4) to solve the unconstrained
+upper-level problem (16), thereby obtaining an approximate solution ˜xf that satisfies
+0≤f(˜xf)−f∗≤ 1
+4ϵf =ϵ, (21)
+which demonstrates that f(˜xf)≤f∗ +ϵ. Therefore, by Assumption 1(vi), for a sufficient small ϵ≥ 0, we have
+l0 ≜f(˜xf) (22)
+can serve as an initial lower bound for p∗.
+Furthermore, Equation (17) demonstrates that ˜xg is a feasible solution of Problem (4) with ε =ϵg/3 =ϵ,
+showing that
+u0 ≜f(˜xg) (23)
+can be an initial upper bound for p∗
+ϵg (may not be the upper bound for p∗). Subsequently, we can perform
+the binary search over the interval [l0,u 0]. The main framework of our method is outlined below.
+1. Establish an initial interval [ l,u ] within (22) and (23);
+2. Let c = l+u
+2 , utilize an algorithm (cf. Algorithm 4) to obtain an approximate solution ˜xc of Problem
+(15) that satisfies Condition (19).
+3. Verify the validity of Condition (20):
+• If it holds, let l =c;
+• Otherwise, let u =f(˜xc).
+4. Check the terminal criterion:
+• If terminal criterion holds, return;
+• Otherwise, continue the loop.
+12
+
+4 Bisection-based Dual Approach
+In this section, we introduce a novel dual approach to address Problem (24), which can yield an approximate
+solution ˜xc that satisfies (18).
+To address the challenge posed by the presence of multiple optimal solutions in Problem (15), we employ
+a perturbed strongly convex reformulation of Problem (15) with a specified error tolerance ϵ> 0, rather than
+solving it directly.
+min
+x∈Rn
+Gϵ(x) ≜gϵ(x) +g2(x)
+s.t. f c(x)≤ 0,
+(24)
+where gϵ(x) = g1(x) + ϵ
+2∥x− x0∥2, with x0 = ˜xf satisfying fc(x0) < 0, obtained from Equation (21).
+Consequently,Gϵ is µ-strongly convex with µ ≜ϵ.
+To ensurefc(x0)< 0 for each c in the bisection scheme, we introduce the following regular condition.
+Assumption 2 (Regular condition). There exists a constant ∆1 > 0 that is irrelevant to the error tolerance
+ϵ such that for each c in the bisection scheme, we have fc(x0)<−∆1.
+It is reasonable to employ Assumption 2, as Assumption 1(vi) indicates that c will iteratively diverge
+from l0 in the bisection scheme. Conversely, if Assumption 2 does not hold, we still provide a convergence
+analysis of our proposed method, as detailed in Section 5.1.
+4.1 Dual Approach for Solving the Subproblem
+This section presents our dual approach for addressing Problem (24). Initially, we define the ϵ-KKT point for
+Problem (24).
+Definition 2 (ϵ-KKT point). Given the error tolerance ϵ> 0, a point ¯x∈ Rn is called an ϵ-KKT point of
+Problem (24) if there is a ¯z≥ 0 such that
+dist(0,∂ xLϵ(¯x, ¯z))≤ϵ, [fc(¯x)]+≤ϵ, |¯zfc(¯x)|≤ ϵ.
+Given a multiplier z≥ 0, denote x(z) as the unique minimizer of the following problem,
+min
+x
+Lϵ(x,z ). (25)
+Additionally, define
+d(z) ≜ min
+x∈Rn
+Lϵ(x,z ) and ¯z∈ arg max
+z≥0
+d(z). (26)
+Then, Danskin’s theorem [6, Proposition B.22] demonstrates that
+∇d(z) =fc(x(z)). (27)
+Furthermore, by Assumption 2, we can establish the following upper bound estimate for the optimal multipliers
+of Problems (15) and (24), which is also irrelevant to the error tolerance ϵ.
+Lemma 4.1. Suppose that Assumptions 1, and 2 hold. Let (x∗
+c,z∗
+c ) and (x∗
+ϵ,z∗
+ϵ ) be any primal-dual solution
+of Problems (15) and (24), respectively. Given ϵg≤ 1, let ˜xg be an 1
+3ϵg-optimal solution of the unconstrained
+lower-level Problem (2) that satisfies (17). Then, we have
+max{z∗
+c,z∗
+ϵ}≤ Dz ≜ g(x0)−g(˜xg) + 1
+∆1
+.
+13
+
+Proof. Since (x∗
+c,z∗
+c ) is a primal-dual solution of Problem (15), it holds that
+−z∗
+c∂fc(x∗
+c)∈∂g(x∗
+c), z∗
+cfc(x∗
+c) = 0. (28)
+Then, we have
+z∗
+cfc(x0)≥z∗
+c (fc(x∗
+c) +⟨x0− x∗
+c,∂fc(x∗
+c)⟩)
+=⟨x0− x∗
+c,z∗
+c∂fc(x∗
+c)⟩
+≥g(x∗
+c)−g(x0),
+(29)
+where the first inequality follows from the convexity of fc and the nonnegativity of z∗
+c , the equality follows
+from the second equation in (28), and the last inequality follows from the convexity of g and the first equation
+in (28).
+By Assumption 2, we have
+z∗
+c
+(29)
+≤ g(x0)−g(x∗
+c)
+−fc(x0) ≤ g(x0)−g∗
+−fc(x0) ≤ g(x0)−g∗
+∆1
+≤ g(x0)−g(˜xg) + 1
+∆1
+,
+where the second and last inequalities follow from g(x∗
+c)≥g∗ and g(˜xg)−g∗≤ 1
+3ϵg≤ 1, respectively.
+Similarly, forz∗
+ϵ , it holds that
+z∗
+ϵ≤−Gϵ(x∗
+ϵ) +Gϵ(x0)
+−fc(x0) ≤ g(x0)−g(x∗
+ϵ)
+−fc(x0) ≤ g(x0)−g(˜xg) + 1
+∆1
+,
+where the second inequality follows from −ϵ
+2∥x− x0∥2≤ 0. We complete the proof.
+Our dual scheme for identifying an ϵ-KKT point (cf. Definition 2) of Problem (24) consists of two steps.
+First, since d(z) is concave [6, Proposition 6.1.2], Lemma 4.1 implies that if z≥Dz, then∇d(z)≤ 0 always
+holds. We can then identify an interval containing an optimal solution of the dual problem¯z∈ arg maxz≥0d(z).
+Subsequently, we employ a binary search process within this interval to obtain a desired approximate solution.
+4.1.1 Convergence Analysis for Solving Composite Strongly Convex Problem
+For convenience, Problem (25) can be reformulated as the composite problem below,
+min
+x∈Rn
+φ(x) ≜φ1(x) +φ2(x), (30)
+where φ1(x) :=gϵ(x) +z(f1(x)−c) and φ2(x) :=g2(x) +zf2(x). It holds that φ1 is µφ1-strongly convex
+with µφ1 ≜ϵ, and the gradient∇φ1 of φ1 is Lφ1-Lipschitz continuous with Lφ1 ≜Lg1 +zLf1 +ϵ. According
+to the updating mode of z (cf. Algorithm 3), we have z∈ [0, 2Dz], where Dz≥ 0 is defined in Lemma 4.1.
+This implies that Lφ1≤Lg1 + 2DzLf1 + 1 when given ϵ≤ 1. For convenience, we will henceforth consider
+Lφ1 =Lg1 + 2DzLf1 + 1 as the Lipschitz constant of ∇φ1.
+The convergence of Algorithm 1 has been constructed in [ 61, Corollary 2.3]. In this paper, we extend the
+same complexity result of Algorithm 1 without relying on the assumption of a compact domain as utilized
+in [61, Corollary 2.3]. Here, we only assume that certain level sets of the lower-level objective are compact,
+which is a much weaker requirement compared to [ 61, Assumption 2] and some other existing literature on
+simple bilevel optimization [1, 27, 23, 51, 11].
+Assumption 3. (i) Denote D0 ≜g(x0) + max{0,−2Dzf∗} + 2Dz|u0|, where u0 is defined in (23). The
+level set Levg(D0) ≜{z :g(z)≤D0} is bounded with a diameter R1 := maxx1,x2∈Levg(D0)∥x1− x2∥.
+14
+
+(ii) Denote DLz ≜ D0 +γ1Lφ1R2
+1, where γ1 is the increase constant in Algorithm 1, and Lφ1 = Lg1 +
+2DzLf1 + 1. The level set Levg(DLz) ≜ {z : g(z) ≤ DLz} is bounded with a diameter Dg :=
+maxx1,x2∈Levg(DLz )∥x1− x2∥.
+It is evident that Levg(D0)⊆ Levg(DLz) due to D0≤DLz. Utilizing Assumption 3, we can derive the
+following result regarding the optimal solution of Algorithm 1.
+Lemma 4.2. Suppose that Assumptions 1, 2, and 3 hold. Let initial point y0 = x0 in Algorithm 1. Then,
+for any z∈ [0, 2Dz], the optimal solution x(z) of Problem (25) lies in the level set Levg(D0).
+Proof. Since x(z) is the optimal solution of Problem (25), we have
+Lϵ(x(z),z )≤L ϵ(x0,z ) =g(x0) + ϵ
+2∥x0− x0∥2 +zfc(x0)≤g(x0), (31)
+where the inequality follows from z≥ 0 and fc(x0)< 0.
+Then, by the definition of the function Lϵ, it holds that
+g(x(z)) =Lϵ(x(z),z )−z(f(x(z))−c)− ϵ
+2∥x(z)− x0∥2
+(31)
+≤ g(x0)−z(f(x(z))−c)
+≤g(x0) + max{0,−2Dzf∗} + 2Dz|u0|
+=D0.
+where the second inequality follows from f∗≤f(x(z)), c≤u0, and z∈ [0, 2Dz]. We complete the proof.
+Since Levg(D0)⊆ Levg(DLz), Lemma 4.2 implies that the optimal solution x(z) of Problem (25) also lies
+in the level set Levg(DLz) for any z∈ [0, 2Dz]. Furthermore, by utilizing Lemma 4.2, we demonstrate that
+the sequence generated by Algorithm 1 also remains within the level set Lev g(DLz).
+Lemma 4.3. Suppose that Assumptions 1, 2, and 3 hold. Let initial point y0 = x0 in Algorithm 1. Then the
+sequence{bxk} generated by Algorithm 1 lies in the level set Levg(DLz).
+Proof. In Step 15 of Algorithm 1, we have φ1(bx)≤φ1(˜x) +⟨∇φ1(˜x),bx− ˜x⟩ +
+bL
+2∥bx− ˜x∥2. By [ 62, Lemma
+2.1], it holds that
+φ(˜x)−φ(bx)≥
+bL
+2∥bx− ˜x∥2. (32)
+Denote x∗
+φ as the optimal solution of Problem (30). By [4, Theorem 3.1], we have
+φ(x0)−φ(x∗
+φ)≤ γ1Lφ1∥x0− x∗
+φ∥2
+2 . (33)
+Moreover, by [4, Theorem 10.29(a)], it holds that
+∥x0− x∗
+φ∥2≤ (1− ϵ
+γ1Lφ1
+)∥x0− x∗
+φ∥2≤∥ x0− x∗
+φ∥2. (34)
+Then, by [35, Theorem 1], the generated sequence {xk} satisfies
+φ(xk+1)≤φ(x∗
+φ) +
+
+1−
+r µφ1
+γ1Lφ1
+k+1
+φ(x0)−φ(x∗
+φ) +µφ1
+2 ∥x0− x∗
+φ∥2
+
+. (35)
+This combined with (32) imply that
+φ(bxk+1)
+(35)
+≤ φ(xk+1)≤φ(x∗
+φ) +
+
+1−
+r µφ1
+γ1Lφ1
+k+1
+φ(x0)−φ(x∗
+φ) +µφ1
+2 ∥x0− x∗
+φ∥2
+
+.
+15
+
+Therefore, by the definition of xk+1 andbxk+1, it holds that
+φ(bxk+1)≤φ(x∗
+φ) +
+
+1−
+r µφ1
+γ1Lφ1
+k+1 
+γ1Lφ1∥x0− x∗
+φ∥2
+2 + µφ1
+2 ∥x0− x∗
+φ∥2
+!
+≤φ(x∗
+φ) +
+ 
+γ1Lφ1∥x0− x∗
+φ∥2
+2 + µφ1
+2 ∥x0− x∗
+φ∥2
+!
+≤φ(x0) +γ1Lφ1∥x0− x∗
+φ∥2,
+(36)
+where the first inequality follows from Equations (33) and (34), and the last inequality follows from the fact
+that µφ1≤γ1Lφ1 and φ(x∗
+φ)≤φ(x0).
+By the definition of φ and x∗
+φ, (36) demonstrates that
+g(bxk+1) + ϵ
+2∥bxk+1− x0∥2 =Lϵ(bxk+1,z )−zfc(bxk+1)
+≤L ϵ(x0,z )−zfc(bxk+1) +γ1Lφ1∥x0− x(z)∥2
+(31)
+≤ g(x0)−zfc(bxk+1) +γ1Lφ1R2
+1
+≤g(x0) + max{0,−2Dzf∗} + 2Dz|u0| +γ1Lφ1R2
+1
+=DLz,
+(37)
+where the second inequality follows from Proposition 4.2, and the third inequality follows from f∗≤f(bxk+1),
+c≤u0, and z∈ [0, 2Dz].
+Since g(bxk+1)≤ g(bxk+1) +ϵ∥bxk+1− x0∥2, (37) implies g(bxk+1)≤ DLz, Therefore, the sequence {bxk}
+generated by Algorithm 1 lies in the level set Lev g(·,DLz). We complete the proof.
+Denote one time evaluation of φ1, φ2,∇φ1, and the proximal mapping of φ2 as one oracle query. By
+Lemma 4.3, we can establish the convergence result of Algorithm 1 without assuming a bounded domain of
+φ2, as adopted in [61, Corollary 2.3].
+Lemma 4.4. Suppose that Assumptions 1, 2, and 3 hold. Let initial point y0 = x0 in Algorithm 1. Given
+error tolerance ¯ϵ> 0, increase rate γ1 > 1, decrease rate γ2≥ 1, minimum Lipschitz constant Lmin > 0, and
+initial point y0 = x0, Algorithm 1 needs at most K oracle queries to produce an approximate solution bx of
+Problem (30) such that dist(0,∂φ (bx))≤ ¯ϵ, where
+K =O
+ s
+Lφ1
+µφ1
+| log ¯ϵ|
+!
+.
+Proof. By [61, Theorem 2.2], we have
+dist(0,∂φ (bxk+1))≤
+p
+γ1Lφ1 + Lφ1√Lmin
+q
+2(φ(x0)−φ(x∗φ)) +µφ1∥x0− x∗φ∥2
+
+1−
+r µφ1
+γ1Lφ1
+k+1
+2
+(33)
+≤
+p
+γ1Lφ1 + Lφ1√Lmin
+r
+2(γ1Lφ1∥x0− x∗φ∥2
+2 ) +µφ1∥x0− x∗φ∥2
+
+1−
+r µφ1
+γ1Lφ1
+k+1
+2
+(34)
+≤
+p
+γ1Lφ1 + Lφ1√Lmin
+r
+2(γ1Lφ1∥x0− x∗φ∥2
+2 ) +µφ1∥x0− x∗φ∥2
+
+1−
+r µφ1
+γ1Lφ1
+k+1
+2
+≤Dg
+p
+γ1Lφ1 + Lφ1√Lmin
+p
+γ1Lφ1 +µφ1
+
+1−
+r µφ1
+γ1Lφ1
+k+1
+2
+,
+where the third inequality follows from x0, x∗
+φ∈ Levg(DLz). The desired result follows.
+16
+
+Lemma 4.4 demonstrates that the complexity of Algorithm 1 to produce a point satisfyingdist(0,∂φ (bx))≤ ¯ϵ
+for Problem (30) isO(
+p
+Lφ1/µφ1| log ¯ϵ|). This is equivalent to the complexity of achieving a point that
+satisfies dist(0,∂Lϵ(bx))≤ ¯ϵ for Problem (25), which is O(
+p
+(Lg + 2DzLf + 1)/ϵ| log ¯ϵ|).
+4.1.2 Preparatory Lemmas
+In this subsection, we establish several lemmas as preliminary steps toward introducing our primary method.
+Denote Bf1 ≜ maxx∈Levg(DLz )∥∇f1(x)∥ and Bf ≜Bf1 +lf2. The first lemma establishes the Lipschitz
+continuity of the upper-level objective over Levg(DLz), where Levg(DLz) is a level set of the lower-level
+objective g as defined in Assumption 3(ii).
+Lemma 4.5. Suppose that Assumptions 1, 2, and 3 hold. Then the upper-level objective f of Problem (1) is
+Bf -Lipschitz continuous over Levg(DLz).
+We then show that an ϵ-KKT point of Problem (24) corresponds to anO(ϵ)-optimal solution of Problem
+(15). Here, we refer to a point ¯x as an ϵ-optimal solution of Problem (15) if
+g(¯x)− ¯g(c)≤ϵ, [fc(¯x)]+≤ϵ. (38)
+Lemma 4.6. Suppose that Assumptions 1, 2, and 3 hold. If ¯x generated by Algorithm 1 is an ϵ-KKT point
+of Problem (24), then, ¯x is also an O(ϵ)-optimal solution of Problem (15), specifically,
+g(¯x)− ¯g(c)≤ (1 +Dg(1 +Dg))ϵ, fc(¯x)≤ϵ,
+whereDg is the diameter of Levg(DLz) defined in Assumption 3(ii).
+Proof. Since ¯x is an ϵ-KKT point of (24), there exists a ¯z≥ 0 such that
+dist(0,∂ xLϵ(¯x, ¯z)) = dist(0,∂ xL(¯x, ¯z) +ϵ(¯x− x0))≤ϵ, [fc(¯x)]+≤ϵ, |¯zfc(¯x)|≤ ϵ, (39)
+whereL(x,z ) ≜g(x) +zfc(x) is the Lagrange function of Problem (15).
+Since ¯x, x0∈ Levg(DLz), (39) demonstrates that
+dist(0,∂ xL(¯x, ¯z)≤ (1 +Dg)ϵ, [fc(¯x)]+≤ϵ, |¯zfc(¯x)|≤ ϵ. (40)
+Denote (x∗
+c,z∗
+c ) as a primal-dual solution of Problem (15). Since x0 is a feasible point of Problem (15), it
+holds that
+g(x∗
+c)≤g(x0)≤DLz,
+which indicates that x∗
+c∈ Levg(DLz) and therefore, we have∥¯x− x∗
+c∥≤ Dg.
+Furthermore, sincez∗
+cfc(x∗
+c) = 0 and fc(x∗
+c)≤ 0, we obtain
+g(x∗
+c)−g(¯x) =L(x∗
+c,z∗
+c )−z∗
+cfc(x∗
+c)−L (¯x, ¯z) + ¯zfc(¯x)
+=g(x∗
+c)−L (¯x, ¯z) + ¯zf (x∗
+c)− ¯zf (x∗
+c) + ¯zfc(¯x)
+=L(x∗
+c, ¯z)−L (¯x, ¯z) + ¯z(fc(¯x)−f(x∗
+c))
+≥⟨∂xL(¯x, ¯z), x∗
+c− ¯x⟩ + ¯zfc(¯x),
+where the last inequality follows from the convexity of L(x,z ) with respect to x, and f(x∗
+c)≤ 0.
+Therefore, using (40) and ∥¯x− x∗
+c∥≤ Dg, we obtain
+g(¯x)− ¯g(c) =g(¯x)−g(x∗
+c)≤− ¯zfc(¯x) +⟨∂xL(¯x, ¯z), ¯x− x∗
+c⟩≤ (1 +Dg(1 +Dg))ϵ,
+where the last inequality follows from ∥¯x− x∗
+c∥≤ Dg. The desired result follows.
+17
+
+The following lemma demonstrates the monotonicity of f(x(z)) and the Lipschitz continuity of x(z) with
+respect to z, where x(z) is the optimal solution of Problem (25).
+Lemma 4.7. [60, Lemma 3.2] Suppose that Assumptions 1, 2, and 3 hold. Then, the following inequalities
+hold,
+(z1−z2)(fc(x(z1))−fc(x(z2)))≤−µ∥x(z1)− x(z2)∥2, ∀z1,z 2≥ 0, (41)
+∥x(z1)− x(z2)∥≤ Bf
+µ|z1−z2|, ∀z1,z 2≥ 0. (42)
+Proof. For i = 1, 2, let x(zi) denote the optimal solution of Problem (25) with z = zi. Thus, we have
+0∈∂x(Gϵ(x(zi)) +zifc(x(zi))). Given the µ-strong convexity of Gϵ(x) +zfc(x), we have
+Gϵ(x(z1)) +z1fc(x(z1))≤Gϵ(x(z2)) +z1fc(x(z2))− µ
+2∥x(z1)− x(z2)∥2,
+Gϵ(x(z2)) +z2fc(x(z2))≤Gϵ(x(z1)) +z2fc(x(z1))− µ
+2∥x(z1)− x(z2)∥2.
+(43)
+By adding the two inequalities in (43), we derive the result in (41). Consequently, the desired result in (42)
+follows from (41) and the Bf-Lipschitz continuity of the upper-level objective (see Lemma 4.5).
+4.1.3 Algorithm Design
+In this subsection, we present the detailed procedures for designing the dual approach to obtain an ϵ-KKT
+point of Problem (24). The subsequent lemma elucidates that, given bz≥ 0, one can determine whether it is
+an acceptable approximate solution or establish the sign of ∇d(bz) to dictate the direction of the search for an
+appropriate solution, where∇d(bz) =f(x(bz)) is defined in (27).
+Lemma 4.8. Suppose that Assumptions 1, 2, and 3 hold. Given error tolerances ϵ1 =ϵ2, ϵ2 =Bfϵ, and
+a multiplier bz≥ 0, let bx∈ dom(g2) be a point satisfying dist (0,∂ xLϵ(bx,bz))≤ϵ1. If [fc(bx)]+≤ϵ2, we have
+[fc(x(bz))]+≤ 2ϵ2. Otherwise, ∇d(bz) =fc(x(bz))> 0.
+Proof. By Lemma 4.5, we have
+|fc(bx)−fc(x(bz))|≤ Bf∥bx− x(bz)∥≤ Bf
+µ dist(0,∂Lϵ(bx,bz))≤ Bf
+µ ϵ1 =Bfϵ, (44)
+where the second inequality follows from the µ-strong convexity ofLϵ with respect to bx.
+By the nonexpansiveness of [·]+, it holds that
+[fc(bx)]+− [fc(x(bz))]+
+≤|fc(bx)−fc(x(bz))|≤ Bfϵ.
+Therefore, we have [fc(x(bz))]+≤ 2Bfϵ if the condition [fc(bx)]+≤Bfϵ holds, and [fc(x(bz))]+ > 0 otherwise,
+the desired result follows.
+Lemma 4.8 suggests that we can design an algorithm capable of producing either an approximate KKT
+point or an interval Z = [a,b ]⊆ [0,∞) that contains an optimal multiplier for Problem (24) by verifying the
+condition [fc(bx)]+≤ϵ2. The pseudocode is presented in Algorithm 3.
+The next lemma demonstrates that Algorithm 3 must exit the while loop within finite iterations.
+Lemma 4.9. Suppose that Assumptions 1, 2, and 3 hold. Given error tolerance ϵ1 = ϵ2, ϵ2 = Bfϵ, and
+ϵ3 = (2DzBf + 2DzB2
+f)ϵ. If b≥ Dz, it must hold that [fc(bx)]+≤ ϵ2. Furthermore, Algorithm 3 produces
+either a pair (bx,b ) that satisfies the ¯ϵ-KKT conditions of Problem (24) with ¯ϵ = max{ϵ2,ϵ 3} or an interval
+[a,b ] that contains an optimal multiplier of Problem (24).
+18
+
+Algorithm 3 Interval search: Z = IntV(Z0,ϵ 1,ϵ 2,ϵ 3, x0)
+Input: The required parameters of Algorithm 1, initial interval Z0 = [0,σ ], error tolerances ϵ1, ϵ2, ϵ3, and
+initial point x0.
+1: Call Algorithm 1: bx = APGµ(gϵ,g 2,L min,µ,γ 1,γ 2, x0,ϵ 1) ▷ So dist(0,∂ xLϵ(0,bx))≤ϵ1
+2: if [fc(bx)]+≤ϵ2 then
+3: Return Z ={0} and stop ▷bx and 0 satisfy the ϵ2-KKT conditions
+4: end if
+5: Let b =σ and call Algorithm 1: bx = APGµ(gϵ +bf1,g 2 +bf2,L min,µ,γ 1,γ 2,bx,ϵ 1)
+6: while [fc(bx)]+ >ϵ 2 and b≤Dz do
+7: Let a =b, and increase b = 2b
+8: Call Algorithm 1: bx = APGµ(gϵ +bf1,g 2 +bf2,L min,µ,γ 1,γ 2,bx,ϵ 1)
+9: end while
+10: if|bfc(bx)|≤ ϵ3 then
+11: Return Z ={b} ▷bx and b satisfy the ϵ3-KKT conditions
+12: else
+13: Return Z = [a,b ] ▷ find an interval Z = [a,b ] contains an optimal multiplier
+14: end if
+Proof. When b≥Dz, given that fc(x(z)) is monotonically decreasing with respect to z (cf. Lemma 4.7), and
+Dz is the upper bound of the optimal multiplier of Problem (24) (cf. Lemma 4.1), we have
+fc(x(b))≤fc(x(Dz))≤ 0. (45)
+By the Bf-Lipschitz continuous of fc and the µ-strong convexity ofLϵ(x,z ), it holds that
+fc(bx) =fc(bx)−fc(x(b)) +fc(x(b))
+(45)
+≤ Bf∥bx− x(b)∥≤ Bf
+µ dist(0,∂Lϵ(bx,b ))≤ Bf
+µ ϵ1 =ϵ2,
+which demonstrates [fc(bx)]+≤ϵ2.
+Furthermore, if [a,b ] contains an optimal multiplier of Problem (24), we complete the proof. Otherwise,
+according to Lemma 4.8, it holds that
+∇d(a)> 0 and 0 <∇d(b) =fc(x(b))≤ 2ϵ2. (46)
+This combined with the Bf-Lipschitz continuous of fc demonstrates that
+fc(bx) =fc(bx)−fc(x(b)) +fc(x(b))
+(46)
+≥ −Bf∥bx− x(b)∥≥− Bf
+µ ϵ1 =−ϵ2,
+which demonstrates|fc(bx)|≤ ϵ2.
+By the update scheme of b in Step 7 of Algorithm 3, we must have 0 ≤b≤ 2Dz, then it holds that
+|bfc(bx)|≤ 2Dz|fc(bx)|≤ 2DzBfϵ≤ϵ3,
+which implies that (bx,b ) satisfies the ϵ3-KKT conditions of Problem (24), Algorithm 3 will exit at Step 11.
+We complete the proof.
+Lemma 4.9 demonstrates that by executing Algorithm 1 for a maximum of ⌈log2Dz⌉ + 2 iterations,
+Algorithm 3 can identify either an O(ϵ)-KKT point or an interval containing an optimal multiplier for
+19
+
+Problem (24). Consequently, if Algorithm 3 returns an interval, we can then employ the bisection method to
+find an approximate solution of Problem (24) and an approximate solution for ¯z∈ arg maxz≥0d(z) as defined
+in (26). The pseudocode is presented in Algorithm 4.
+Algorithm 4 Bisection method for solving max z≥0d(z): (bx,bz) = Bisec(Z,ϵ 1,ϵ 2,ϵ 3,ϵ 4, x0)
+Input: The required parameters of Algorithms 1 and 3, multiplier interval Z, error tolerances ϵ1,ϵ 2,ϵ 3,ϵ 4,
+and initial point x0.
+1: Letbx = x0
+2: while b−a>ϵ 4 do
+3: Let e = a+b
+2 and call Algorithm 1: bx = APGµ(gϵ +ef1,g 2 +ef2,L min,µ,γ 1,γ 2,bx,ϵ 1)
+4: if [fc(bx)]+ >ϵ 2 then
+5: Let a =e
+6: else if [fc(bx)]+≤ϵ2 and|e·fc(bx)|≤ ϵ3 then
+7: Letbz =e
+8: Return (bx,bz) ▷ (bx,bz) satisfy the ϵ3-KKT conditions
+9: else
+10: Let b =e
+11: end if
+12: end while
+13: Letbz =b and return the corresponding bx..
+We demonstrate that the pair (bx,bz) generated by Algorithm 4 satisfies anO(ϵ)-KKT conditions of Problem
+(24). Additionally, we provide the convergence result of Algorithm 4 in the following lemma.
+Lemma 4.10. Suppose that Assumptions 1, 2, and 3 hold. Given error tolerances ϵ1 = ϵ2, ϵ2 = Bfϵ,
+ϵ3 = (2DzBf + 2DzB2
+f)ϵ and ϵ4 =ϵ2. Then, after at most ¯T oracle queries, Algorithm 4 produces an ¯ϵ-KKT
+point of Problem (24) with ¯ϵ = max{ϵ2,ϵ 3}, where
+¯T =O
+ r
+Lg1 + 2DzLf1 + 1
+ϵ | logϵ|2
+!
+.
+Proof. We first show that the returned pair (bx,bz) of Algorithm 4 satisfy the ¯ϵ-KKT conditions. In Step 13,
+we already have dist(0,∂Lϵ(bx,bz))≤ϵ1 and [fc(bx)]+≤ϵ2. Therefore, it is adequate to show |bzfc(bx)|≤ ¯ϵ.
+We show that the conditions in Step 6 will be met when b−a≤ϵ4. Let bxa andbxb be the approximate
+solutions corresponding to a and b. According to the update rules, it is guaranteed that [ fc(bxa)]+ >ϵ 2 and
+[fc(bxb)]+≤ϵ2.
+By Equation (44), it holds that
+|fc(bxa)−fc(x(a))|≤ Bfϵ, and|fc(bxb)−fc(x(b))|≤ Bfϵ. (47)
+Furthermore, asb−a≤ϵ4, by Lemma 4.5, we have
+|fc(x(b))−fc(x(a))|≤ Bf∥x(b)− x(a)∥
+(42)
+≤
+B2
+f
+µ ϵ4 =B2
+fϵ. (48)
+Combining Equations (47) and (48), using triangle inequality, it holds that
+|fc(bxb)−fc(bxa)|≤| fc(bxb)−fc(x(b))| +|fc(x(b))−fc(x(a))| +|fc(bxa)−fc(x(a))|≤ 2Bfϵ +B2
+fϵ. (49)
+20
+
+This combined with [fc(bxa)]+ >ϵ 2 and [fc(bxb)]+≤ϵ2 implies that
+−Bfϵ−B2
+fϵ≤− 2Bfϵ−B2
+fϵ +fc(bxa)
+(49)
+≤ fc(bxb)≤ϵ2,
+which means|fc(bxb)|≤ Bfϵ +B2
+fϵ.
+Therefore, since b∈ [0, 2Dz], it holds that
+|bfc(bxb)|≤ 2Dz|fc(bxb)|≤ (2DzBf + 2DzB2
+f)ϵ =ϵ3,
+This combined with [fc(bxb)]+≤ϵ2 and dist(0,∂Lϵ(bxb,b ))≤ϵ1 demonstrates that (bxb,b ) is an ¯ϵ-KKT point
+of Problem (24) with ¯ϵ = max{ϵ2,ϵ 3}. As bz =b andbx =bxb, the desired result follows.
+Next, we analyze the complexity result of Algorithm 4 to generate such a pair. Firstly, after at most ¯T1
+iterations, Algorithm 4 will exit the while loop, where
+¯T1 = log|ϵ4| + 1 =O(log|ϵ|).
+This combined with Lemma 4.4 indicates that the total oracle queries is
+¯T =O
+ r
+Lg1 + 2DzLf1 + 1
+ϵ | logϵ|
+!
+¯T1 =O
+ r
+Lg1 + 2DzLf1 + 1
+ϵ | logϵ|2
+!
+.
+We complete the proof.
+Lemma 4.10, combined with Lemma 4.6, demonstrates that with specific chosen error tolerances, Algorithm
+4 can generate a point bx that satisfies Condition (18), we have the following corollary.
+Corollary 4.11. Suppose that Assumptions 1, 2, and 3 hold. Given error tolerances ϵ1 = ϵ2
+D , ϵ2 = Bfϵ
+D ,
+ϵ3 =
+(2DzBf+2DzB2
+f)ϵ
+D and ϵ4 = ϵ2
+D with D ≜ (1 +Dg(1 +Dg)) max{Bf, (2DzBf + 2DzB2
+f)}. Then, after at
+most ¯T oracle queries, Algorithm 4 can produce an ϵ-optimal solution (cf. (38)) of Problem (15), where
+¯T =O
+ r
+Lg1 + 2DzLf1 + 1
+ϵ | logϵ|2
+!
+.
+Proof. According to Lemma 4.6, it holds that a ϵ
+(1+Dg(1+Dg))-KKT point of Problem (24) is an ϵ-optimal
+solution of Problem (15). Therefore, the desired result follows from Lemma 4.10.
+Remark 2. Note that when the upper-level objective is smooth and the domain of the lower-level objectives is
+compact, the inexact augmented Lagrangian method (iALM) proposed by [ 61, Algorithm 4] can be used to
+solve Problem (15) with a complexity result of O(
+p
+(Lg1 + 2DzLf1 + 1)/ϵ| logϵ|3).
+5 Main Algorithm and Complexity Results
+In this section, we present our main algorithm along with its complexity analysis for generating an ( ϵf,ϵg)-
+optimal solution of Problem (1) (cf. Definition 1).
+Here, we present some novel insights into the bisection scheme. Specifically, when l = c, we define
+the subsequent interval containing an optimal multiplier as Zk+1 = [0, maxZk], as the value of c in the
+next iteration will be larger than the previous one. According to Lemma 4.1, it can be inferred that the
+corresponding Dz must be smaller than its predecessor. Conversely, a new interval needs to be calculated if
+u =c. The pseudocode of our bisection scheme for solving Problem (1) is detailed in Algorithm 5.
+Employing the above analysis, we give the complexity result of Algorithm 5 as follows.
+21
+
+Algorithm 5 Biection method based Value Function Algorithm (BiVFA)
+Input: Required parameters in Algorithms 1, 2, 3, and 4, initial points xf
+0 and xg
+0, initial multiplier interval
+[0,b ], error tolerances ϵf and ϵg.
+1: Invoke ˜xf = APG0(f1,f 2,L 0,η, x0,ϵf/4), let l0 =f(˜xf)−ϵf/4.
+2: Invoke ˜xg = APG0(g1,g 2,L 0,η, x0,ϵg/3), let u0 =f(˜xg).
+3: Let l =l0, u =u0,bx = ˜xf, and b = 1.
+4: Let c = l+u
+2 , invokeZ = IntV([0,b ],ϵ 1,ϵ 2,ϵ 3,bx).
+5: while u−l> 3
+4ϵf do
+6: Let c = l+u
+2 .
+7: if c−l0 < ∆1 then
+8: Let c =u and return the corresponding ˜xc asbx;
+9: Break.
+10: end if
+11: Invoke (bx,bz) = Bisec(Z,ϵ 1,ϵ 2,ϵ 3,ϵ 4,bx).
+12: if Condition (20) is satisfied then
+13: Let l =c,
+14: Let Z = [0, maxZ] ▷ the new c will be larger than the previous one
+15: else
+16: Let u =f(˜xc),
+17: InvokeZ = IntV([0,b ],ϵ 1,ϵ 2,ϵ 3,bx).
+18: end if
+19: end while
+20: Let c =u and return the corresponding ˜xc asbx.
+Theorem 5.1. Suppose that Assumptions 1, 2, and 3 hold. Given error tolerance ϵ> 0, let ϵf = 4ϵ, and
+ϵg = 3ϵ. After at most T oracle queries, Algorithm 5 can produce an (ϵf,ϵg)-optimal solution of Problem (1),
+where
+T =O
+ r
+Lg1 + 2DzLf1 + 1
+ϵ | logϵ|3
+!
+.
+Proof. We first show that bx is an (ϵf,ϵg)-optimal solution of Problem (1). In Step 16 Algorithm 5, we set
+c =u. Consequently, Condition (20) is not satisfied. By Lemma 3.2, we have g(bx)≤g∗ +ϵg. Subsequently,
+we need to establish that f(bx)≤p∗ +ϵf. The proof is divided into two cases:
+• Case I: If u≤p∗, then from (19), we have f(bx)≤u +ϵf/4≤p∗ +ϵf/4.
+• Case II: If u>p ∗, since l≤p∗ always holds, p∗ lies within the interval [l,u ]. Thus, we have
+f(bx)≤u +ϵf/4≤u +p∗−l +ϵf/4≤p∗ +ϵf,
+where the last inequality follows from the stopping criterion u−l≤ 3
+4ϵf.
+We now present the complexity result of Algorithm 5 to generate an ( ϵf,ϵg)-optimal solution of Problem
+(1).
+In Steps 1 and 2, Algorithm 2 is utilized to obtain the initial bounds l0 and u0. According to Lemma 2.1,
+this can be done within ˜T0 =O(
+p
+Lf1/ϵf) +O(
+p
+Lg1/ϵg) oracle queries.
+22
+
+As u =f(˜xc) and f(˜xc)≤c +ϵf/4 (cf. Equation (19)), at the k-th iteration, the length of the interval
+[l,u ] will not exceed (u0−l0)/2k +Pk+1
+i=2 ϵf/2i. If k≥ log2((u0−l0)/ϵf) + 2, the length of the interval [l,u ]
+will not exceed 3/4ϵf. Therefore, after at most ˜T1 iterations, Algorithm 5 will exit the while loop, where
+˜T1 = log2((u0−l0)/ϵf) + 2 =O(| logϵ|).
+In Step 4, Algorithm 3 is utilized to find an interval containing an optimal multiplier. According to Lemma
+4.9, this can be accomplished within ˜T2 =O(
+p
+(Lg1 + 2DzLf1 + 1)/ϵ| logϵ|) oracle queries. Additionally, in
+Step 17, Algorithm 3 is again employed to identify such an interval for each c, and the maximum number of
+oracle queries required by Algorithm 3 in Algorithm 5 will not surpass
+˜T3 =O(
+q
+(Lg1 + 2DzLf1 + 1)/ϵ| logϵ|) ˜T1 =O(
+q
+(Lg1 + 2DzLf1 + 1)/ϵ| logϵ|2).
+Moreover, Algorithm 4 is invoked in the while loop. Consequently, in accordance with Corollary 4.11, the
+total number of oracle queries conducted by Algorithm 4 will not exceed
+˜T4 =O(
+q
+(Lg1 + 2DzLf1 + 1)/ϵ| logϵ|2) ˜T1 =O(
+q
+(Lg1 + 2DzLf1 + 1)/ϵ| logϵ|3).
+Therefore, the total number of oracle queries in Algorithm 5 is at most
+T = ˜T0 + ˜T2 + ˜T3 + ˜T4
+=O
+ r
+Lg1 + 2DzLf1 + 1
+ϵ | logϵ|3
+!
+.
+We complete the proof.
+Theorem 5.1 demonstrates that our complexity result achieves a near-optimal rate for both upper- and
+lower-level objectives, matching the optimal rate of first-order methods for unconstrained smooth or composite
+convex optimization problems when disregarding the logarithmic terms [ 41, 59]. In comparison to the existing
+literature [3, 47, 1, 37, 18, 28, 27, 13, 11], our result provides the best non-asymptotic complexity bounds for
+both upper- and lower-level objectives. Furthermore, the assumptions in our method are significantly weaker
+than those in the existing literature (cf. Remark 1). Moreover, in contrast to our previous work [ 58], the
+proposed method in this paper achieves nearly the same complexity result while employing much weaker
+assumptions (cf. Remark 1).
+5.1 Convergence Analysis without Assumption 2
+In this section, to ensure rigor, we present the convergence analysis of our proposed method without relying
+on Assumption 2. The following theorem is provided.
+Theorem 5.2. Suppose that Assumptions 1 and 3 hold. Given an error tolerance ϵ >0, let ϵf = 4ϵ and
+ϵg = 3ϵ. If Algorithm 5 exits at Step 8, then, the returned point is an (2∆1 +ϵf/4,ϵg)-optimal solution of
+Problem (1).
+Proof. In Step 8 of Algorithm 5, we set c =u. Consequently, Condition (20) is not satisfied. By Lemma 3.2,
+we haveg(bx)≤g∗ +ϵg. Subsequently, we only need to establish that f(bx)≤p∗ + 2∆1 +ϵf/4. We begin by
+examining the distance between u and l0.
+Since c = l+u
+2 and l≥l0, the condition c−l0≤ ∆1 in Step 7 implies
+u−l0≤ 2∆1. (50)
+Then, we can prove f(bx)≤p∗ + 2∆1 +ϵf/4:
+23
+
+• Case I: If u≤p∗, then from (19), we have f(bx)≤u +ϵf/4≤p∗ +ϵf/4.
+• Case II: If u>p ∗, since l0≤l≤p∗ always holds, p∗ lies within the interval [l,u ]. Thus, we have
+f(bx)≤u +ϵf/4≤u +p∗−l0 +ϵf/4≤p∗ + 2∆1 +ϵf/4,
+where the last inequality follows from (50).
+We complete the proof.
+Theorem 5.2 demonstrates that even if Assumption 2 does not hold, Algorithm 5 can still generate an
+(2∆1 +ϵf/4,ϵg)-optimal solution of Problem (1). Consequently, if ∆ 1 is small but significantly larger than ϵ,
+Algorithm 5 can be employed to find an approximate solution of Problem (1). The complexity result remains
+consistent with Theorem 5.1.
+Furthermore, since l0 satisfies (21), i.e., 0≤l0−f∗≤ϵ, and u is an upper bound of p∗
+ϵg (cf. Lemma 3.2),
+(50) implies that the distance between f∗ and p∗ may be less than ∆, potentially contradicting Assumption
+1(vi). Therefore, the scenario where Assumption 2 is not satisfied may be improbable practically.
+6 Numerical Experiments
+In this section, we apply our algorithm to some simple bilevel optimization problems and compare its
+performance with other existing methods in the literature [3, 47, 28, 24, 27, 39, 48, 13, 11].
+For all experiments, we set ϵ = 10−8 and adopt the Greedy FISTA algorithm proposed in [ 34] with some
+modifications as the APG method for solving composite problems.
+6.1 Integral Equations Problem (IEP)
+In the first experiment, we explore the regularization impact of the minimal norm solution on ill-conditioned
+inverse problems arising from the discretization of Fredholm integral equations of the first kind [ 44]. Following
+[3, 18], the objective is to minimize the least squares loss function 1
+2∥Ax− b∥2. Here, A and b are
+obtained using the Matlab function phillips(100) from the “regularization tools” package 1. Specifically,
+[A, bT, xT] = phillips(100) and b = bT + 0.2w, where w is sampled from a standard normal distribution.
+Following [18], the solution vector x is constrained within the half-space C ={x : x≥ 0}. Moreover, given
+that the matrix A possesses zero eigenvalues, the lower-level problem exhibits multiple optimal solutions.
+Following [3, 18], the upper-level objective is chosen as f(x) = xTQx, where Q = LTL + I, and L is obtained
+using the Matlab function get l(100) from the “regularization tools” package. Thus, we should solve the
+following simple bilevel problem:
+min
+x∈Rn
+xTQx
+s.t. x∈ arg min
+z∈Rn
+1
+2∥Ax− b∥2 + IC. (51)
+In this experiment, we compare the performances of our method with a-IRG [ 28], BiG-SAM [47], MNG [3],
+DBGD [24], Bi-SG [39], PB-APG [13], R-APM [11], and AGM-BiO [ 11]. Specifically, for BiG-SAM [ 47], we
+examine the accuracy parameter δ for the Moreau envelope with two values, namely δ = 1 and δ = 0.01. For
+benchmarking purposes, we employ the Greedy FISTA algorithm [ 34] and the MATLAB function fmincon
+to solve the unconstrained lower-level problem and Problem (51) to obtain the optimal values g∗ and p∗,
+respectively. Additionally, the proximal mapping of g2 +zf2 at x (cf. Assumption 1(vi)) is max( x, 0).
+1http://www2.imm.dtu.dk/~pcha/Regutools/
+24
+
+0 2 4 6 8 10
+time (s)
+10-15
+10-10
+10-5
+100
+105
+g(xk)!g$
+BiVFA
+a-IRG
+BiG-SAM(/ =1)
+BiG-SAM(/ =0:01)
+MNG
+DBGD
+Bi-SG
+PB-APG
+R-APM
+AGM-BiO
+0 2 4 6 8 10
+time (s)
+10-3
+10-2
+10-1
+100
+101
+102
+103
+jf(xk)!p$j
+BiVFA
+a-IRG
+BiG-SAM(/ =1)
+BiG-SAM(/ =0:01)
+MNG
+DBGD
+Bi-SG
+PB-APG
+R-APM
+AGM-BiO
+Figure 2: The performances of our methods compared with other methods in IEP.
+Figure 2 illustrates that our method outperforms other approaches. Specifically, our method achieves the
+best performance concerning the lower-level objective, with PB-APG and R-APM ranking second. Regarding
+the upper-level objective, our method also excels. These findings confirm the superior complexity results of
+our method, as shown in Table 1.
+6.2 Linear Regression Problem (LRP)
+In the second experiment, we address a linear regression problem aimed at determining a parameter vector
+x∈ Rn that minimizes the training loss ℓtr(x) = 1
+2∥Atrx− btr∥2 with the training dataset Atr and btr
+[3, 47, 16, 33, 39, 27, 58, 11]. It is evident that the linear regression problem may exhibit multiple global minima
+without explicit regularization. Then, we consider a secondary objective, i.e., the loss on a validation dataset
+Aval and bval [27, 11], aiding in the selection of the optimal minimizer for the training loss. Additionally,
+to conserve storage space, we incorporate an ℓ1-norm regularization term, resulting in the following simple
+bilevel problem:
+min
+x∈Rn
+1
+2∥Avalx− bval∥2 +∥x∥1
+s.t. x∈ arg min
+z∈Rn
+1
+2∥Atrx− btr∥2. (52)
+Here, we conduct an experiment using the YearPredictionMSD dataset 2, which contains information on
+515, 345 songs, with a release year from 1992 to 2011. Each song in the dataset is associated with its release
+year and 90 additional attributes. We randomly select a sample of 1 , 000 songs from the dataset, and denote
+the feature matrix and the release years by A and b, respectively. Following [39], we apply min-max scaling
+to the data and augment A with an intercept and 90 co-linear attributes. The dataset is split into a training
+set (Atr, btr) comprising 60% of A and b, and a validation set ( Aval, bval) with the remaining 40%. To
+simulate real-world noise, we introduced noise sampled from a normal distribution with µ = 0 and σ = 0.2
+into the validation set (Aval, bval). In this experiment, we compare our method with a-IRG [ 28], PB-APG
+[13] and R-APM [ 11]. Similarly, for benchmarking purposes, we employ the MATLAB functions lsqminnorm
+and fmincon to solve the unconstrained lower-level problem and Problem (52) to obtain the optimal values
+g∗ and p∗, respectively.
+Figure 3 illustrates that our method outperforms other methods for the lower-level objective and performs
+comparably to PB-APG and R-APM for the upper-level objective, demonstrating the effectiveness of our
+2https://archive.ics.uci.edu/dataset/203/yearpredictionmsd
+25
+
+0 5 10 15 20 25
+time (s)
+10-15
+10-10
+10-5
+100
+105
+g(xk)!g$
+BiVFA
+a-IRG
+PB-APG
+R-APM
+0 5 10 15 20 25
+time (s)
+10-8
+10-6
+10-4
+10-2
+100
+102
+104
+jf(xk)!p$j
+BiVFA
+a-IRG
+PB-APG
+R-APM
+Figure 3: The performances of our methods compared with other methods in LRP.
+proposed approach. Furthermore, our method surpasses a-IRG in the upper-level objective, highlighting its
+superior efficiency. These findings are consistent with those from the first experiment.
+6.3 Linear Regression Problem with Ball Constraints (LRPBC)
+In the third experiment, we examine a scenario where both the upper- and lower-level objectives include a non-
+smooth term. Specifically, the solution to the upper-level objective is constrained within C1 ={x :∥x∥2≤ 5},
+and the solution to the lower-level objective is constrained within C2 ={x :∥x∥1≤ 10}. Additionally, we
+perform the linear regression problem described in Section 6.2 without the ℓ1-norm regularization term in
+the upper-level objective, while keeping the other settings unchanged. Consequently, we need to solve the
+following simple bilevel problem:
+min
+x∈Rn
+1
+2∥Avalx− bval∥2 + IC1
+s.t. x∈ arg min
+z∈Rn
+1
+2∥Atrx− btr∥2 + IC2. (53)
+Here, we compare our method with a-IRG [28], Bi-SG [39], PB-APG [13], and R-APM [11]. For benchmarking
+purposes, we use the Greedy FISTA algorithm [ 34] and the MATLAB function fmincon to solve the
+unconstrained lower-level problem and Problem (53), obtaining the optimal values g∗ and p∗, respectively.
+Additionally, the proximal mapping of g2 +zf2 at x involves projecting onto the intersection of the ℓ1- and
+ℓ2-norm balls. We employ the method proposed by [36] to compute this projection.
+Figure 4 demonstrates that our method outperforms other methods in the upper-level objective and
+performs comparably to PB-APG and R-APM for the lower-level objective. Furthermore, our method
+surpasses a-IRG and Bi-SG. These findings are consistent with the results of the first and second experiments.
+7 Conclusion
+This paper addresses the problem of minimizing a composite convex upper-level objective within the optimal
+solution set of a composite convex lower-level problem. We demonstrate that solving the simple bilevel
+problem is equivalent to identifying the left-most root of a nonlinear equation. Subsequently, we employ
+a bisection method to solve this nonlinear equation. By introducing a novel dual approach for solving the
+subproblem, our proposed algorithm can produce an ( ϵ,ϵ )-optimal solution with near-optimal complexity
+26
+
+0 5 10 15 20 25 30 35 40
+time (s)
+10-15
+10-10
+10-5
+100
+105
+g(xk)!g$
+BiVFA
+a-IRG
+Bi-SG
+PB-APG
+R-APM
+0 5 10 15 20 25 30 35 40
+time (s)
+10-10
+10-8
+10-6
+10-4
+10-2
+100
+102
+104
+jf(xk)!p$j
+BiVFA
+a-IRG
+Bi-SG
+PB-APG
+R-APM
+Figure 4: The performances of our methods compared with other methods in LRPBC.
+results for both the upper- and lower-level problems under weak assumptions. Notably, this near-optimal
+rate aligns with the optimal rate observed in unconstrained smooth or composite optimization when omitting
+the logarithmic terms. Numerical experiments also demonstrate the superior performance of our method
+compared to state-of-the-art approaches.
+References
+[1] Mostafa Amini and Farzad Yousefian. An iterative regularized incremental projected subgradient method
+for a class of bilevel optimization problems. In 2019 American Control Conference (ACC) , pages
+4069–4074. IEEE, 2019.
+[2] Amir Beck. First-order methods in optimization . SIAM, 2017.
+[3] Amir Beck and Shoham Sabach. A first order method for finding minimal norm-like solutions of convex
+optimization problems. Mathematical Programming, 147(1-2):25–46, 2014.
+[4] Amir Beck and Marc Teboulle. A fast iterative shrinkage-thresholding algorithm for linear inverse
+problems. SIAM journal on imaging sciences , 2(1):183–202, 2009.
+[5] L Bertinetto, J Henriques, P Torr, and A Vedaldi. Meta-learning with differentiable closed-form solvers.
+In International Conference on Learning Representations (ICLR), 2019 . International Conference on
+Learning Representations, 2019.
+[6] Dimitri P Bertsekas. Nonlinear programming. Journal of the Operational Research Society , 48(3):
+334–334, 1997.
+[7] Giancarlo Bigi, Lorenzo Lampariello, and Simone Sagratella. Combining approximation and exact
+penalty in hierarchical programming. Optimization, 71(8):2403–2419, 2022.
+[8] Nicholas Bishop, Long Tran-Thanh, and Enrico Gerding. Optimal learning from verified training data.
+Advances in Neural Information Processing Systems , 33:9520–9529, 2020.
+[9] J Fr´ ed´ eric Bonnans and Alexander Shapiro.Perturbation analysis of optimization problems . Springer
+Science & Business Media, 2013.
+27
+
+[10] Digvijay Boob, Qi Deng, and Guanghui Lan. Stochastic first-order methods for convex and nonconvex
+functional constrained optimization. Mathematical Programming, 197(1):215–279, 2023.
+[11] Jincheng Cao, Ruichen Jiang, Erfan Yazdandoost Hamedani, and Aryan Mokhtari. An accelerated
+gradient method for simple bilevel optimization with convex lower-level problem. arXiv preprint
+arXiv:2402.08097, 2024.
+[12] Antonin Chambolle and Ch Dossal. On the convergence of the iterates of the “fast iterative shrink-
+age/thresholding algorithm”. Journal of Optimization theory and Applications , 166:968–982, 2015.
+[13] Pengyu Chen, Xu Shi, Rujun Jiang, and Jiulin Wang. Penalty-based methods for simple bilevel
+optimization under h\”{o} lderian error bounds. arXiv preprint arXiv:2402.02155 , 2024.
+[14] Stephan Dempe. Foundations of bilevel programming. Springer Science & Business Media, 2002.
+[15] Stephan Dempe and Alain Zemkoho. Bilevel optimization. In Springer optimization and its applications ,
+volume 161. Springer, 2020.
+[16] Stephan Dempe, Nguyen Dinh, Joydeep Dutta, and Tanushree Pandit. Simple bilevel programming and
+extensions. Mathematical Programming, 188:227–253, 2021.
+[17] Stephen Dempe, Nguyen Dinh, and Joydeep Dutta. Optimality conditions for a simple convex bilevel
+programming problem. Variational Analysis and Generalized Differentiation in Optimization and Control:
+In Honor of Boris S. Mordukhovich , pages 149–161, 2010.
+[18] Lior Doron and Shimrit Shtern. Methodology and first-order algorithms for solving nonsmooth and
+non-strongly convex bilevel optimization problems. Mathematical Programming, 201:521–558, 2023.
+[19] Joydeep Dutta and Tanushree Pandit. Algorithms for simple bilevel programming. Bilevel Optimization:
+Advances and Next Challenges , pages 253–291, 2020.
+[20] Francisco Facchinei, Jong-Shi Pang, Gesualdo Scutari, and Lorenzo Lampariello. Vi-constrained hemi-
+variational inequalities: distributed algorithms and power control in ad-hoc networks. Mathematical
+Programming, 145(1-2):59–96, 2014.
+[21] Matthias Feurer and Frank Hutter. Hyperparameter optimization. Automated machine learning: Methods,
+systems, challenges , pages 3–33, 2019.
+[22] Luca Franceschi, Paolo Frasconi, Saverio Salzo, Riccardo Grazzi, and Massimiliano Pontil. Bilevel
+programming for hyperparameter optimization and meta-learning. In International conference on
+machine learning, pages 1568–1577. PMLR, 2018.
+[23] Khanh-Hung Giang-Tran, Nam Ho-Nguyen, and Dabeen Lee. Projection-free methods for solving convex
+bilevel optimization problems. arXiv preprint arXiv:2311.09738 , 2023.
+[24] Chengyue Gong and Xingchao Liu. Bi-objective trade-off with dynamic barrier gradient descent. NeurIPS
+2021, 2021.
+[25] Elias S Helou and Lucas EA Sim˜ oes.ϵ-subgradient algorithms for bilevel convex optimization. Inverse
+Problems, 33(5):055020, 2017.
+28
+
+[26] Mingyi Hong, Hoi-To Wai, Zhaoran Wang, and Zhuoran Yang. A two-timescale stochastic algorithm
+framework for bilevel optimization: Complexity analysis and application to actor-critic. SIAM Journal
+on Optimization, 33(1):147–180, 2023.
+[27] Ruichen Jiang, Nazanin Abolfazli, Aryan Mokhtari, and Erfan Yazdandoost Hamedani. A conditional
+gradient-based method for simple bilevel optimization with convex lower-level problem. In International
+Conference on Artificial Intelligence and Statistics , pages 10305–10323. PMLR, 2023.
+[28] Harshal D. Kaushik and Farzad Yousefian. A method with convergence rates for optimization problems
+with variational inequality constraints. SIAM Journal on Optimization , 31(3):2171–2198, 2021.
+[29] Matthias Kissel, Martin Gottwald, and Klaus Diepold. Neural network training with safe regularization
+in the null space of batch activations. In Artificial Neural Networks and Machine Learning–ICANN 2020:
+29th International Conference on Artificial Neural Networks, Bratislava, Slovakia, September 15–18,
+2020, Proceedings, Part II 29 , pages 217–228. Springer, 2020.
+[30] MJ Kochenderfer. Algorithms for Optimization . The MIT Press Cambridge, 2019.
+[31] Vijay Konda and John Tsitsiklis. Actor-critic algorithms. Advances in neural information processing
+systems, 12, 1999.
+[32] Lorenzo Lampariello, Gianluca Priori, and Simone Sagratella. On the solution of monotone nested
+variational inequalities. Mathematical Methods of Operations Research, 96(3):421–446, 2022.
+[33] Puya Latafat, Andreas Themelis, Silvia Villa, and Panagiotis Patrinos. Adabim: An adaptive proximal
+gradient method for structured convex bilevel optimization. arXiv preprint arXiv:2305.03559 , 2023.
+[34] Jingwei Liang, Tao Luo, and Carola-Bibiane Schonlieb. Improving “fast iterative shrinkage-thresholding
+algorithm”: faster, smarter, and greedier. SIAM Journal on Scientific Computing , 44(3):A1069–A1091,
+2022.
+[35] Qihang Lin and Lin Xiao. An adaptive accelerated proximal gradient method and its homotopy
+continuation for sparse optimization. In International Conference on Machine Learning , pages 73–81.
+PMLR, 2014.
+[36] Hongying Liu, Hao Wang, and Mengmeng Song. Projections onto the intersection of a one-norm ball or
+sphere and a two-norm ball or sphere. Journal of Optimization Theory and Applications , 187:520–534,
+2020.
+[37] Yura Malitsky. Chambolle-pock and tseng’s methods: relationship and extension to the bilevel optimiza-
+tion. arXiv preprint arXiv:1706.02602 , 2017.
+[38] Shike Mei and Xiaojin Zhu. Using machine teaching to identify optimal training-set attacks on machine
+learners. In Proceedings of the Twenty-Ninth AAAI Conference on Artificial Intelligence, pages 2871–2877,
+2015.
+[39] Roey Merchav and Shoham Sabach. Convex bi-level optimization problems with nonsmooth outer
+objective function. SIAM Journal on Optimization , 33(4):3114–3142, 2023.
+[40] Luis Mu˜ noz-Gonz´ alez, Battista Biggio, Ambra Demontis, Andrea Paudice, Vasin Wongrassamee, Emil C
+Lupu, and Fabio Roli. Towards poisoning of deep learning algorithms with back-gradient optimization.
+In Proceedings of the 10th ACM workshop on artificial intelligence and security , pages 27–38, 2017.
+29
+
+[41] Arkadij Semenoviˇ c Nemirovsky and David Borisovich Yudin.Problem complexity and method efficiency
+in optimization. Wiley, 1983.
+[42] Yurii Nesterov. A method for solving the convex programming problem with convergence rate o (1/k2).
+In Dokl akad nauk Sssr , volume 269, page 543, 1983.
+[43] Fabian Pedregosa. Hyperparameter optimization with approximate gradient. In International conference
+on machine learning , pages 737–746. PMLR, 2016.
+[44] David L Phillips. A technique for the numerical solution of certain integral equations of the first kind.
+Journal of the ACM (JACM) , 9(1):84–97, 1962.
+[45] Aravind Rajeswaran, Chelsea Finn, Sham M Kakade, and Sergey Levine. Meta-learning with implicit
+gradients. Advances in neural information processing systems , 32, 2019.
+[46] R.T. Rockafellar. Convex Analysis. Princeton University Press, Princeton, 1970.
+[47] Shoham Sabach and Shimrit Shtern. A first order method for solving convex bilevel optimization
+problems. SIAM Journal on Optimization , 27(2):640–660, 2017.
+[48] Sepideh Samadi, Daniel Burbano, and Farzad Yousefian. Achieving optimal complexity guarantees for a
+class of bilevel convex optimization problems. arXiv preprint arXiv:2310.12247 , 2023.
+[49] Amirreza Shaban, Ching-An Cheng, Nathan Hatch, and Byron Boots. Truncated back-propagation
+for bilevel optimization. In The 22nd International Conference on Artificial Intelligence and Statistics ,
+pages 1723–1732. PMLR, 2019.
+[50] Yekini Shehu, Phan Tu Vuong, and Alain Zemkoho. An inertial extrapolation method for convex simple
+bilevel optimization. Optimization Methods and Software , 36(1):1–19, 2021.
+[51] Lingqing Shen, Nam Ho-Nguyen, and Fatma Kılın¸ c-Karzan. An online convex optimization-based
+framework for convex bilevel optimization. Mathematical Programming, 198(2):1519–1582, 2023.
+[52] Mikhail Solodov. An explicit descent method for bilevel convex optimization. Journal of Convex Analysis ,
+14(2):227, 2007.
+[53] Marcin Studniarski and Doug E Ward. Weak sharp minima: characterizations and sufficient conditions.
+SIAM Journal on Control and Optimization , 38(1):219–236, 1999.
+[54] Andre˘ ı Nikolaevich Tikhonov and V. I. A. K. Arsenin. Solutions of ill-posed problems . Wiley, 1977.
+[55] Paul Tseng. On accelerated proximal gradient methods for convex-concave optimization. submitted to
+SIAM Journal on Optimization , 2(3), 2008.
+[56] Jiali Wang, He Chen, Rujun Jiang, Xudong Li, and Zihao Li. Fast algorithms for stackelberg prediction
+game with least squares loss. In International Conference on Machine Learning , pages 10708–10716.
+PMLR, 2021.
+[57] Jiali Wang, Wen Huang, Rujun Jiang, Xudong Li, and Alex L Wang. Solving stackelberg prediction
+game with least squares loss via spherically constrained least squares reformulation. In International
+Conference on Machine Learning, pages 22665–22679. PMLR, 2022.
+30
+
+[58] Jiulin Wang, Xu Shi, and Rujun Jiang. Near-optimal convex simple bilevel optimization with a bisection
+method. In International Conference on Artificial Intelligence and Statistics , pages 2008–2016. PMLR,
+2024.
+[59] Blake E Woodworth and Nati Srebro. Tight complexity bounds for optimizing composite objectives.
+Advances in neural information processing systems , 29, 2016.
+[60] Yangyang Xu. Primal-dual stochastic gradient method for convex programs with many functional
+constraints. SIAM Journal on Optimization , 30(2):1664–1692, 2020.
+[61] Yangyang Xu. First-order methods for problems with o (1) functional constraints can have almost the
+same convergence rate as for unconstrained problems. SIAM Journal on Optimization , 32(3):1759–1790,
+2022.
+[62] Yangyang Xu and Wotao Yin. A block coordinate descent method for regularized multiconvex optimization
+with applications to nonnegative tensor factorization and completion. SIAM Journal on imaging sciences ,
+6(3):1758–1789, 2013.
+[63] Farzad Yousefian. Bilevel distributed optimization in directed networks. In 2021 American Control
+Conference (ACC), pages 2230–2235. IEEE, 2021.
+31

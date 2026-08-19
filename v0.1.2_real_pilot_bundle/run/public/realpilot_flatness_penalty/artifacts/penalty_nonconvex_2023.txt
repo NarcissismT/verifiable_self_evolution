@@ -1,0 +1,4464 @@
+On Penalty Methods for Nonconvex Bilevel Optimization and
+First-Order Stochastic Approximation
+Jeongyeol Kwon1, Dohyun Kwon2, Stephen Wright1, and Robert Nowak1
+1Wisconsin Institute for Discovery, University of Wisconsin-Madison
+2University of Seoul
+September 6, 2023
+Abstract
+Inthiswork,westudyfirst-orderalgorithmsforsolvingBilevelOptimization(BO)wheretheobjective
+functions are smooth but possibly nonconvex in both levels and the variables are restricted to closed
+convex sets. As a first step, we study the landscape of BO through the lens of penalty methods, in which
+the upper- and lower-level objectives are combined in a weighted sum with penalty parameterσ >0.
+In particular, we establish a strong connection between the penalty function and the hyper-objective
+by explicitly characterizing the conditions under which the values and derivatives of the two must be
+O(σ)-close. A by-product of our analysis is the explicit formula for the gradient of hyper-objective when
+the lower-level problem has multiple solutions under minimal conditions, which could be of independent
+interest. Next,viewingthepenaltyformulationas O(σ)-approximationoftheoriginalBO,weproposefirst-
+order algorithms that find anϵ-stationary solution by optimizing the penalty formulation withσ =O(ϵ).
+When the perturbed lower-level problem uniformly satisfies thesmall-errorproximal error-bound (EB)
+condition,weproposeafirst-orderalgorithmthatconvergestoan ϵ-stationarypointofthepenaltyfunction,
+using in totalO(ϵ−3) andO(ϵ−7) accesses to first-order (stochastic) gradient oracles when the oracle is
+deterministic and oracles are noisy, respectively. Under an additional assumption on stochastic oracles, we
+show that the algorithm can be implemented in a fullysingle-loopmanner,i.e.,withO(1) samples per
+iteration, and achieves the improved oracle-complexity ofO(ϵ−3) andO(ϵ−5), respectively.
+1 Introduction
+BilevelOptimization(BO)[ 17,14,18]isaversatileframeworkforoptimizationproblemsinmanyapplications
+arising in economics, transportation, operations research, and machine learning, among others [52]. In this
+work, we consider the following formulation of BO:
+min
+x∈X,y∗∈Y
+f(x,y∗) := Eζ[f(x,y∗;ζ)]
+s.t. y∗∈ arg min
+y∈Y
+g(x,y ) := Eξ[g(x,y ;ξ)],
+(P)
+wheref andgarecontinuouslydifferentiableandsmoothfunctions, X⊆ Rdx andY⊆ Rdy areclosedconvex
+sets, andζ andξ are random variables (e.g.,indexes of batched samples in empirical risk minimization). That
+is, (P) minimizesf overx∈X andy∈Y (the upper-level problem) wheny must be one of the minimizers
+ofg(x,·) overy∈Y (the lower-level problem).
+Scalable optimization methods for solving(P) are in high demand to handle increasingly large-scale
+applications in machine-learning, including meta-learning [50], hyper-parameter optimization [20, 3], model
+1
+arXiv:2309.01753v1  [math.OC]  4 Sep 2023
+
+selection [37, 24], adversarial networks [25, 23], game theory [55], and reinforcement learning [34, 56].
+There is particular interest in developing (stochastic) gradient-descent-based methods due to their simplicity
+and scalability to large-scale problems [22, 13, 28, 33, 12, 15, 27, 54, 30, 62]. One popular approach is to
+perform a direct gradient-descent on the hyper-objectiveψ(x) defined as follows:
+ψ(x) := min
+y∈S(x)
+f(x,y ), whereS(x) = arg min
+y∈Y
+g(x,y ), (1)
+but this requires the estimation of∇ψ(x), which we refer to as animplicit gradient. Some existing works
+obtain this gradient under the assumptions thatg(x,y )is strongly convex iny and the lower-level problem
+is unconstrained,i.e.,Y = Rdy. There is no straightforward extension of these approaches to nonconvex
+and/or constrained lower-level problems (i.e.,Y⊂ Rdy is defined by some constraints) due to the difficulty in
+estimating implicit gradients; see Section 1.2 for more discussion on the technical challenges.
+The goal of this paper is to extend our knowledge of solving BO with unconstrained strongly-convex
+lower-level problems to a broader class of BO with possibly constrained and nonconvex lower-level problems.
+In general, however, when there is not enough curvature around the lower-level solution, the problem can
+be highly ill-conditioned and no known algorithms can handle it even for the simpler case of min-max
+optimization [11, 31] (see also Example 1). In such cases, it is hard even to identifytractablealgorithms for
+solving (P), since the issue is fundamental [16].
+To circumvent the fundamental hardness, there have been many recent works on BO with nonconvex
+lower-level problems (nonconvex inner-level maximization in min-max optimization literature) under the
+uniform Polyak-Łojasiewicz (PL)-condition [32, 63, 64, 60, 41]. While this assumption does not cover all
+interesting cases of BO, it can cover situations in which the lower-level problem is nonconvex and where it
+does not have a unique solution. It can thus be viewed as a significant generalization of the strong convexity
+condition. Furthermore, several recent results show that the uniform PL condition can be satisfied by practical
+and complicated functions such as over-parameterized neural networks [21, 53, 42].
+Nevertheless, to our best knowledge, no algorithm is known to reach the stationary point ofψ(x) (i.e.,
+to findx where∇ψ(x) = 0) under PL conditions alone. In fact, even the landscape ofψ(x) has not been
+studied precisely when the lower-level problem can have multiple solutions and constraints. We take a step
+forward in this direction under the proximal error-bound (EB) condition that is analogous to PL but more
+suited for constrained problems1.
+1.1 Overview of Main Results
+Since it is difficult to work directly with implicit gradients when the lower-level problem is nonconvex, we
+consider a common alternative that converts the BO(P)into an equivalent constrained single-level problem,
+namely,
+min
+x∈X,y∈Y
+f(x,y ) s.t. g(x,y )≤ min
+z∈Y
+g(x,z ), (Pcon)
+and finds a stationary solution of this formulation, also known as an (approximate)-KKT solution [44,43,66].
+(Pcon) suggests the penalty formulation
+min
+x∈X,y∈Y
+σf (x,y ) + (g(x,y )− min
+z∈Y
+g(x,z )), (Ppen)
+with some sufficiently smallσ >0. Our fundamental goal in this paper is to describe algorithms for finding
+approximate stationary solutions of (Ppen), as explored in several previous works [59, 65, 51, 38].
+1In the unconstrained setting, EB and PL are known to be equivalent conditions, seee.g., [32]
+2
+
+Althoughfindingthesolutionof (Ppen)isamorefamiliartaskthanthesolutionof (P),theformerproblem
+is merely an approximation of the latter, so it is important to understand the relationship between their
+respective landscapes, which have remained elusive in the literature [11]. Furthermore, it is still challenging
+to solve(Ppen), since it still involves a nested optimization structure (solving a inner minimization problem
+overz), and typically involves a very small value of the penalty parameterσ >0.
+Landscape Analysis. Our first goal is to bridge the gap between landscapes of the two problems(P)and
+(Ppen). By scaling (Ppen), we define the penalized hyper-objectiveψσ(x):
+ψσ(x) := 1
+σ
+
+min
+y∈Y
+(σf (x,y ) +g(x,y ))− min
+z∈Y
+g(x,z )
+
+. (2)
+As mentioned earlier, without any assumptions on the lower-level problem, it is not possible to make any
+meaningful connections betweenψσ(x) andψ(x), since the original landscapeψ(x) itself may not be well-
+defined. Proximal operators are key to defining assumptions that guarantee nice behavior of the lower-level
+problem.
+Definition 1The proximal operator with parameterρ and functionf(θ) over a domainΘ is defined as
+proxρf(θ) := arg min
+z∈Θ
+
+ρf(z) + 1
+2∥z−θ∥2	
+. (3)
+We now state the proximal-EB assumption, which is crucial to our approach in this paper.
+Assumption 1 (Proximal-EB)Lethσ(x,·) :=σf (x,·) +g(x,·)andT (x,σ ) := arg miny∈Yhσ(x,y ). We
+assume that for allx∈X andσ∈ [0,σ 0],hσ(x,·) satisfies the(µ,δ )-proximal error bound:
+ρ−1·
+
+
+
+y−proxρhσ(x,·)(y)
+
+
+
+≥µ· dist(y,T (x,σ )), (4)
+for ally∈Y that satisfiesρ−1·∥y−proxρhσ(x,·)(y)∥≤ δ with some positive parametersµ,δ,σ 0> 0.
+As we discuss in detail in Section 3, the crux of Assumption 1 is the guaranteed (Lipschitz) continuity of
+solution sets, under which we prove our key landscape analysis result:
+Theorem 1.1 (Informal)UnderAssumption1(withadditionalsmoothnessassumptions),forall x∈X such
+that at least one sufficiently regular solution pathy∗(σ) exists forσ∈ [0,σ 0], we have
+|ψσ(x)−ψ(x)| =O(σ/µ),
+∥∇ψσ(x)−∇ψ(x)∥ =O(σ/µ3).
+As a corollary, our result implies globalO(σ)-approximability ofψσ(x)for the special case studied in several
+previous works (e.g., [22, 13, 66, 38]), whereg(x,·) is (locally) strongly-convex and the lower-level problem
+is unconstrained. To our best knowledge, such a connection, and even the differentiability ofψ(x), is not fully
+understood for BO with nonconvex lower-level problems with possibly multiple solutions and constraints.
+In particular, the case with possibly multiple solutions (Theorem 3.2) is discussed under nearly minimal
+assumptions.
+3
+
+Algorithm. Once we show that∇ψσ(x) is anO(σ)-approximation of∇ψ(x) in most desirable circum-
+stances, it suffices to find anϵ-stationary solution ofψϵ(x). However, still directly optimizingψσ(x)is not
+possible since the exact minimizers (iny) ofhσ(x,y ) :=σf (x,y ) +g(x,y )andg(x,y )are unknown. Thus,
+we use the alternative min-max formulation:
+min
+x∈X,y∈Y
+max
+z∈Y
+ψσ(x,y,z ) := hσ(x,y )−g(x,z )
+σ . (Psaddle)
+Once we reduce the problem to finding anϵ-stationary point of the saddle-point problem(Psaddle), we may
+invoke the rich literature on min-max optimization. However, even when we assume thatg(x,·) satisfies
+the PL conditionsgloballyfor ally∈ Rdy, a plug-in min-max optimization method (e.g., [64]) yields an
+oracle-complexity that cannot be better thanO
+ 
+σ−4ϵ−4
+with stochastic oracles [39], resulting in an overall
+O(ϵ−8) complexity bound whenσ =O(ϵ).
+As we pursue anϵ-saddle point specifically in the form of(Psaddle), we show that we can achieve a better
+complexity bound under Assumption 1. We list below our algorithmic contributions.
+• In contrast to previous work on bilevel or min-max optimization, (e.g., [22, 66, 63]), Assumption 1
+holds only in a neighborhood of the lower-level solution. In fact, we show that we only need a nice
+lower-level landscape within the neighborhood of solutions withO(δ)-proximal error.
+• While we eventually setσ =O(ϵ), it can be overly conservative to choose such a small value ofσ from
+the first iteration, resulting in a slower convergence rate. By gradually decreasing penalty parameters
+{σk} polynomially ask−s for somes> 0, we save anO(ϵ−1)-order of oracle-complexity, improving
+the overall complexity toO(ϵ−7) with stochastic oracles.
+• Ifstochasticoraclessatisfyamildstochasticsmoothnessconditionthatadmitsthemomentum-assistance
+technique, we show a version of our algorithm that uses this technique can be implemented in a fully
+single-loop manner (i.e.,onlyO(1) calls to stochastic oracles before updating the outer variablesx)
+with an improved oracle-complexity ofO(ϵ−5) with stochastic oracles.
+Our results match the best-known complexity results for fully first-order methods in stochastic bilevel opti-
+mization [38] with strongly convex and unconstrained lower-level problems, and can also be applied to BO
+where the lower-level problem satisfies the PL condition, as studied in [66]. See Section 4 for more details on
+the algorithm.
+1.2 Related Work
+Since its introduction in [8], Bilevel optimization has been an important research topic in many scientific
+disciplines. Classical results tend to focus on the asymptotic properties of algorithms once in neighborhoods
+of global/local minimizers (seee.g.,[59,58,14]). In contrast, recent results are more focused on studying
+numerical optimization methods and non-asymptotic analysis to obtain an approximate stationary solution of
+Bilevel problems (seee.g.,[22,13]). Our work falls into this category. Due to the vast volume of literature on
+Bilevel optimization, we only discuss some relevant lines of work.
+Implicit-Gradient Descent As mentioned earlier, initiated by [22], a flurry of recent works (seee.g.,
+[13, 28, 33, 12, 15, 27]) study stochastic-gradient-descent (SGD)-based iterative procedures and their finite-
+time performance for solving(P)when the lower-level problem is strongly-convex and unconstrained. In such
+cases, the implicit gradient of hyper-objectiveψ(x) is given by
+∇xf(x,y∗(x))−∇ 2
+xyg(x,y∗(x))
+ 
+∇2
+yyg(x,y∗(x))
+−1
+∇yf(x,y∗(x)),
+4
+
+wherey∗(x) = arg minw∈Rdyg(x,w ). Two main challenges in performing (implicit) gradient descent are (a)
+to evaluate lower-level solutiony∗(x), and (b) to estimate Hessian inverse(∇2
+yyg(x,y∗(x)))−1. For (a), it is
+now well-understood that instead of exactly solving fory∗(xk) for everykth iteration, we can incrementally
+solve fory∗(xk),e.g.,run a few more gradient steps on the current estimateyk, and use it as a proxy for the
+lower-level solution [13]. As long as the contraction toward the true solution (with the strong convexity of
+g(xk,·)) is large enough to compensate for the change of lower-level solution (due to the movement inxk),yk
+will eventually stably stay aroundy∗(xk), and can be used as a proxy for the lower-level solution to compute
+the implicit gradient. Then for (b), with the Hessian ofg being invertible for all giveny, we can exploit the
+Neumann series approximation [22] to estimate the true Hessian inverse usingyk as a proxy fory∗(xk).
+Unfortunately,theaboveresultsarenoteasilyextendabletononconvexlower-levelobjectiveswithpotential
+constraintsY. One obstacle is, again, to estimate the Hessian-inverse: now that for somey∈Y , the Hessian
+ofg may not be invertible even if∇2
+yyg(x,y∗(x)) is invertible at the exact solution. Therefore, in order to
+use an approximateyk as a proxy toy∗(xk), we need a certain high-probability guarantee (or some other
+complicated arguments) to ensure that the algorithm remains stable with the inversion operation. The other
+obstacle, which is more complicated to resolve, is that the implicit gradient formula may no longer be the
+same if the solution is found at the boundary ofY. In such a case, explicitly estimating∇ψ(x) would not
+only require an approximate solution but also require the optimal dual variables for the lower-level solutions
+which are unknown (see Theorem 3.2 for the exact formula). However, computing the optimal solution as
+well as the optimal dual variables is even more challenging when we only access objective functions through
+stochastic oracles. Therefore, it is essential to develop a first-order method that does not rely on the explicit
+estimation of the implicit gradient to solve a broader class of BO, aside from the cost of using second-order
+derivatives in large-scale applications.
+Nonconvex Lower-Level ObjectivesIn general, BO with nonconvex lower-level objectives is not com-
+putationally tractable without further assumptions, even for the special case of min-max optimization [16].
+Therefore, additional assumptions on the lower-level problem are necessary. Arguably, the minimal assump-
+tion would be the continuity of lower-level solution sets, otherwise, any local-search algorithms are likely
+to fail due to the hardness of (approximately) tracking the lower-level problem. The work in [11] considers
+several growth conditions for the lower-level objectives (including PL), which guarantee Lipschitz continuity
+of lower-level solution sets, and proposes a zeroth-order method for solving(P). The work in [51] assumes
+the PL condition, and studies the complexity of the penalty method in deterministic settings. The work in [2]
+introduces a notion of parameteric Morse-Bott functions, and studies some asymptotic properties of their
+proposed gradient flow under the proposed condition. In all these works as well as in our work, underlying
+assumptions involve some growth conditions of the lower-level problem, which is essential for the continuity
+of lower-level solution sets.
+Penalty Methods Studies on penalty methods date back to 90s [45,59,1,65,29], when the equivalence
+is established between two formulations(P)and (Ppen)for sufficiently smallσ >0. However, these results
+are often limited to relations withininfinitesimallysmall neighborhoods of global/local minimizers. As we
+aim to obtain a stationary solution from arbitrary initial points, we need a comprehensive understanding
+of approximating theglobal landscape, rather than only around infinitesimally small neighborhoods of
+global/local minimizers.
+Themostcloselyrelatedworktooursisarecentworkin[ 51], wheretheauthorsstudythepenaltymethod
+under lower-level PL-like conditions with constraintsY as in ours. However, the connection established in
+[51]onlyrelates (Ppen)andϵ-relaxedversionof (Pcon),andonlyconcernsinfinitesimallysmallneighborhoods
+of global/local minimizers as in older works. Furthermore, their analysis is restricted to the double-loop
+implementation of algorithms in deterministic settings. In contrast, we establish a direct connection between
+5
+
+∇ψ(x) and∇ψσ(x) when they are well-defined, and our analysis can be applied to both double-loop and
+single-loop algorithms with explicit oracle-complexity bounds in stochastic settings.
+Implicit Differentiation Methods Another popular approach to side-step the computation of implicit
+gradients is to construct a chain of lower-level variables via gradient descents, a technique often called
+automatic implicit differentiation (AID), or iterative differentiation (ITD) [49,62,40,30,26]. The benefit
+of this technique is that now we do not require the estimation of Hessian-inverse. In fact, this construction
+can be seen as one constructive way of approximating the Hessian-inverse. However, when the lower-level
+problem is constrained by compactY, more complicated operations such as the projection may prevent the
+use of the implicit differentiation technique.
+2 Preliminaries
+Westateseveralassumptionson (P)tospecifytheproblemclassofinterest. Ourfocusisonsmoothobjectives
+whose values are bounded below:
+Assumption 2f andgaretwicecontinuously-differentiableand lf,1,lg,1-smoothjointlyin (x,y )respectively,
+i.e.,∥∇2f(x,y )∥≤ lf,1 and∥∇2g(x,y )∥≤ lg,1 for allx∈X ,y∈Y .
+Assumption 3The following conditions hold for objective functionsf andg:
+1. f andg areboundedbelowandcoercive, i.e., forall x∈X ,f(x,y ),g (x,y )>−∞forall y∈Y , and
+f(x,y ),g (x,y )→ +∞as∥y∥→∞ .
+2. ∥∇yf(x,y )∥≤ lf,0 for allx∈X ,y∈Y .
+We also make technical assumptions on the domains:
+Assumption 4The following conditions hold for domainsX andY:
+1. X,Y are convex and closed.
+2. Y is bounded, i.e.,maxy∈Y∥y∥≤ DY for someDY = O(1). Furthermore, we assume thatCf :=
+maxx∈X,y∈Y|f(x,y )| =O(1) is bounded.
+3. The domainY can be compactly expressed with at mostm1≥ 0 inequality constraints{gi(y)≤
+0}i∈[m1] with convex and twice continuously-differentiablegi, and at mostm2≥ 0equality constraints
+{hi(y) = 0}i∈[m2] with linear functionshi.
+We note here that the expressiveness of inner domain constraintsY is only required for the analysis, and not
+required in our algorithms as long as there exist efficient projection operators. While there could be many
+possiblerepresentationsofconstraints,onlythemostcompactrepresentationwouldmatterinouranalysis. We
+denote byΠX and ΠY the projection operators onto setsX andY, respectively.NX (x) denotes the normal
+cone ofX at a pointx∈X .
+Next, we define the distance measure between sets:
+Definition 2 (Hausdorff Distance)LetS1 andS2 be two sets inRd. The Hausdorff distance betweenS1
+andS2 is given as
+dist(S1,S 2) = max
+
+sup
+θ1∈S1
+inf
+θ2∈S2
+∥θ1−θ2∥, sup
+θ2∈S2
+inf
+θ1∈S1
+∥θ1−θ2∥
+
+.
+For distance between a pointθ and a setS, we denotedist(θ,S ) := dist({θ},S ).
+6
+
+Throughout the paper, we use Definition 2 as a measure of distances between sets. We define the notion of
+(local) Lipschitz continuity of solution sets introduced in [11].
+Definition 3 (Lipschitz Continuity of Solution Sets [11])For a differentiable and smooth functionf(w,θ )
+onW× Θ, we say the solution setS(w) := arg minθ∈Θf(w,θ ) is locally Lipschitz continuous atw∈W if
+there exists an open-ball of radiusδ >0 and a constantLS <∞ such that for anyw′∈ B(w,δ ), we have
+dist(S(w),S (w′))≤LS∥w−w′∥.
+Constrained Optimization We introduce some standard notions of regularities from nonlinear constrained
+optimization [4]. For a general constrained optimization problemQ : minθ∈Θf(θ), supposeΘ can be com-
+pactly expressed withm1≥ 0inequality constraints{gi(θ)≤ 0}i∈[m1] with convex and twice continuously
+differentiablegi, andm2≥ 0 equality constraints{hi(θ) = 0}i∈[m2] with linear functionshi.
+Definition 4 (Active Constraints)We denoteI(θ)⊆ [m1] the index of active inequality constraints ofQat
+θ∈ Θ, i.e.,I(θ) :={i∈ [m1] : gi(θ) = 0}.
+Definition 5 (Linear Independence Constraint Qualification (LICQ))We sayQis regular at a feasible
+pointθ∈ Θ if the set of vectors consisting of all equality constraint gradients∇hi(θ),∀i∈ [m2] and the
+active inequality constraint gradients∇gi(θ),∀i∈I (θ) is a linearly independent set.
+A solutionθ∗ ofQsatisfies the so-called KKT conditions when LICQ holds atθ∗: the KKT conditions are
+that there exist unique Lagrangian multipliersλ∗
+i≥ 0 fori∈I (θ∗) andν∗
+i ∈ R fori∈ [m2] such that
+θ∗∈ Θ and ∇f(θ∗) +P
+i∈I(θ∗)λ∗
+i∇gi(θ∗) +P
+i∈[m2]ν∗
+i∇hi(θ∗) = 0. (5)
+For such a solution, we define thestrictcomplementary slackness condition:
+Definition 6 (Strict Complementarity)Letθ∗ be a solution ofQsatisfying LICQ and the KKT condition
+above. We say that the strict complementary condition is satisfied atθ∗ if there exist multipliersλ∗,ν∗ that
+satisfy (5), and furtherλ∗
+i > 0for alli∈I (θ∗).
+Other Notation We sayak≍ bk ifak andbk decreases (or increases) in the same rate ask→∞ , i.e.,
+limk→∞ak/bk = Θ(1). Throughout the paper,∥·∥ denotes the Euclidean norm for vectors, and operator
+norm for matrices.[n]with a natural numbern∈ N+ denotes a set{1, 2,...,n}. LetΠS(θ)be the projection
+of a pointθ onto a convex setS. We denoteKer(M) and Im(M) to mean the kernel (nullspace) and the
+image (range) of a matrixM respectively. For a symmetric matrixM, we define the pseudo-inverse ofM
+asM† :=U(U⊤MU )−1U⊤ where the columns ofU consist of eigenvectors corresponding to all non-zero
+eigenvalues ofM.
+3 Landscape Analysis and Penalty Method
+In this section, we establish the relationship between the landscapes of the penalty formulation(Ppen)and the
+original problem(P). Recalling the definition of the perturbed lower-level problemhσ(x,y ) :=σf (x,y ) +
+g(x,y ) from Assumption 1, we introduce the following notation for its solution set: Forσ∈ [0,σ 0] with
+sufficiently smallσ0> 0, we define
+l(x,σ ) := min
+y∈Y
+hσ(x,y ), T (x,σ ) := arg min
+y∈Y
+hσ(x,y ). (6)
+7
+
+ψ(x) ψσ(x)
+ ψ(x) ψσ(x)
+Figure 1:ψ(x) andψσ(x) in Examples:(left) Example 1,(right) Example 2. Blue dashed lines compareψσ(x) to the
+original hyper-objectiveψ(x).
+We calll(x,σ ) the value function, andT (x,σ ) the corresponding solution set. Then, the minimization
+problem (Ppen) over the penalty function andψσ defined in (2) can be rewritten as
+min
+x∈X
+ψσ(x) where ψσ(x) = l(x,σ )−l(x, 0)
+σ . (7)
+We can viewψσ(x) as a sensitivity measure of how the optimal valueminy∈Y g(x,y ) changes when we
+impose a perturbation ofσf (x,y ) in the objective. In fact, it can be easily shown that
+lim
+σ→0
+ψσ(x) = ∂
+∂σl(x,σ )|σ=0+ =ψ(x).
+However, this formula provides only a pointwise asymptotic equivalence of two functions and does not imply
+the equivalence of thegradients∇ψσ(x) and∇ψ(x) of the two hyper-objectives. In the limit setting, we
+check whether
+∇ψ(x) = ∂2
+∂x∂σl(x,σ )|σ=0+
+?= ∂2
+∂σ∂xl(x,σ )|σ=0+ = lim
+σ→0
+∇ψσ(x).
+Unfortunately, it is not always true that the above relation holds, and the gradient of∇ψ(x) may not even be
+well-defined, as illustrated in the examples below.
+Example 1Consider the bilevel problem withX =Y = [−1, 1],f(x,y ) = x2 +y2, andg(x,y ) = xy.
+Notethat limσ→0ψσ(x)→x2 + 1forall x∈ [−1, 1]\{ 0},wherewehave limσ→0ψσ(0)→ 0. SeeFigure1.
+Thereforeψ(x) is a pointwise convergent point ofψσ(x). However, neitherψ(x) norψσ(x) is differentiable
+atx = 0.
+This example also implies that the order of (partial) differentiation may not be swapped in general. Even
+when the lower-level objectiveg(x,y ) is strongly convex iny, the inclusion of a constraint setY, even when
+compact, can lead to a nondifferentiableψ, as we see next.
+Example 2Consider an example withX = [−2, 2],Y = [−1, 1],f(x,y ) =−y, andg(x,y ) = (y−x)2.
+In this example,ψ(x) = 1 ifx< −1,ψ(x) =−x ifx∈ [−1, 1], andψ(x) =−1 otherwise. Thusψ(x) is
+not differentiable atx =−1 and 1, while∇ψσ(1) = 0 and∇ψσ(−1) =−1 for allσ >0.
+We conclude that additional conditions are required to claimlimσ→0∇ψσ(x)→∇ψ(x), and even just to
+ensure that∇ψ(x) exists. There are two reasons for the poor behavior of∇ψ(x). First, in Example 1, the
+solution set moves discontinuously atx = 0. When the solution abruptly changes due to a small perturbation
+inx, the problem is highly ill-conditioned — a fundamental difficulty [16]. Second, in Example 2, even
+though the solution set is continuous thanks to the strong convexity, the solution can move nonsmoothly when
+the set of active constraints for the lower-level problem changes. The result is frequently nonsmoothness of
+ψ(x), so∇ψ(x)maynotbedefinedatsuch x. Insummary, weneedregularityconditionstoensurethatthese
+two cases do not happen.
+8
+
+3.1 Sufficient Conditions for Differentiability
+We first consider assumptions that obviate solution-set discontinuity so situations like those appearing in
+Example 1 will not occur.
+Assumption 5Thesolutionset T (x,σ ) := arg miny∈Yhσ(x,y )islocallyLipschitzcontinuous,i.e., T (x,σ )
+satisfies Definition 3 at(x,σ ).
+We note here that the differentiability of the value functionl(x,σ ) requires Lipschitz continuity of solution
+sets (not just continuity). When the solution set is locally Lipschitz continuous, it is known (see Lemma A.2)
+that the value functionl(x,σ ) is (locally) differentiable and smooth.
+As we have seen in Example 2, however, the Lipschitz-continuity of the solution set alone may not be
+sufficient in the constrained setting. We need additional regularity assumptions for constrained lower-level
+problems. Recallingthealgebraicdefinitionof Y inAssumption4,wedefinetheLagrangianoftheconstrained
+(σ− perturbed) lower-level optimization problem:
+Definition 7Giventhelower-levelfeasibleset Y satisfyingAssumption4,let {λi}m1
+i=1⊂ R+and{νi}m2
+i=1⊂ R
+besomeLagrangianmultipliers. TheLagrangianfunction L(·,·,·|x,σ ) : (Rm1
++ × Rm2× Rdy)→ Rat (x,σ )
+is defined by
+L(λ,ν,y|x,σ ) =σf (x,y ) +g(x,y ) +P
+i∈[m1]λigi(y) +P
+i∈[m2]νihi(y).
+We also define the Lagrangian restricted to active constraints, denoted asLI(·|x,σ ), only in terms ofλI,ν,y :
+LI(λI,ν,y|x,σ ) =σf (x,y ) +g(x,y ) +P
+i∈I(y)λigi(y) +P
+i∈[m2]νihi(y). (8)
+The required assumption is the existence of a regular and stable solution that satisfies the following:
+Assumption 6The solution setT (x,σ ) contains at least oney∗∈T (x,σ ) such that LICQ (Definition 5)
+and strict complementary condition (Definition 6) hold aty∗, and∇2LI(·,·,·|x,σ ) (the matrix of second
+derivatives with respect to all variablesλI,ν,y ) is continuous at(λ∗
+I,ν∗,y∗).
+Assumption 6 helps ensure that the active setI(y∗) does not change whenx orσ is perturbed slightly.
+3.2 Asymptotic Landscape
+We show that Assumptions 5 and 6 are nearly minimal to ensure the twice-differentiability of the value
+functionl(x,σ ) which, in turn, guarantees asymptotic equivalence of∇ψσ(x) and∇ψ(x). In the sequel, we
+state our main (local) landscape analysis result only under the two assumptions at a given point(x,σ ).
+We first show that when the solution set is Lipschitz continuous, the following proposition assures that
+the perturbation of(x,σ ) must not perturb the gradient of Lagrangian in the kernel space of the Hessian:
+Proposition 3.1 (Necessary Condition for Lipschitz Continuity)SupposeT (x,σ )satisfies Assumption 5
+at (x,σ ). For anyy∗∈T (x,σ ) that satisfies Assumption 6, the following must hold:
+∀v∈ span(Im(∇2
+yxhσ(x,y∗)),∇yf(x,y∗)) :
+0
+v
+
+∈ Im(∇2LI(λ∗
+I,ν∗,y∗|x,σ )), (9)
+Geometricallyspeaking,perturbationsin (x,σ )mustnottilttheflatdirectionsofthelower-levellandscapefor
+T (x,σ ) to be continuous. While it is easy to make up examples that do not meet the condition (e.g. Example
+1), several recent results show that the solution landscape may be stabilized for complicated functions such as
+over-parameterized neural networks [21, 53, 42].
+Under a slightly stronger condition on the Lipschitz-continuity of solution sets, we show that∂2
+∂x∂σl(x,σ )
+exists and the order of differentiation commutes.
+9
+
+Theorem 3.2SupposeT (·,·) satisfies Assumption 5 in a neighborhood of(x,σ ). If there exists at least one
+y∗∈T (x,σ ) that satisfies Assumption 6, then∂2
+∂x∂σl(x,σ ) exists and can be given explicitly by
+∂2
+∂σ∂xl(x,σ ) = ∂2
+∂x∂σl(x,σ )
+=∇xf(x,y∗)−
+
+0 ∇2
+xyhσ(x,y∗)
+
+(∇2LI(λ∗
+I,ν∗,y∗|x,σ ))†
+ 0
+∇yf(x,y∗)
+
+. (10)
+If this equality holds atσ = 0+, thenψ(x) is differentiable atx, andlimσ→0∇ψσ(x) =∇ψ(x).
+Theorem 3.2 generalizes the expression of∇ψ(x) from the case of a unique solution to the one with multiple
+solutions,significantlyenlargingthescopeoftractableinstancesofBO.Uptoourbestknowledge,thereareno
+previousresultsthatprovideanexplicitformulaof ∇ψ(x),evenwhenthesolutionsetisLipschitzcontinuous,
+though conjectures have been made in the literature [60,2] under similar conditions. In Appendix B.4, we
+prove a more general version of Theorem 3.2 (see Theorem B.2), of possible broader interest, concerning the
+Hessian ofl(x,σ ).
+Remark 3.3 (Set Lipschitz Continuity)While we require the entire solution setT (x,σ ) to be Lipschitz
+continuous, the proof indicates that we need only Lipschitz continuity of solution paths passing through
+y∗ (that defines the first-order derivative ofl(x,σ ) and satisfies other regularity conditions) in all possible
+perturbation directions of(x,σ ). Nonetheless, we stick to a stronger requirement of Definition 3, since our
+algorithm requires a stronger condition that implies the continuity of entire solution sets.
+Remark 3.4 (Lipschitz Continuity inσ) While we requireT (x,σ ) to be Lipschitz continuous in bothx
+andσ, well definedness of∇ψ(x) requires only Lipschitz continuity ofT (x, 0+) inx (which sometimes can
+be implied by the PL condition only ong as in [11, 51, 60]). Still, for implementing a stable and efficient
+algorithmwithstochasticoracles, weconjecturethatitisessentialtohavetheLipschitzcontinuityassumption
+on the additional axisσ.
+3.2.1 Special Case: Unique Solution and Invertible Hessian
+When the Hessian is invertible at the unique solution, the statement can be made stronger since we can
+deduce solution-set Lipschitz continuity from the well-understood solution sensitivity analysis in constrained
+optimization [6]. That is, we can provide a strong sufficiency guarantee for the Lipschitz continuity of
+solution-sets.
+Proposition 3.5 (Sufficient Condition for Lipschitz Continuity)Supposey∗∈T (x,σ )istheuniquelower-
+level solution at(x,σ ). Suppose that Assumption 6 holds aty∗ with corresponding Lagrangian multipliers
+λ∗,ν∗. Further, suppose that∇2L∗
+I is invertible. ThenT (x,σ ) is locally Lipschitz continuous at(x,σ ).
+Thus, the uniqueness of the solution along with LICQ, strict complementarity, and invertibility of the Hessian
+is strong enough to guarantee the Lipschitz continuity of solution sets. Therefore, we can conclude that
+∂2
+∂x∂σl(x,σ ) exists and that the order of differentiation commutes under Assumption 6.
+Theorem 3.6Supposey∗∈T (x,σ )is the unique lower-level solution at(x,σ ). If Assumption 6 holds aty∗,
+and∇2L∗
+I is invertible, then ∂2
+∂x∂σl(x,σ ) exists and can be given explicitly by
+∂2
+∂σ∂xl(x,σ ) = ∂2
+∂x∂σl(x,σ )
+10
+
+=∇xf(x,y∗)−
+
+0 ∇2
+xyhσ(x,y∗)
+
+(∇2LI(λ∗
+I,ν∗,y∗|x,σ ))−1
+ 0
+∇yf(x,y∗)
+
+.
+If this equality holds atσ = 0+, thenψ(x) is differentiable atx, andlimσ→0∇ψσ(x) =∇ψ(x).
+3.3 Landscape Approximation withσ >0
+We can view∇ψσ(x) as an approximation of∂
+∂σ
+  ∂
+∂xl(x,σ )
+
+|σ=0+ via finite differentation with respect to
+σ. Assuming that ∂2
+∂σ∂xl(x,σ ) exists and is continuous for all small values ofσ, we can apply mean-value
+theorem and conclude that∇ψσ(x) = ∂2
+∂σ∂xl(x,σ′)for someσ′∈ [0,σ ]. Thus,∥∇ψσ(x)−∇ψ(x)∥isO(σ)
+whenever ∂2
+∂x∂σl(x,σ ) is well-defined and Lipschitz-continuous over[0,σ ].
+To work with nonzero constantσ > 0, we need the regularity assumptions to hold in significantly
+larger regions. The crux of Assumption 1 is the guaranteed Lipschitz continuity of solution sets (see also
+Assumption 5) for every givenxandσ, which is also crucial for the tractability of lower-level solutions by
+local search algorithms whenever upper-level variable changes:
+Lemma 3.7Under Assumption 1,T (x,σ )is (lg,1/µ)-Lipschitz continuous inxand (lf,0/µ)-Lipschitz con-
+tinuous inσ for allx∈X ,σ∈ [0,δ/Cf].
+An additional consequence of Lemma 3.7 is that, by Lemma A.2,l(x,σ ) is continuously differentiable and
+smooth for allx∈X andσ∈ [0,δ/Cf]. This fact guarantees in turn thatψσ(x) is differentiable and smooth
+(thoughψ(x) does not necessarily have these properties).
+WhileAssumption1issufficienttoensure ψσ(x)iswell-behaved,weneedadditionalregularityconditions
+to ensure thatψ(x)is also well-behaved. Therefore, we make two morelocal assumptions when we connect
+ψ(x) andψσ(x). The first concerns Hessian-Lipschiztness and regularity of solutions.
+Assumption 7For a givenx, there exists at least oney∗∈T (x, 0) such that if we follow the solution path
+y∗(σ) along the intervalσ∈ [0,σ 0],
+(1) ally∗(σ)satisfiesAssumption6withactiveconstraintindices IandLagrangianmultipliers λ∗
+I(σ),ν∗(σ)
+of sizeO(1) and
+(2) ∇2f,∇2g,{∇2gi}m1
+i=1 arelh,2-Lipschitz continuous at all(x,y∗(σ)).
+In the unconstrained settings with Hessian-Lipschitz objectives, Assumption 7 is implied by Assumption 1
+for allx∈X ,σ∈ [0,δ/Cf].
+The second assumption is on the minimum nonzero singular value of active constraint gradients.
+Assumption 8For a givenx, there exists at least oney∗∈T (x, 0) such that if we follow the solution path
+y∗(σ) along the intervalσ∈ [0,σ 0], all solutionsy∗(σ) satisfy Definition 5 with minimum singular value
+smin> 0. That is, for allσ∈ [0,σ 0], we have
+min
+v:∥v∥2=1
+
+
+
+∇gi(y∗(σ)),∀i∈I |∇ hi(y∗(σ)),∀i∈ [m2]
+
+v
+
+
+≥smin.
+Note thatsmin in the constrained setting depends purely on the LICQ condition, Definition 5.
+Theorem 3.8Under Assumptions 1 - 4, we have
+|ψσ(x)−ψ(x)|≤ O
+ 
+l2
+f,0/µ
+
+·σ,
+11
+
+for allx∈X andσ∈ [0,δ/Cf]. If, in addition, Assumptions 7 and 8 hold at a givenx, then
+∥∇ψσ(x)−∇ψ(x)∥≤ O
+ 
+l4
+g,1l3
+f,0
+µ3s3
+min
++
+lh,2l2
+g,1l3
+f,0
+µ3s2
+min
+!
+·σ.
+The proof of Theorem 3.8 is given in Appendix B.5.
+Remark 3.9 (Change in Active Sets)A slightly unsatisfactory conclusion of Theorem 3.8 is that when
+∇ψ(x) is not well-defined due to the non-smooth movement of the solution set as in Example 2, it does
+not relate∇ψσ(x) to any alternative measure for∇ψ(x). Around the point whereψ(x) is non-smooth, some
+concurrent work attempts to find a so-called(ϵ,δ )-Goldstein stationary point [11], which can be seen as an
+approximation of gradients via localized smoothing (but only in the upper-level variablesx). While this is an
+interestingdirection,wedonotpursueithere. Instead,weconcludethissectionbystatingthatan ϵ-stationary
+solution ofψσ(x) is anO(ϵ +σ)-KKT point of(Pcon). (This claim is fairly straightforward to check, see for
+example, Theorem B.3 in Appendix B.6.)
+4 Algorithm
+In the previous section, we investigated how and when the penalty-based method can yield an approximate
+solution of the original Bilevel optimization problem(P). In this section, we describe algorithms that find a
+stationary point of the penalty function using only access to first-order (stochastic) gradient oracles. We have
+the following assumptions on the first-order (stochastic) oracles and efficient projection operators required to
+develop our algorithms.
+Assumption 9Theprojectionoperations ΠX, ΠY ontosetsX,Y,respectively,canbeimplementedefficiently.
+Assumption 10We access first-order information about the objective functions via unbiased estimators
+∇f(x,y ;ζ),∇g(x,y ;ξ), whereE[∇f(x,y ;ζ)] =∇f(x,y ) and E[∇g(x,y ;ξ)] =∇g(x,y ). The variances
+of stochastic gradient estimators are bounded as follows:
+E[∥∇f(x,y ;ζ)−∇f(x,y )∥2]≤σ2
+f, E[∥∇g(x,y ;ξ)−∇g(x,y )∥2]≤σ2
+g,
+for some universal constantsσ2
+f,σ 2
+g≥ 0.
+Throughout the rest of the paper, we assume that Assumption 1 holds.
+4.1 Stationarity Measures
+Since we showed in the previous section that∇ψσ(x) is anO(σ)-approximation of∇ψ(x) in most desirable
+circumstances, now we consider finding a stationary point(x∗,y∗,z∗) of∇ψσ(x). Under Assumption 1, we
+can show that this is equivalent to finding the stationary point of (Psaddle) defined as the following:
+y∗ = proxρhσ(x∗,·)(y∗), z ∗ = proxρg(x∗,·)(z∗), − (∇xhσ(x∗,y∗)−∇xg(x∗,z∗))∈NX (x∗), (11)
+whereNX (x∗)isthenormalconeof X atx∗. Wedefineanotionof approximatestationarypointsasfollows.
+Definition 8We say(x,y,z ) is anϵ-stationary point of(Psaddle)if it satisfies the following:
+1
+ρ∥y−proxρhσ(x,·)(y)∥≤ σϵ, 1
+ρ∥z−proxρg(x,·)(z)∥≤ σϵ,
+1
+ρ∥x− ΠX{x−ρ(∇xhσ(x,y )−∇xg(x,z )}∥≤ σϵ.
+12
+
+Algorithm 1Double-Loop Algorithm with Large Batches
+Input: total outer-loop iterations:K, step sizes:{αk,γk}, proximal-smoothing parameters:{βk : βk∈
+(0, 1]}, inner-loop iteration counts:{Tk}, outer-loop batch size:{Mk}, penalty parameters:{σk}, proximal
+parameter: ρ, initializations:x0∈X ,y 0,z 0∈Y
+1: Initializewy,0 =y0,wz,0 =z0
+2: fork = 0...K− 1 do
+3: # Inner-Loop Proximal-Operation Solvers
+4: u0←wy,k,v 0←wz,k
+5: fort = 0,...,T k− 1 do
+6: ut+1← ΠY
+n
+ut−γk(σkfk,t
+wy +gk,t
+wy +ρ−1(ut−yk))
+o
+7: vt+1← ΠY
+n
+vt−γk(gk,t
+wz +ρ−1(vt−zk))
+o
+8: end for
+9: wy,k+1←uT,wz,k+1←vT
+10: # Proximal-Smoothing on Lower-Level Variables
+11: yk+1← (1−βk)yk +βkwy,k+1
+12: zk+1← (1−βk)zk +βkwz,k+1
+13: # (Projected) Gradient Descent on Upper-Level Variables
+14: xk+1← ΠX
+n
+xk− αk
+Mk
+PMk
+m=1(σkfk,m
+x +gk,m
+xy −gk,m
+xz )
+o
+15: end for
+The lemma below relates theϵ-stationarity of (Psaddle) to the landscape of∇ψσ(x):
+Lemma 4.1Let (x∗,y∗,z∗) be anϵ-stationary point of(Psaddle).
+1. For allx∈X ,∇ψσ(x) is well-defined, andx∗ is a(1 +lg,1/µ)ϵ-stationary point ofψσ(x).
+2. SupposinginadditionthatAssumptions7and8holdat x∗,then x∗isa ((1+lg,1/µ)ϵ+Lσσ)-stationary
+point ofψ(x), whereLσ =O
+
+l4
+g,1l3
+f,0/(µ3s3
+min)
+
+.
+The first part of the lemma is a consequence of Lemma 3.7, while the second part is from Theorem 3.8.
+Henceforth, we aim to find a saddle point of formulation (Psaddle).
+4.2 First-Order Method with Large Batches
+Wefirstconsidersolvingastochasticsaddle-pointproblembyapplying(projected)stochasticgradientdescent-
+ascent, alternating between upper-level and lower-level variables, with multiple iterations for the lower-level
+variables (y,z) per single iteration in the upper-level variables (x). There are two technical challenges that we
+aim to tackle specifically for the form (Psaddle) with Assumption 1.
+1. Technically speaking, the main difference from many previous works (e.g., [28, 13, 12]) is that now
+we no longer have a global contraction property of inner iterations toward solution sets. To be more
+specific, when the lower-level objective the PL-condition for ally∈ Rdy, the distance between the
+current (lower-level) iterates and solution-sets contracts globally after applying inner gradient steps,
+i.e.,if updatingzk+1←zk−βk∇yg(xk,zk) at thekth iteration before updatingxk, we get
+E[dist(zk+1,T (xk, 0))|Fk]≤ (1−λk)· dist(zk,T (xk, 0)),
+forsome λk∈ (0, 1]. However,weassumethattheerror-boundconditiononlyholdsatpointswith O(δ)
+proximal error. That is, unlessy andz remain close to the solution set (with high probability if gradient
+13
+
+oracles are stochastic), we cannot guarantee thatdist(zk,T (xk, 0)) is improved (in expectation) as the
+outer-iterationk proceeds.
+2. Eventually, we wantσ =O(ϵ) sinceψσ(x) is ideally anO(σ)-approximation ofψ(x) up to first-order.
+However,toset σ =O(ϵ)fromthefirstiterationisoverlyconservative,resultinginanoverallslowdown
+ofconvergence. Wedecreasethepenaltyparameters {σk}gradually,toimprovetheoverallconvergence
+rates and the gradient oracle complexity.
+To address issue 1, we propose a smoothed surrogate ofψσ(x,y,z ) via proximal envelope (often referred
+to as Moreau Envelope [47]) with sufficiently smallρ≪ 1/lg,1:
+h∗
+σ,ρ(x,y ) = min
+w∈Y
+
+hσ(x,y,w ) :=hσ(x,w ) + 1
+2ρ∥w−y∥2
+
+,
+g∗
+ρ(x,z ) = min
+w∈Y
+
+g(x,y,w ) :=g(x,w ) + 1
+2ρ∥w−z∥2
+
+, (12)
+and consider the following alternative saddle-point problem with proximal envelopes:
+min
+x∈X,y∈Y
+max
+z∈Y
+ψσ,ρ(x,y,z ) := h∗
+σ,ρ(x,y )−g∗
+ρ(x,z )
+σ , (13)
+This formulation is convenient because the inner-minimization problem is strongly convex, so we always have
+a unique and well-defined lower-level optimizer to chase.
+Notethat∇h∗
+σ,ρ(x,y ) =∇hσ(x,w∗
+y)wherew∗
+y = proxρhσ(x,·)(y),andsimilarly,∇g∗
+ρ(x,z ) =∇g(x,w∗
+z)
+wherew∗
+z = proxρg(x,·)(z). That is, to apply gradient descent-ascent onψσ,ρ(x,y,z ), we need only solve for
+proximal operations associated withhσ(x,·) andg(x,·). While we may not be able to compute the proximal
+operators exactly, we can introduce intermediate variableswy,k,wz,k that chase the solution of proximal
+envelopes. We then design the inner loop of the algorithm to solve the proximal operation usingTk inner
+iterations. Later, we make particular choices of the number of inner iterationsTk to achieve the best oracle
+complexity and convergence rates.
+To address issue 2 above, we simply chooseσk = k−s for some chosen constants >0. This rate of
+decreaseof σk isoptimizedtoachievethebestoraclecomplexityandconvergenceratestoreachan ϵ-stationary
+point ofψϵ,ρ(x,y,z ). We summarize the overall double-loop implementation in Algorithm 1, where we
+define:
+fk,t
+wy =∇yf(xk,ut;ζk,t
+wy), g k,t
+wy =∇yg(xk,ut;ξk,t
+wy), g k,t
+wz =∇yg(xk,vt;ξk,t
+wz),
+fk,m
+x =∇xf(xk,wy,k+1;ζk,m
+x ), g k,m
+xy =∇xg(xk,wy,k+1;ξk,m
+xy ), g k,m
+xz =∇xg(xk,wy,k+1;ξk,m
+xz ).
+We mention here that one may tryTk = Mk = O(1), in which case Algorithm 1 becomes a single-loop
+algorithm. However, as we see in the analysis, the optimal scheduling ofTk andMk should increase withk
+(see also Remark 5.3).
+4.3 A Fully Single-Loop First-Order Algorithm
+Adrawbackofdouble-loopimplementationisthatwehavetowaitforanincreasinglylargenumberofsamples
+(sincewedesign Tk orMk tobeincreasedin k)tobecollectedbeforewecanimprovetheobjective. Anatural
+question is whether we can keep incrementally updating upper-level variablesxwithout waiting for too many
+inner iterations or for the evaluation of large batches. While single-loop implementations (that replace the
+innerloopswithasinglestep,andavoidtheuseofbatches)mayresultinslowerconvergence(orworsesample
+complexity), along with additional mild assumptions on the stochastic oracles, we show that it achieves faster
+convergence and improved sample complexity. Specifically, we consider the following assumption.
+14
+
+Algorithm 2Single Loop Algorithm with Momentum Assistance
+Input: total outer-loop iterations:K, step sizes:{αk,γk}, proximal-smoothing parameters:{βk : βk∈
+(0, 1]} penalty parameters:{σk}, momentum schedulers:{ηk : ηk ∈ (0, 1]}, proximal parameter:ρ,
+initializations: x0∈X ,y 0,z 0∈Y
+1: Initializewy,0 =y0,wz,0 =z0
+2: fork = 0...K− 1 do
+3: # Proximal-Operation Solvers
+4: wy,k+1← ΠY
+n
+wy,k−γk(σkefk
+wy +egk
+wy +ρ−1(wy,k−yk))
+o
+5: wz,k+1← ΠY
+
+wz,k−γk(egk
+wz +ρ−1(wz,k−zk))
+	
+6: # Proximal-Smoothing on Lower-Level Variables
+7: yk+1← (1−βk)yk +βkwy,k+1
+8: zk+1← (1−βk)zk +βkwz,k+1
+9: # (Projected) Gradient Descent on Upper-Level Variables
+10: xk+1← ΠX
+n
+xk−αk
+
+σkefk
+x +egk
+xy−egk
+xz
+o
+11: end for
+Assumption 11Assumption 2 holds forf(x,y ;ζ) andg(x,y ;ξ) with probability1.
+We define momentum-assisted gradient estimators recursively for the inner loop proximal-solvers as follows:
+egk
+wz :=∇yg(xk,wz,k;ξk
+wz) + (1−ηk)
+
+egk−1
+wz −∇yg(xk−1,wz,k−1;ξk
+wz)
+
+,
+efk
+wy :=∇yf(xk,wy,k;ζk
+wy) + (1−ηk)
+
+efk−1
+wy −∇yf(xk−1,wy,k−1;ζk
+wy)
+
+,
+egk
+wy :=∇yg(xk,wy,k;ξk
+wy) + (1−ηk)
+
+egk−1
+wy −∇yg(xk−1,wy,k−1;ξk
+wy)
+
+,
+whereηk∈ (0, 1], andη0 = 1(and thus, ignores(k− 1)th terms atk = 0). Formulas for the update to upper-
+levelvariables xaredefinedsimilarly. Asingle-loopalternativetoAlgorithm1canbedefinedasinAlgorithm
+2. Our analysis shows that the momentum-assisted technique leads to improvement in sample-complexity
+upper bounds.
+5 Analysis
+In this section, we provide our main convergence results for Algorithm 1 and Algorithm 2.
+5.1 Analysis of Algorithm 1
+We first define the proximal error ofy andz at thekth iteration as:
+∆y
+k :=ρ−1· (yk−proxρhσk(xk,·)(yk)), ∆z
+k :=ρ−1· (zk−proxρg(x,·)(zk)).
+For measuring the error inx, we define2
+ˆxk := ΠX
+n
+xk−αk
+
+∇xhσk(xk,proxρhσk(xk,·)(yk))−∇xg(xk,proxρg(xk,·)(zk))
+o
+,
+∆x
+k :=α−1
+k (xk− ˆxk).
+2Note that∆x
+k is a stricter stationarity measure onx than Definition 8 as long asαk≤ρ, since the functiong : [0,∞)→ R
+defined byg(s) :=∥x− ΠX{x +sw}∥/s with anyw∈ Rdx is monotonically nonincreasing (seee.g.,Lemma 2.3.1 in [5])
+15
+
+Next, we define
+Φσ,ρ(x,y,z ) := h∗
+σ,ρ(x,y )−g∗
+ρ(x,z )
+σ + C
+σ (g∗
+ρ(x,z )−g∗(x)), (14)
+with some universal constantC≥ 4, and finallly we define the potential function as
+Vk := Φσk,ρ(xk,yk,zk) +Cwλk
+σkρ
+
+∥wy,k−proxρhσk(xk,·)(yk)∥2 +∥wz,k−proxρg(xk,·)(zk)∥2
+
+, (15)
+whereCw > 0issomesufficientlylargeuniversalconstant,and λk :=Tkγk/(4ρ)isatargetimprovementrate
+for chasing proximal operators per outer-iteration. We are now ready to state our main convergence theorem.
+Theorem 5.1Suppose that Assumptions 1-4 and 9-10 hold, with parameters and stepsizes satisfying the
+following bounds, for allk≥ 0:
+ρ<c 2/lg,1, σ k <c 1lg,1/lf,1, T kγk <c 3ρ, β k≤c4≪ 1, α k≤c5ρ(1 +lg,1/µ)−1,
+αk≤c6ρ3 min(µ2,δ 2/D2
+Y)·βk, σk−σk+1
+σk+1
+≤c7ρ2 min(µ2,δ 2/D2
+Y)·βk, (16)
+with some universal constantsc1,c 2,c 3,c 4,c 5,c 6,c 7> 0 as well as the following:
+ρβk +αk≤c8T 2
+kγ2
+k, ∀k, (17)
+with some universal constantc8> 0. Then the iterates of Algorithm 1 satisfy
+E
+"K−1X
+k=0
+αk
+16σk
+∥∆x
+k∥2 + ρβk
+16σk
+(∥∆y
+k∥2 +∥∆z
+k∥2)
+#
+≤ E[V0− VK] (18)
++O(Cf)·
+K−1X
+k=0
+σk−σk+1
+σk+1
+
++ O(lg,1/µ +Cw)
+ρ
+ K−1X
+k=0
+σ−1
+k
+αk
+Mk
++ρ−1T 2
+kγ3
+k
+
+(σ2
+kσ2
+f +σ2
+g)
+!
+.
+The proof of Theorem 5.1 is given in Appendix C. We mention here that problem-dependent constants
+may not be fully optimized and could be improved with more careful analysis. Still, there are two major
+considerations for the stepsizes: (i) the relations between (i)βk andαk and (ii) the relations betweenαk
+(orρβk) andTkγk. Regarding (i), the conditions(16) requireαk/βk≍ρ2 min(µ,δ/DY)2. Effectively, this
+relation determines the number of updates of theyk andzk variables for each update ofxk. The condition is
+necessarytoensurethat yk andzk alwaysremainrelativelyclosetothesolution-set T (xk,σk)andT (xk, 0)in
+expectation, which is crucial to convergence to a stationary point of the saddle-point problem(13). Regarding
+(ii), the relation betweenαk andTkγk in (17)is required for approximately evaluating the proximal operators
+without solving from scratch at every outer iteration.
+As a corollary, with proper design of step-sizes, we can give a finite-time convergence guarantee for
+reaching an approximate stationary point ofψσ(x). To simplify the statement, we treat all problem-dependent
+parameters asO(1) quantities.
+Corollary 5.2Letαk =cαρ(k +k0)−a,βk =cβ(k +k0)−b,γk =cγ(k +k0)−c, andσk =cσ(k +k0)−s,
+Tk = (k +k0)t,Mk = (k +k0)m with some proper problem-dependent constantscα,cβ,cγ,cσ, andk0. Let
+R be a random variable drawn from a uniform distribution over{0,...,K − 1}, and letϵ =σK. Under the
+same conditions in Theorem 5.1, the following holds afterK iterations of Algorithm 1: for the optimal design
+of rates, we seta =b = 0,s = 1/3, and
+16
+
+(a) ifstochasticnoisesarepresentinbothupper-levelobjective f andlower-levelobjective g (i.e.,σ2
+f,σ 2
+g >
+0), then letc =t =m = 4/3.
+(b) If stochastic noises are present only inf (i.e.,σ2
+f > 0,σ2
+g = 0), then letc =t =m = 2/3.
+(c) If we have access to exact information aboutf andg (i.e.,σ2
+f =σ2
+g = 0), then letc =t =m = 0.
+Then, we have∥∇ψϵ(xR)∥≍ logK
+K1/3 with probability at least2/3. If Assumption 7 and 8 additionally hold at
+xR, then we also have∥∇ψ(xR)∥≍ logK
+K1/3.
+Notethattheoverallgradientoraclecomplexity(orsimplysamplecomplexity)tohave E[∥∇ψϵ(xR)∥] =O(ϵ)
+is given byO(K· (MK +TK)) withK = O(ϵ−1/s) andMK = TK = O(ϵt/s). Thus, we haveO(ϵ−7),
+O(ϵ−5), andO(ϵ−3) sample-complexity upper-bounds for fully-stochastic, only upper-level stochastic, and
+deterministic cases respectively.
+Remark 5.3 (Single-Loop Implementation with Algorithm 1)While we designTK =MK =O(ϵ−4) to
+achieve the best complexity bound in stochastic scenarios, we can also find different rate scheduling for which
+TK =MK =O(1). For instance, whenX = Rdx, we can change the coefficients of noise-variance terms
+fromO(αk/Mk) toO(α2
+k), and schedule the rates of step-sizes such that left-hand side of(18) converges.
+However, we found that such a single-loop design may result in overall worse complexity bounds unless
+momentum-assistance techniques are deployed.
+5.2 Analysis of Algorithm 2
+In addition to quantities defined before, we also should track the noise-variance terms in momentum-assisted
+gradient estimators. We first define the expected gradientsGk
+wy,Gk
+wz,Gk
+x as follows:
+Gk
+wz :=∇yg(xk,wz,k), G k
+wy :=σk∇yf(xk,wy,k) +∇yg(xk,wy,k),
+Gk
+x :=σk∇xf(xk,wy,k+1) +∇xg(xk,wy,k+1)−∇xg(xk,wz,k+1).
+Next, we define error termsek
+wz,ek
+wy,ek
+x in these gradient estimators as follows:
+ek
+wz :=egk
+wz−Gk
+wz, e k
+wy :=σkefk
+wy +egk
+wy−Gk
+wy, e k
+x :=σkefk
+x + (egk
+xy−egk
+xz)−Gk
+x.
+Finally, we we redefine the potential function:
+Vk := Φσk,ρ(xk,yk,zk) + Cw
+σkρ
+
+∥wy,k−proxρhσk(xk,·)(yk)∥2 +∥wz,k−proxρg(xk,·)(zk)∥2
+
++ Cηρ2
+σkγk−1
+
+∥ek−1
+x ∥2 +∥ek
+wy∥2 +∥ek
+wz∥2
+
+, (19)
+with some properly set universal constantsCw,Cη > 0. For technical reasons, we require here one additional
+assumption on the boundedness of the movement inwy,k.
+Assumption 12For allx∈X andy,z ∈Y , letw∗
+y := proxρhσ(x,·)(y) = arg minw∈Yhσ(x,y,w ) and
+w∗
+z := proxρg(x,·)(z) = arg minw∈Yg(x,z,w ) wherehσ(x,y,w ) andg(x,z,w ) are defined in(12). We
+assume that
+∥∇whσ(x,y,w ∗
+y)∥≤ Mw, ∥∇wg(x,z,w ∗
+z)∥≤ Mw,
+for some (problem-dependent) constantMw =O(1).
+17
+
+We are now ready to state the convergence guarantee for the momentum-assisted fully-single loop
+implementation.
+Theorem 5.4SupposethatAssumptions1-4, 9-12hold, withparametersandstep-sizessatisfying (16)aswell
+as the following relations for allk≥ 0:
+ρβk +αk≤c8γk, η k+1≥c9ρ−2· max
+ 
+(lg,1/µ)αkγk,γ 2
+k
+
+. (20)
+Then the iterates of Algorithm 2 satisfy the following inequality:
+E
+"K−1X
+k=0
+αk
+16σk
+∥∆x
+k∥2 + βk
+16σkρ
+ 
+∥yk−w∗
+y,k∥2 +∥zk−w∗
+z,k∥2
+#
+≤ E[V0− VK]
++
+K−1X
+k=0
+ σk−σk+1
+σk
+
+·O(Cf) +O(M 2
+w)ρ2
+Cwσkγk
+σk−σk+1
+σk+1
+2
++Cηρ2O(η2
+k+1)
+σkγk
+(σ2
+kσ2
+f +σ2
+g)
+!
++CηO(ρ2l2
+g,1)
+hσ0(x0,y 0,wy,0)−h∗
+σ0,ρ(x0,y 0)
+σ0
++ g(x0,z 0,wz,0)−g∗
+ρ(x0,z 0)
+σ0
+
+.
+We then give a corollary analogous to Corollary 5.2, with proper design of step-sizes. As before, to
+simplify the statement, we treat all problem-dependent parameters asO(1) quantities.
+Corollary 5.5Letαk =cαρ(k +k0)−a,βk =cβ(k +k0)−b,γk =cγ(k +k0)−c,σk =cσ(k +k0)−s and
+ηk = (k +k0)−n with some proper problem-dependent constantscα,cβ,cγ,cσ, andk0. LetR be a random
+variable drawn from a uniform distribution over{0,...,K − 1}, and letϵ =σK. Under the same conditions
+in Theorem 5.4, the following claims hold afterK iterations of Algorithm 2.
+(a) Ifstochasticnoiseispresentinbothupper-levelobjective f andlower-levelobjective g(i.e.,σ2
+f,σ 2
+g > 0),
+then leta =b =c = 2/5,s = 1/5, andn = 4/5. Then∥∇ψϵ(xR)∥≍ logK
+K1/5 with probability at least
+2/3.
+(b) If stochastic noises are present only inf, leta = b = c = 1/4, s = 1/4, andn = 1/2. Then
+∥∇ψϵ(xR)∥≍ logK
+K1/4 with probability at least2/3.
+(c) If we have access to exact gradient information, leta = b = c = 0 , s = 1/3, n = 0 . Then
+∥∇ψϵ(xR)∥≍ logK
+K1/3 with probability at least2/3.
+If Assumption 7 and 8 additionally hold atxR, then the same conclusion holds for∥∇ψ(xR)∥.
+Note that since Algorithm 2 only usesO(1) samples per iteration, the overall sample-complexity is upper-
+bounded byO(ϵ−5),O(ϵ−4), andO(ϵ−3) for fully-stochastic, only upper-level stochastic, and deterministic
+cases respectively. That is, momentum assistance not only enables single-loop implementation, but also
+improves the overall sample complexity.
+6 Conclusion
+This paper studies a first-order algorithm for solving Bilevel Optimization when the lower-level problem and
+perturbed versions of it satisfy a proximal error bound condition when the errors are small. We establish an
+O(σ)-closeness relationship between the penalty formulationψσ(x) and the hyper-objectiveψ(x) under the
+proximal-error bound condition, and then we develop a fully first-order stochastic approximation scheme for
+finding a stationary point ofψσ(x), and study its non-asymptotic performance guarantees. We believe our
+algorithm to be simple and general, and useful in many large-scale scenarios that involve nested optimization
+problems. Below, we discuss several issues not addressed in this paper, that may become the subjects of
+fruitful future research.
+18
+
+Tightness of Results. Can our complexity result can be improved in terms of its dependence onϵ while
+using only first-order oracles? Recent work in [10] shows that when the lower-level problem is unconstrained
+and strongly convex, oracle complexity can be improved toO(ϵ−2) with deterministic first-order gradient
+oracles. Can similar improvements be found in the complexity when stochastic oracles and constraints are
+present in the formulation?
+Lower Levelx-Dependent Constraints. When the lower-level constraints depend onx, it is also possible
+to derive an implicit gradient formula when the lower level problem is non-degenerate. For instance, [61] has
+studied the case in which the lower-level objective is strongly convex and there are lower-level linear equality
+constraintsthatdependon x. Ingeneral,with x-dependentconstraints,wecannotavoidestimatingLagrangian
+multipliers, as they are needed in the implicit gradient formula. Even to find the stationary point of penalty
+functions,∇ψσ(x)requires Lagrangian multipliers (see the Envelope Theorem [46]). An interesting future
+direction would be to develop an efficient first-order algorithm for this case.
+GeneralConvexLower-Level. Oneinterestingspecialcaseiswhen g(x,·)ismerelyconvex,notnecessarily
+strongly convex. There have been recent advances in min-max optimization for nonconvex-concave problems;
+see for example [7, 57, 36, 35, 48, 67]. We note that wheng(x,·) is convex, anϵ-stationary point of(Psaddle)
+is also anϵ-KKT solution of(Pcon). The first paper to investigate this direction in deterministic settings is
+[44], to our knowledge. An important future direction would be to extend their results to stochastic settings.
+NonsmoothObjectives. Wecouldalsoconsidernonsmoothobjectivesinbothlevelswhereefficientproximal
+operators are available for handling the nonsmoothness. It would also be interesting in future work to see
+whether the analysis in this paper needs to be changed significantly in order to handle nonsmooth objectives.
+References
+[1] G. Anandalingam and D. White. A solution method for the linear static stackelberg problem using
+penalty functions.IEEE Transactions on automatic control, 35(10):1170–1173, 1990.
+[2] M. Arbel and J. Mairal. Non-convex bilevel games with critical point selection maps. InAdvances in
+Neural Information Processing Systems, 2022.
+[3] F. Bao, G. Wu, C. Li, J. Zhu, and B. Zhang. Stability and generalization of bilevel programming in
+hyperparameter optimization. Advances in Neural Information Processing Systems, 34:4529–4541,
+2021.
+[4] D. P. Bertsekas. Nonlinear programming.Journal of the Operational Research Society, 48(3):334–334,
+1997.
+[5] D. P. Bertsekas.Nonlinear Programming. Athena Scientific, second edition, 1999.
+[6] J. F. Bonnans and A. Shapiro.Perturbation analysis of optimization problems. Springer Science &
+Business Media, 2013.
+[7] M. Boroun, Z. Alizadeh, and A. Jalilzadeh. Accelerated primal-dual scheme for a class of stochastic
+nonconvex-concave saddle point problems.arXiv preprint arXiv:2303.00211, 2023.
+[8] J. Bracken and J. T. McGill. Mathematical programs with optimization problems in the constraints.
+Operations Research, 21(1):37–44, 1973.
+19
+
+[9] S.Bubecketal. Convexoptimization: Algorithmsandcomplexity. FoundationsandTrends ®inMachine
+Learning, 8(3-4):231–357, 2015.
+[10] L. Chen, Y. Ma, and J. Zhang. Near-optimal fully first-order algorithms for finding stationary points in
+bilevel optimization.arXiv preprint arXiv:2306.14853, 2023.
+[11] L. Chen, J. Xu, and J. Zhang. On bilevel optimization without lower-level strong convexity.arXiv
+preprint arXiv:2301.00712, 2023.
+[12] T. Chen, Y. Sun, Q. Xiao, and W. Yin. A single-timescale method for stochastic bilevel optimization. In
+International Conference on Artificial Intelligence and Statistics, pages 2466–2488. PMLR, 2022.
+[13] T.Chen,Y.Sun,andW.Yin. Closingthegap: Tighteranalysisofalternatingstochasticgradientmethods
+for bilevel problems.Advances in Neural Information Processing Systems, 34:25294–25307, 2021.
+[14] B. Colson, P. Marcotte, and G. Savard. An overview of bilevel optimization.Annals of operations
+research, 153(1):235–256, 2007.
+[15] M. Dagréou, P. Ablin, S. Vaiter, and T. Moreau. A framework for bilevel optimization that enables
+stochastic and global variance reduction algorithms.arXiv preprint arXiv:2201.13409, 2022.
+[16] C. Daskalakis, S. Skoulakis, and M. Zampetakis. The complexity of constrained min-max optimization.
+InProceedingsofthe53rdAnnualACMSIGACTSymposiumonTheoryofComputing ,pages1466–1478,
+2021.
+[17] S.Dempe. Annotatedbibliographyonbilevelprogrammingandmathematicalprogramswithequilibrium
+constraints. 2003.
+[18] S. Dempe, V. Kalashnikov, G. A. Pérez-Valdés, and N. Kalashnykova. Bilevel programming problems.
+Energy Systems. Springer, Berlin, 10:978–3, 2015.
+[19] L. C. Evans.Partial differential equations, volume 19. American Mathematical Society, 2022.
+[20] L. Franceschi, P. Frasconi, S. Salzo, R. Grazzi, and M. Pontil. Bilevel programming for hyperparameter
+optimization and meta-learning. InInternational Conference on Machine Learning, pages 1568–1577.
+PMLR, 2018.
+[21] S. Frei and Q. Gu. Proxy convexity: A unified framework for the analysis of neural networks trained by
+gradient descent.Advances in Neural Information Processing Systems, 34:7937–7949, 2021.
+[22] S. Ghadimi and M. Wang. Approximation methods for bilevel programming. arXiv preprint
+arXiv:1802.02246, 2018.
+[23] G. Gidel, H. Berard, G. Vignoud, P. Vincent, and S. Lacoste-Julien. A variational inequality perspective
+on generative adversarial networks. InInternational Conference on Learning Representations, 2018.
+[24] T. Giovannelli, G. Kent, and L. N. Vicente. Bilevel stochastic methods for optimization and machine
+learning: Bilevel stochastic descent and darts.arXiv preprint arXiv:2110.00604, 2021.
+[25] I.Goodfellow,J.Pouget-Abadie,M.Mirza,B.Xu,D.Warde-Farley,S.Ozair,A.Courville,andY.Bengio.
+Generative adversarial networks.Communications of the ACM, 63(11):139–144, 2020.
+[26] R. Grazzi, M. Pontil, and S. Salzo. Bilevel optimization with a lower-level contraction: Optimal sample
+complexity without warm-start.Journal of Machine Learning Research, 24(167):1–37, 2023.
+20
+
+[27] Z. Guo, Q. Hu, L. Zhang, and T. Yang. Randomized stochastic variance-reduced methods for multi-task
+stochastic bilevel optimization.arXiv preprint arXiv:2105.02266, 2021.
+[28] M. Hong, H.-T. Wai, Z. Wang, and Z. Yang. A two-timescale stochastic algorithm framework for
+bileveloptimization: Complexityanalysisandapplicationtoactor-critic. SIAMJournalonOptimization ,
+33(1):147–180, 2023.
+[29] Y. Ishizuka and E. Aiyoshi. Double penalty method for bilevel optimization problems.Annals of
+Operations Research, 34(1):73–88, 1992.
+[30] K. Ji, J. Yang, and Y. Liang. Bilevel optimization: Convergence analysis and enhanced design. In
+International Conference on Machine Learning, pages 4882–4892. PMLR, 2021.
+[31] C. Jin, P. Netrapalli, and M. Jordan. What is local optimality in nonconvex-nonconcave minimax
+optimization? InInternational conference on machine learning, pages 4880–4889. PMLR, 2020.
+[32] H. Karimi, J. Nutini, and M. Schmidt. Linear convergence of gradient and proximal-gradient methods
+under the polyak-łojasiewicz condition. InMachine Learning and Knowledge Discovery in Databases:
+European Conference, ECML PKDD 2016, Riva del Garda, Italy, September 19-23, 2016, Proceedings,
+Part I 16, pages 795–811. Springer, 2016.
+[33] P. Khanduri, S. Zeng, M. Hong, H.-T. Wai, Z. Wang, and Z. Yang. A near-optimal algorithm for
+stochastic bilevel optimization via double-momentum.Advances in Neural Information Processing
+Systems, 34:30271–30283, 2021.
+[34] V. Konda and J. Tsitsiklis. Actor-critic algorithms.Advances in neural information processing systems,
+12, 1999.
+[35] W. Kong and R. D. Monteiro. An accelerated inexact proximal point method for solving nonconvex-
+concave min-max problems.SIAM Journal on Optimization, 31(4):2558–2585, 2021.
+[36] D. Kovalev and A. Gasnikov. The first optimal algorithm for smooth and strongly-convex-strongly-
+concave minimax optimization.arXiv preprint arXiv:2205.05653, 2022.
+[37] G. Kunapuli, K. P. Bennett, J. Hu, and J.-S. Pang. Bilevel model selection for support vector machines.
+Data mining and mathematical programming, 45:129–158, 2008.
+[38] J. Kwon, D. Kwon, S. Wright, and R. D. Nowak. A fully first-order method for stochastic bilevel
+optimization. InInternational Conference on Machine Learning, pages 18083–18113. PMLR, 2023.
+[39] H. Li, Y. Tian, J. Zhang, and A. Jadbabaie. Complexity lower bounds for nonconvex-strongly-concave
+min-max optimization.Advances in Neural Information Processing Systems, 34:1792–1804, 2021.
+[40] J. Li, B. Gu, and H. Huang. A fully single loop algorithm for bilevel optimization without hessian
+inverse. InProceedings of the AAAI Conference on Artificial Intelligence, volume 36, pages 7426–7434,
+2022.
+[41] J.Li, L.Zhu, andA.M.-C.So. Nonsmoothcompositenonconvex-concaveminimaxoptimization. arXiv
+preprint arXiv:2209.10825, 2022.
+[42] C. Liu, L. Zhu, and M. Belkin. Loss landscapes and optimization in over-parameterized non-linear
+systems and neural networks.Applied and Computational Harmonic Analysis, 59:85–116, 2022.
+21
+
+[43] R. Liu, Y. Liu, W. Yao, S. Zeng, and J. Zhang. Averaged method of multipliers for bi-level optimization
+without lower-level strong convexity.arXiv preprint arXiv:2302.03407, 2023.
+[44] Z.LuandS.Mei. First-orderpenaltymethodsforbileveloptimization. arXivpreprintarXiv:2301.01716 ,
+2023.
+[45] P. Marcotte and D. L. Zhu. Exact and inexact penalty methods for the generalized bilevel programming
+problem. Mathematical Programming, 74:141–157, 1996.
+[46] P. Milgrom and I. Segal. Envelope theorems for arbitrary choice sets.Econometrica, 70(2):583–601,
+2002.
+[47] J.-J. Moreau. Proximité et dualité dans un espace hilbertien.Bulletin de la Société mathématique de
+France, 93:273–299, 1965.
+[48] D. M. Ostrovskii, A. Lowy, and M. Razaviyayn. Efficient search of first-order nash equilibria in
+nonconvex-concave smooth min-max problems.SIAM Journal on Optimization, 31(4):2508–2538,
+2021.
+[49] F. Pedregosa. Hyperparameter optimization with approximate gradient. InInternational conference on
+machine learning, pages 737–746. PMLR, 2016.
+[50] A. Rajeswaran, C. Finn, S. M. Kakade, and S. Levine. Meta-learning with implicit gradients.Advances
+in neural information processing systems, 32, 2019.
+[51] H. Shen and T. Chen. On penalty-based bilevel gradient descent method. arXiv preprint
+arXiv:2302.05185, 2023.
+[52] A. Sinha, P. Malo, and K. Deb. A review on bilevel optimization: From classical to evolutionary
+approaches and applications.IEEE Transactions on Evolutionary Computation, 22(2):276–295, 2017.
+[53] C. Song, A. Ramezani-Kebrya, T. Pethick, A. Eftekhari, and V. Cevher. Subquadratic overparameteriza-
+tionforshallowneuralnetworks. AdvancesinNeuralInformationProcessingSystems , 34:11247–11259,
+2021.
+[54] D. Sow, K. Ji, Z. Guan, and Y. Liang. A constrained optimization approach to bilevel optimization with
+multiple inner minima.arXiv preprint arXiv:2203.01123, 2022.
+[55] H. v. Stackelberg et al. Theory of the market economy. 1952.
+[56] R. S. Sutton and A. G. Barto.Reinforcement learning: An introduction. MIT press, 2018.
+[57] K. K. Thekumparampil, P. Jain, P. Netrapalli, and S. Oh. Efficient algorithms for smooth minimax
+optimization. Advances in Neural Information Processing Systems, 32, 2019.
+[58] L. Vicente, G. Savard, and J. Júdice. Descent approaches for quadratic bilevel programming.Journal of
+Optimization theory and applications, 81(2):379–399, 1994.
+[59] D. J. White and G. Anandalingam. A penalty function approach for solving bi-level linear programs.
+Journal of Global Optimization, 3:397–419, 1993.
+[60] Q. Xiao, S. Lu, and T. Chen. A generalized alternating method for bilevel optimization under the
+polyak-Łojasiewicz condition.arXiv preprint arXiv:2306.02422, 2023.
+22
+
+[61] Q. Xiao, H. Shen, W. Yin, and T. Chen. Alternating projected sgd for equality-constrained bilevel
+optimization. In International Conference on Artificial Intelligence and Statistics, pages 987–1023.
+PMLR, 2023.
+[62] J. Yang, K. Ji, and Y. Liang. Provably faster algorithms for bilevel optimization.Advances in Neural
+Information Processing Systems, 34:13670–13682, 2021.
+[63] J. Yang, N. Kiyavash, and N. He. Global convergence and variance-reduced optimization for a class of
+nonconvex-nonconcave minimax problems.arXiv preprint arXiv:2002.09621, 2020.
+[64] J. Yang, A. Orvieto, A. Lucchi, and N. He. Faster single-loop algorithms for minimax optimization
+without strong concavity. InInternational Conference on Artificial Intelligence and Statistics, pages
+5485–5517. PMLR, 2022.
+[65] J. Ye, D. Zhu, and Q. J. Zhu. Exact penalization and necessary optimality conditions for generalized
+bilevel programming problems.SIAM Journal on optimization, 7(2):481–507, 1997.
+[66] M. Ye, B. Liu, P. Stone, S. Wright, and Q. Liu. Bome! bilevel optimization made easy: A simple
+first-order approach. InAdvances in Neural Information Processing Systems, 2022.
+[67] J. Zhang, P. Xiao, R. Sun, and Z. Luo. A single-loop smoothed gradient descent-ascent algorithm for
+nonconvex-concave min-max problems.Advances in neural information processing systems, 33:7377–
+7389, 2020.
+23
+
+Appendix A Auxiliary Lemmas
+Throughout the section, we takeρ≤c1/lg,1 andσ <c2lg,1/lf,1 with sufficiently small universal constants
+c1,c 2∈ (0, 0.01]. We also assume that Assumptions 2-4 hold by default.
+Theorem A.1 (Danskin’s Theorem)Letf(w,θ ) be a continuously differentiable and smooth function on
+W× Θ. Letl∗(w) := minθ∈Θf(w,θ ) andS(w) := arg minθ∈Θf(w,θ ), and assumeS(w) is compact for
+allw. Then the directional derivative ofl∗(w) in directionv with∥v∥ = 1 is given by:
+Dvl∗(x) := lim
+δ→0
+l∗(w +δv)−l∗(w)
+δ = min
+θ∈S(w)
+⟨v,∇wf(w,θ )⟩. (21)
+Lemma A.2 (Proposition 5 in [51])For a continuously-differentiable andL-smooth functionf(w,θ ) in
+W×Θ,consideraminimizerfunction l∗(w) = minθ∈Θf(w,θ )andasolutionmap S(w) = arg minθ∈Θf(w,θ ).
+If S(w) is LS-Lipschitz continuous atw, thenl∗(w) is differentiable andL(1 +LS)-smooth atw, and
+∇l∗(w) =∇wf(w,θ∗) for anyθ∗∈S(w).
+Lemma A.3For anyx1,x 2∈X , andy1,y 2∈Y , the following holds:
+∥proxρg(x1,·)(y1)−proxρg(x2,·)(y2)∥≤ O(ρlg,1)∥x1−x2∥ +∥y1−y2∥.
+The same property holds withhσ(x,·) instead ofg(x,·).
+Lemma A.4For anyx∈X ,y∈Y andσ1,σ 2∈ [0,σ ], the following holds:
+∥proxρhσ1(x,·)(y)−proxρhσ2(x,·)(y)∥≤ O(ρlf,0)|σ1−σ2|.
+Lemma A.5For the choice ofρ< 1/(4lg,1) andσ <c·lg,1/lf,1 with sufficiently smallc> 0,h∗
+σ,ρ(x,y ) is
+continuously differentiable and2ρ−1-smooth jointly in(x,y ).
+Appendix B Deferred Proofs in Section 3
+We first prove more classical results of Proposition 3.5 and Theorem 3.6 for completeness.
+B.1 Proof of Proposition 3.5
+The proof is based on the celebrated implicit function theorem. See Appendix C.7 in [19], for instance.
+We first show that ify∗(x,σ )∈ T (x,σ ) is unique, then there existsδ > 0 andδy > 0 such that for all
+∥(x′,σ′)− (x,σ )∥<δ , the solution satisfiesT (x′,σ′)⊂ B(y∗,δy) and is singleton whereB(y∗,δy) is an
+open ball of radiusδy centered aty∗. When the context is clear, we simply denotey∗(x,σ ) asy∗.
+To begin with, we first argue that we can takeδ small enough such that solutions cannot happen outside
+the neighborhood ofy∗. Note that unions of all solution sets are contained inB(0,R ) with some finite
+R< ∞ due to Assumption 4. For anyδy > 0, letq∗ = miny∈(Y∪B(0,R))/B(y∗,δy)σf (x,y ) +g(x,y ), and let
+M = maxy∈B(0,R)(∥σ∇xf(x,y ) +∇xg(x,y )∥ +f(x,y ))(thefinitemaximumexistssince f,g aresmooth).
+SinceT (x,σ ) is singleton, we haveq∗>l (x,σ ). Thus, there exists0<δ 0≪ (q∗−l(x,σ ))/M, such that
+for all(x′,σ′)∈ B((x,σ ),δ 0), we haveT (x′,σ′)⊆ B(y,δy).
+Next, by regularity and strict complementary slackness ofy∗, there exists a unique(λ∗,ν∗) such that
+λ∗
+i > 0 for alli∈I (y∗), λ∗
+i = 0 for alli /∈I (y∗), and∇L(λ∗
+I,ν∗,y∗|x,σ ) = 0 . Since we assumed
+∇2L(λ∗
+I,ν∗,y∗|x,σ ) being invertible, we can apply implicit function theorem. That is, there exists an
+24
+
+sufficiently smallδ >0such that for all(x′,σ′):|(x′,σ′)− (x,σ )|<δ , we can takeδλ,ν,δy > 0such that
+there is a unique(λ′
+I,ν′,y′)
+∇LI(λ′
+I,ν′,y′|x′,σ′) = 0,
+inside the local region∥(λ′
+I,ν′)− (λ∗,ν∗)∥<δ λ,ν and∥y′−y∥<δ y. Thus, we can takeδ >0sufficiently
+small such thatδλ,ν can be sufficiently small to keepλ∗
+I non-negative.
+Furthermore, in this local region,T (x′,σ′) ⊆ B(y,δy) for all (x′,σ′) ∈ B((x,σ ),δ′) where δ′ =
+min(δ0,δ ), which in turn implies thatT (x′,σ′) is a singleton and uniquely given by the implicit function
+theorem. Therefore,T (x,σ ) is differentiable and thus locally Lipschitz continuous. In addition,T (x,σ ) is
+always singleton overB((x,σ ),δ′). □
+B.2 Proof of Theorem 3.6
+Recall the local region given in the proof of Proposition 3.5. We note that the implicit function theorem
+further says that in this local region, we can define differentiation ofy with respect tox andσ such that
+dy∗(x,σ )
+dσ =−
+
+0 I
+
+∇2LI(λ∗
+I,ν∗,y∗|x,σ )−1
+ 0
+∇yf(x,y∗)
+
+,
+∇xy∗(x,σ ) =−
+
+0 I
+
+∇2LI(λ∗
+I,ν∗,y∗|x,σ )−1
+ 0
+∇2
+yxhσ(x,y∗)
+
+.
+As a consequence, ∂2
+∂σ∂xl(x,σ ) is given by
+∂2
+∂σ∂xl(x,σ ) = ∂
+∂σ (σ∇xf(x,y∗(x,σ )) +∇xg(x,y∗(x,σ )))
+=∇xf(x,y∗(x,σ )) +σ∇2
+xyf(x,y∗(x,σ ))dy∗(x,σ )
+dσ +∇2
+xyg(x,y∗(x,σ ))dy∗(x,σ )
+dσ
+=∇xf(x,y∗(x,σ ))−
+
+0 ∇2
+xyhσ(x,y∗(x,σ ))
+
+(∇2L|∗
+I)−1
+ 0
+∇yf(x,y∗(x,σ ))
+
+.
+Similarly, differentiation in swapped order is also given by
+∂2
+∂x∂σl(x,σ ) = ∂
+∂xf(x,y∗(x,σ ))
+=∇xf(x,y∗(x,σ )) +∇xy∗(x,σ ))⊤∇yf(x,y∗(x,σ ))
+=∇xf(x,y∗(x,σ ))−
+
+0 ∇2
+xyhσ(x,y∗(x,σ ))
+
+(∇2L∗
+I)−1
+ 0
+∇yf(x,y∗(x,σ ))
+
+.
+Hence ∂2
+∂x∂σl(x,σ ) exists. If this holds atσ = 0+, then we havelimσ→0ψσ(x) =ψ(x). □
+B.3 Proof of Proposition 3.1
+We instead prove the general version of Proposition 3.1:
+Theorem B.1Suppose thatf(w,θ ) inW× Θ is continuously-differentiable andL-smooth withW, Θ
+satisfyingAssumption4. Let l∗(w) = minθ∈Θf(w,θ ). Assumethesolutionmap S(w) = arg minθ∈Θf(w,θ )
+is locally Lipschitz continuous atw. For anyθ∗∈ S(w) such that (1)θ∗ satisfies Definition 5 and 6 with
+Lagrangian multipliersλ∗, and (2)∇2L|∗
+I is locally continuous at(w,λ∗,θ∗) jointly in(w,λ,θ ). Then the
+following must hold:
+∀v∈ Im(∇2
+θwf(w,θ∗)) :
+0
+v
+
+∈ Im(∇2L(λ∗,θ∗|w)).
+25
+
+Then Proposition 3.1 follows as a corollary.
+Proof. We show this by contradiction. For simplicity, we assume that Let{gi}i∈I(θ∗) be a set of active
+constraints ofΘ atθ∗. To simplify the discussion, we assume no equality constraints (there will be no change
+in the argument). Suppose there existsv∈ Im(∇2
+θwf(w,θ∗)) such that∥v∥ = 1 and (0,v ) is not in the
+image of Lagrangian Hessian. Let(0,v ) =vKer +vIm be the orthogonal decomposition ofv into kernel and
+image of the Hessian of Lagrangian. Note that we can takev such that∥vKer∥> 0. Let(dx,dσ ) be such that
+Ω(δ)·v =∇2
+θwf(w,θ∗)dw.
+SinceS(w) is locally Lipschitz continuous, there existsδ >0andLT <∞such that for all∥dw∥<δ ,
+there exists∥dθ∥< LTδ such thatθ∗ +dθ∈S(w +dw). We can takeδ small enough such that inactive
+inequalityconstraintsstayinactivewith dθ change. Thus, whenconsideringdλ, wedonotchangecoordinates
+that correspond to inactive constraints.
+We claim that there cannot exist(dλ,dθ ) with∥dθ∥<L Tδ that can satisfy
+∇L(λ∗ +dλ,θ∗ +dθ|w +dw) = 0.
+First, we show thatdλ cannot be too large. Note that
+∇L(λ∗ +dλ,θ∗|w)−∇L (λ∗,θ∗|w) =
+X
+i∈I(θ∗)
+(dλi)∇gi(θ∗)
+= [∇gi(θ∗), i∈I (θ∗)]| {z }
+B
+[dλi, i∈I (θ∗)]
+Since we assumed thatB is full-rank in columns, the minimum (right) singular valuesmin ofB is strictly
+positive,i.e.,smin> 0. On the other hand, by Lipschitz-continuity of all gradients, perturbations inx,y,σ
+can change gradients of Lagrangian only by orderO(δ):
+∇L(λ∗ +dλ,θ∗ +dθ|w +dw)−∇L (λ∗ +dλ,θ∗|w)≤ L∥dw∥| {z }
+perturbed bydw
++
+X
+i∈I(θ∗)
+(λ∗
+i +dλi)L∥dθ∥
+| {z }
+perturbed bydθ
+.
+Thus, since(dw,dθ ) =O(δ), we have
+(smin−O(δ))∥dλ∥ +O(δ)(1 +∥λ∗∥) = 0. (22)
+By takingδ < smin small enough, and due to the existence of Lagrange multipliers∥λ∗∥ <∞, we have
+proven that∥dλ∥ =O(δ) with sufficiently smallδ.
+Next, we check that
+∇L(λ∗ +dλ,θ∗ +dθ|w +dw, Θ)−∇L (λ∗,θ∗|w)
+= Ω(δ)· (vKer +vIm) +∇2L(λ∗,y∗|w)
+dλ
+dθ
+
++o(δ).
+However,vKer is not in the image of∇2L, ando(δ) terms cannot eliminateΩ(δ)·vKer ifδ≪∥vKer∥. Thus,
+∇L(λ∗ +dλ,θ∗ +dθ|w +dw, Θ) cannot be 0, which implies there is no feasible optimal solution inδ-ball
+aroundθ∗ if we perturbw in directiondw. This contradictsS(w) being locally Lipschitz continuous. Thus,
+(9) is necessary forS(w) to be locally Lipschitz continuous. □
+26
+
+B.4 Proof of Theorem 3.2
+Similarly to the proof of Proposition 3.1, we prove the following general version:
+Theorem B.2Suppose thatf(w,θ ) inW× Θ is continuously-differentiable andL-smooth withW, Θ
+satisfyingAssumption4. Let l∗(w) = minθ∈Θf(w,θ ). Assumethesolutionmap S(w) = arg minθ∈Θf(w,θ )
+is locally (uniformly) Lipschitz continuous at all neighborhoods ofw. Forw∈W , if there exists at least one
+θ∗∈S(w) such that (1)θ∗ satisfies Definition 5 and 6 with Lagrangian multipliersλ∗, and (2)∇2f,∇2L∗
+I
+is locally continuous at(w,λ∗
+I,θ∗) jointly in(w,λI,θ ), then∇2l∗(w) exists and is given by
+∇2l∗(w) =∇2
+wwf(w,θ∗)−
+
+0 ∇2
+wθf(w,θ∗)
+
+(∇2LI(λ∗
+I,θ∗|w))†
+ 0
+∇2
+θwf(w,θ∗)
+
+. (23)
+Theorem 3.2 follows as a corollary by only taking∂2
+∂x∂σ and ∂2
+∂σ∂x parts withw = (σ,x ).
+Proof. Letθ∗
+t∈S(w +tv)betheclosestsolutionto θ∗∈S(w),andlet λ∗
+t bethecorrespondingLagrangian
+multiplier. LetI :=I(θ∗) be a set of active constraints ofΘ atθ∗. As in the proof of Theorem B.1, to
+simplify the discussion, we assume there is no equality constraints (including equality constraints needs
+only a straightforward modification). We first show that the active constraintsI does not change due to the
+perturbationtv inw when the solution set is Lipschitz continuous. To see this, note that all inactive inequality
+constraints remain strictly negativegi(θ)< 0 for alli̸=I(θ∗). For active constraints, due to Definition 6,
+we haveλ∗
+i > 0for allgi(θ∗) = 0 withi∈I . By the solution-set continuity given as assumption, we have
+∥θ∗
+t−θ∗∥ = O(t). Thus, by the same argument as deriving(22), we have∥λ∗
+t−λ∗∥ = O(t) as well for
+sufficiently smallt. Thus, active constraints remain the same with perturbation of amountO(t) as long as
+t≪ mini∈Iλ∗
+i.
+Now by the Lipschitzness of the solution mapS(θ) and Lemma A.2, we have
+∇l∗(w) =∇wf(w,θ ), ∀θ∈S(w).
+To begin with, for any unit vectorv and arbitrarily smallt> 0, we consider
+∇l∗(w +tv)−∇l∗(w)
+t ,
+whichapproximates∇2l∗(w)v. Furthermore,duetoLemmaA.2andthelocalcontinuityof ∇2f,itholdsthat
+∇l∗(w +tv)−∇l∗(w)
+t =∇wf(w +tv,θ∗
+t )−∇wf(w,θ∗)
+t
+= t∇2
+wwf(w,θ∗)v +∇2
+wθf(w,θ∗)(θ∗
+t−θ∗)
+t +o(1).
+If∇2L∗
+I :=∇2LI((λ∗)I,θ∗|w, Θ) is invertible, then by the implicit function theorem,
+(λ∗
+t )I− (λ∗)|I
+θ∗
+t−θ∗
+
+= (∇2L∗
+I)−1
+ 0
+∇2
+θwf(w,θ∗)(tv)
+
++o(t).
+In general, let the eigen-decomposition∇2L∗
+I = QΣQ⊤ and letr be the rank of∇2L∗
+I. Without loss of
+generality, assume that the firstr columns ofQ correspond to non-zero eigenvalues. Letµmin > 0 be the
+smallestabsolutevalue ofnon-zeroeigenvalue, and letU :=Qr be the firstr columns ofQ, and letU⊥ be
+the orthogonal complement ofU, i.e.,U⊥ is the kernel basis of∇2L∗
+I. We fixU henceforth.
+27
+
+Our goal is to show that
+U⊤
+(λ∗
+t )I− (λ∗)I
+θ∗
+t−θ∗
+
+=−tU⊤∇2(L∗
+I)†
+ 0
+∇2
+θwf(w,θ∗)
+
+v +o(t). (24)
+If this holds, then we can plug this into the original differentiation formula, yielding
+∇l∗(w +tv)−∇l∗(w)
+t = t·∇ 2
+wwf(w,θ∗)v +∇2
+wθf(w,θ∗)(θ∗
+t−θ∗)
+t +o(1)
+=
+t·∇ 2
+wwf(w,θ∗)v +
+
+0 ∇2
+wθf(w,θ∗)
+(λ∗
+t−λ∗)I
+θ∗
+t−θ∗
+
+t +o(1)
+=∇2
+wwf(w,θ∗)v−
+ 
+0 ∇2
+wθf(w,θ∗)
+
+U
+
+(U⊤∇2L∗
+IU)−1
+
+U⊤
+ 0
+∇2
+θwf(w,θ∗)
+
+v +o(1).
+SinceIm(
+
+0 ∇2
+wθf(w,θ∗)
+⊤)⊆ span(U), sendingt→ 0, the limit is given by
+∇2l∗(w)v =∇2
+wwf(w,θ∗)v−
+
+0 ∇2
+wθf(w,θ∗)
+
+(∇2L∗
+I)†
+ 0
+∇2
+θwf(w,θ∗)
+
+v.
+The above holds for any unit vectorv, and we conclude(23). Note that this holds for anyθ∗∈S(w) where
+L(λ∗,θ∗|w, Θ) is locally Hessian-Lipschitz (jointly inw,λ andθ), concluding the proof.
+We are left with showing(24). For simplicity, lety =
+λI
+θ
+
+, and we simply denoteL(w,y ) :=
+L|I(λI,θ|w, Θ). ConsiderLU(w,z ) :=L(w,Uz +y0) wherey0 is a projected point ofy∗ onto the kernel
+of∇2L|∗
+I. Notethatsincekernelandimageareorthogonalcomplementsofeachother, y∗ =Uz∗ +y0 where
+z∗ =U⊤y∗. We list a few properties ofLU(w,z ):
+∇zLU(w,z ) =U⊤∇θL(w,Uz +y0),
+∇2
+zzLU(w,z ) =U⊤∇2
+yyL(w,Uz +θ0)U,
+∇2
+wzLU(w,z ) =∇2
+wyL(w,Uz +y0)U,
+and∇2LU is locally uniformly Lipschitz continuous at(w,z∗) jointly in(w,z ).
+Acrucialobservationisthat z∗ isacriticalpointof LU(w,z ),i.e.,∇zLU(w,z∗) =U⊤∇yL(w,y∗) = 0,
+and at(w,z∗),
+∇2
+zzLU(w,z∗) =U⊤∇2
+θθL(w,Uz∗ +θ0)U =U⊤∇2
+θθL(w,θ∗)U,
+and minu:∥u∥=1∥∇2
+zzLU(w,z∗)u∥ ≥µmin. Tracking the movement fromz∗ to z∗
+t with respect to(tv)
+perturbations inw, by implicit function theorem, we have
+z∗
+t−z∗ =−t(∇2
+zzLU(w,z∗))−1(∇2
+zwLU(w,z∗))v +o(t).
+wherez∗
+t is the onlyO(t)-neighborhood ofz∗ that satisfies∇zLU(w +tv,z∗
+t ) = 0. Note that for anyz in
+the neighborhood ofz∗
+t,
+∥∇zLU(w +tv,z )−∇zLU(w +tv,z∗
+t )∥ =∥∇2
+zzLU(w +tv,z∗
+t )(z−z∗
+t )∥ +O(∥z−z∗
+t∥2)
+≥ (µmin−O(t)−O(∥z∗−z∗
+t∥))∥z−z∗
+t∥− O(∥z−z∗
+t∥2).
+28
+
+Now letyt
+0 be the projection ofy∗
+t onto the kernel of∇2L(w,θ∗). Sincey∗
+t = (λ∗
+t,θ∗
+t )∈S(w +tv) is a
+global solution forw +tv (without active constraints changed thanks toθ∗ satisfying Definition 6), we have
+0 =∥∇yL(w +tv,y∗
+t )∥≥ 1√
+2∥U⊤∇yL(w +tv,y∗
+t )∥ + 1√
+2∥U⊤
+⊥∇yL(w +tv,y∗
+t )∥
+= 1√
+2∥U⊤∇2
+yyL(w +tv,Uz∗
+t +y0)(U(z∗
+t−U⊤y∗
+t ) + (y0−yt
+0))∥
+| {z }
+(i)
++ 1√
+2∥U⊤
+⊥∇yL(w +tv,y∗
+t )∥| {z }
+(ii)
++o(t),
+whereweused U⊤∇yL(w+tv,Uz∗
+t +y0) =∇zL(w+tv,z∗
+t ) = 0,continuityof ∇2L,and∥y∗
+t−y∗∥ =O(t)
+in the last equality. To bound(i), we observe that
+(i)≥∥U⊤∇2
+yyL(w +tv,Uz∗
+t +y0)U(z∗
+t−U⊤y∗
+t )∥−∥ U⊤∇2
+yyL(w +tv,Uz∗
+t +y0)(y0−yt
+0)∥
+=∥∇2
+zzLU(w +tv,z∗
+t )(z∗
+t−U⊤y∗
+t )∥−∥ U⊤(∇2
+yyL(w +tv,Uz∗
+t +y0)−∇ 2
+yyL(w,y∗))(yt
+0−y0)∥
+≥
+
+(µmin−O(t)−O(∥z∗
+t−z∗∥))O(∥z∗
+t−U⊤y∗
+t∥)−o(t)
+
+−o (t)
+=O(µmin)∥z∗
+t−U⊤θ∗
+t∥− o(t).
+where we used∥yt
+0−y0∥≤∥ y∗
+t−y∗∥ =O(t), and assumingt≪µmin. On the other hand,
+(ii) =∥U⊤
+⊥ (∇yL(w +tv,y∗
+t )−∇yL(w,y∗))∥
+≤∥U⊤
+⊥
+ 
+t∇2
+ywL(w,y∗)v +∇2
+yyL(w,y∗)(y∗
+t−y∗)
+
+∥ +o(t) =o(t),
+where the first equality follows from the optimality condition ofθ∗, and the last equality is due to necessity
+condition (Proposition 3.1) for the Lipscthiz-continuity of solution maps. Therefore, we conclude that
+0 =∥∇yL(w +tv,y∗
+t )∥≥ O(µmin)∥z∗
+t−U⊤y∗
+t∥− o(t),
+which can only be true if∥z∗
+t−U⊤y∗
+t∥ =o(t). This means
+U⊤(y∗
+t−y∗) = (U⊤y∗
+t−z∗
+t ) + (z∗
+t−z∗)
+=−t(∇2
+zzLU(w,z∗)−1∇2
+zwLU(w,z∗))v +o(t),
+and thus we get
+U⊤(y∗
+t−y∗) =−t
+
+(U⊤∇2
+yyL(w,y∗)U)−1(U⊤∇2
+ywL(w,y∗))
+
+v +o(t). (25)
+Note that the constraint does not depend onw, and thus
+∇2
+ywL(w,y∗) =
+ 0
+∇2
+ywf(w,y∗)
+
+.
+On the other hand, the necessity condition given in Proposition B.1 implies
+Im(∇2
+ywL(w,y∗))⊆ Im(∇2
+yyL(w,y∗)) = span(U).
+From the above inclusion and (25), we conclude (24).
+□
+29
+
+B.5 Proof of Theorem 3.8
+Proof. For simplicity,y∗
+σ∈ T (x,σ ), letz∗
+p be a projected point ofy∗
+σ ontoS(x) := T (x, 0). To bound
+|ψσ(x)−ψ(x)|, we first see that
+ψσ(x) = min
+y∈Y
+(f(x,y ) +g(x,y )/σ)− min
+z∈Y
+g(x,z )/σ
+≤ min
+y∈S(x)
+(f(x,y ) +g(x,y )/σ)− min
+z∈Y
+g(x,z )/σ = min
+z∈S(x)
+f(x,z ) =ψ(x).
+We first show thatg(x,y∗
+σ)−g(x,z∗
+p)≤δ. To see this, note that
+σf (x,y∗
+σ) +g(x,y∗
+σ)≤σf (x,z∗
+p) +g(x,z∗
+p),
+and thusg(x,y∗
+σ)−g(x,z∗
+p)≤σ(f(x,z∗
+p)−f(x,y∗
+σ))≤σCf. As long asσ≤δ/Cf, we haveg(x,y∗
+σ)−
+g(x,z∗
+p)≤δ. Then, since we have Assumption 1, we get
+ψσ(x) =f(x,y∗
+σ) +g(x,y∗
+σ)−g(x,z∗
+p)
+σ ≥f(x,y∗
+σ) +µ∥y∗
+σ−z∗
+p∥2
+2σ .
+We can further observe that
+f(x,y∗
+σ) +µg
+∥y∗
+σ−z∗
+p∥2
+2σ ≥f(x,z∗
+p) +µ∥y∗
+σ−z∗
+p∥2
+2σ −lf,0∥y∗
+σ−z∗
+p∥
+≥f(x,z∗
+p)−
+l2
+f,0
+2µσ≥ψ(x)−
+l2
+f,0
+2µσ.
+Thus, we conclude that
+0≤ψ(x)−ψσ(x)≤
+l2
+f,0
+2µσ.
+Gradient Convergence. As long as the active constraint set does not change, we can only considerλ∗
+I. By
+(lf,0/µ)-Lipschitzcontinuityofsolutionsets,forall σ1,σ 2∈ [0,σ ],wecanfind y∗(σ1)∈T (x,σ 1),y∗(σ2)∈
+T (x,σ 2) such that
+∥y∗(σ1)−y∗(σ2)∥ =O(lf,0/µ)·|σ1−σ2|.
+On the other hand, we check that
+∇L(λ∗(σ2),ν∗(σ2),y∗(σ1)|x,σ 1)−∇L (λ∗(σ1),ν∗(σ1),y∗(σ1)|x,σ 1)
+=
+X
+i∈I
+(λ∗(σ2)−λ∗(σ1))∇gi(y∗(σ1)) +
+X
+i∈[m2]
+(ν∗(σ2)−ν∗(σ1))∇hi(y∗(σ1))
+=∇2L(λ∗(σ1),ν∗(σ1),y∗(σ1)|x,σ 1)
+
+
+λ∗(σ2)−λ∗(σ1)
+ν∗(σ2)−ν∗(σ1)
+0
+
+.
+At the same time, we also know that
+∇L(λ∗(σ2),ν∗(σ2),y∗(σ2)|x,σ )−∇L (λ∗(σ2),ν∗(σ2),y∗(σ1)|x,σ 1)
+≤lf,0|σ2−σ1| +O(lg,1)(∥λ∗(σ2)∥ +∥ν∗(σ2)∥)∥y∗(σ2)−y∗(σ1)∥.
+30
+
+Since the two must sum up to0, we have
+∇2L(λ∗,ν∗,y∗|x,σ 1)
+
+
+λ∗(σ2)−λ∗(σ1)
+ν∗(σ2)−ν∗(σ1)
+0
+
+ =O(lg,1lf,0/µ)|σ2−σ1|.
+Thus, with Assumption 8, we have
+∥λ∗
+I(σ2)−λ∗
+I(σ1)∥,∥ν∗
+I(σ2)−ν∗
+I(σ1)∥ =O(lf,0lg,1/(µsmin))|σ2−σ1|.
+Thus, we can conclude that
+∥∇2L∗
+I(σ2))−∇ 2L∗
+I(σ1)∥≲
+ 
+lf,0l2
+g,1
+µsmin
++ lh,2lf,0
+µ
+!
+|σ2−σ1|.
+where (∇2L∗
+I(σ)) is a short-hand for∇2L(λ∗
+I(σ),ν∗(σ),y∗(σ)|x,σ,Y).
+To check whether∇ψσ(x) well-approximates∇ψ(x) = ∂2
+∂x∂σl(x,σ )|σ=0+, we first check that for any
+σ1,σ 2∈ [0,σ ],
+
+
+
+
+∂2
+∂x∂σl(x,σ 2)− ∂2
+∂x∂σl(x,σ 1)
+
+
+
+
+≤∥∇ xf(x,y∗(σ2))−∇xf(x,y∗(σ1))∥
++
+
+
+∇2
+xyhσ2(x,y∗(σ2))−∇ 2
+xyhσ1(x,y∗(σ1))
+
+
+·
+
+
+
+
+∇2L∗
+I(σ1)†
+ 0
+∇yf(x,y∗(σ1)
+
+
+
+
+| {z }
+(i)
++
+
+
+
+
+
+0 ∇2
+xyhσ2(x,y∗(σ2))
+
+∇2L∗
+I(σ2))†− (∇2L∗
+I(σ1)†
+ 0
+∇yf(x,y∗(σ1)
+
+
+
+
+| {z }
+(ii)
++
+
+
+
+
+0 ∇2
+xyhσ2(x,y∗(σ2))
+
+∇2L∗
+I(σ2))†
+
+
+
+∥∇yf(x,y∗(σ2))−∇yf(x,y∗(σ1))∥
+| {z }
+(iii)
+.
+Here, we use the explicit formula of∂2
+∂x∂σl(x,σ ) given in Theorem 3.2. To bound(i), note the meaning of
+the latter term:
+dλ/dσ
+dy/dσ
+
+=∇2L∗
+I(σ1)†
+ 0
+∇yf(x,y∗(σ1))
+
+,
+where
+dλ/dσ
+dy/dσ
+
+is the movement ofy∗(σ1) to the nearest solution by perturbingσ projected to the image of
+∇2L∗
+I(σ1). By Lemma 3.7,∥dy/dσ∥ must not exceedO(lf,0/µ). Consequently,
+
+∇gi(y∗(σ)),∀i∈I |∇ hi(y∗(σ)),∀i∈ [m2]
+dλ
+dσ +∇2
+yyL∗
+I(σ1)dy
+dσ =∇yf(x,y∗(σ1)),
+which enforces that∥dλ/dσ∥≤ lg,1lf,0
+µsmin
+by Assumption 8. Thus,
+(i)≲ lh,2lf,0
+µ
+lg,1lf,0
+µsmin
+|σ1−σ2| =
+lh,2lg,1l2
+f,0
+µ2smin
+|σ1−σ2|.
+31
+
+Similarly, we can show that
+(iii)≲ lf,1lg,1lf,0
+µ2smin
+|σ1−σ2|.
+For (ii), note that
+
+
+
+
+
+0 ∇2
+xyhσ2(x,y∗(σ2))
+
+∇2L∗
+I(σ2))†− (∇2L∗
+I(σ1)†
+ 0
+∇yf(x,y∗(σ1))
+
+
+
+
+=
+
+
+
+
+
+0 ∇2
+xyhσ2(x,y∗(σ2))
+
+∇2L∗
+I(σ2)† 
+∇2L∗
+I(σ2)−∇ 2L∗
+I(σ1)
+
+∇2L∗
+I(σ1)†
+ 0
+∇yf(x,y∗(σ1)
+
+
+
+
+≤
+l2
+g,1l2
+f,0
+µ2s2
+min
+∥∇2L∗
+I(σ2)−∇ 2L∗
+I(σ1)∥
+≲
+l2
+g,1l2
+f,0
+µ2s2
+min
+ 
+lf,0l2
+g,1
+µsmin
++ lh,2lf,0
+µ
+!
+|σ2−σ1|,
+where the first equality comes from the fact that
+Im
+ 0
+∇2
+yxhσ2(x,y∗(σ2))
+
+⊆ Im∇2L∗
+I(σ2),
+and similarly,
+ 0
+∇yf(x,y∗(σ1))
+
+∈ Im∇2L∗
+I(σ1),
+by Proposition 3.1. Therefore,∂2
+∂x∂σl(x,σ ) is Lipschitz-continuous inσ, and by Mean-Value Theorem, we
+can conclude that
+∥∇ψσ(x)−∇ψ(x)∥≤ O(σ/µ3)·
+ 
+l4
+g,1l3
+f,0
+s3
+min
++
+lh,2l2
+g,1l3
+f,0
+s2
+min
+!
+,
+counting the dominating term. □
+B.6 ϵ-Stationary Point andϵ-KKT Solution
+To simplify the argument, we assume thatX = Rdx. Then, define anϵ-KKT condition of (Pcon) as:
+∥∇xf(x,y ) +λx(∇xg(x,y )−∇g∗(x))∥≤ ϵ,
+∥∇yf(x,y ) +λx∇yg(x,y ) +P
+i∈[m1]λ∗
+i∇gi(y) +P
+i∈[m2]ν∗
+i∇hi(y)∥≤ ϵ,
+g(x,y )−g∗(x)≤ϵ.
+for some Lagrangian multipliersλx≥ 0 andλ∗≥ 0,ν∗ with somey∈Y .
+Theorem B.3Suppose Assumptions 1-3 hold,X = Rdx. Then∇ψσ(x) is well-defined withσ≤σ0. Ifx is
+anϵ-stationary point ofψσ(x), that is,
+∥∇ψσ(x)∥≤ ϵ,
+thenx is anO(ϵ +σ)-KKT solution of(Pcon).
+32
+
+Proof. This comes almost immediately from Lemma A.2. Lety andz as minimizers:
+y∈ arg min
+w∈Y
+σf (x,w ) +g(x,w ),
+z∈ arg min
+w∈Y
+g(x,w ).
+Then, by the optimality condition ofy, theϵ-optimality condition with respect to∇y is automatically satisfied
+withλx = 1/σ. Furthermore, sinceT (x,σ ) is Lipshictz-continuous due to Assumption 1 withLT =lf,0/µ,
+wehave∇g∗(x) =∇xg(x,z )and∇h∗
+σ(x) =∇xσf (x,y ) +∇xg(x,y ). Finally, bytheoptimalitycondition,
+we know thaty is the optimal solution of a proximal operationproxρhσ(x,·)(y):
+σf (x,y ) +g(x,y )≤σf (x,z ) +g(x,z ) + 1
+2ρ∥z−y∥2.
+Using|f(x,y )−f(x,z )|≤ lf,0∥y−z∥and∥y−z∥≤ σLT, we have
+g(x,y )−g(x,z ) =g(x,y )−g∗(x)≤σlf,0LT + σ2L2
+T
+2ρ =O(σ),
+as claimed. □
+Appendix C Analysis for Algorithm 1
+For simplicity, letw∗
+y,k = proxρhσk(xk,·)(yk) andw∗
+z,k = proxρg(xk,·)(zk).
+C.1 Descent Lemma forwy,k,wz,k
+We first analyze∥wy,k−proxρhσk(xk,·)(yk)∥2. We start by observing that
+∥wy,k+1−w∗
+y,k+1∥2 =∥wy,k+1−w∗
+y,k∥2 +∥w∗
+y,k+1−w∗
+y,k∥2− 2⟨wy,k+1−w∗
+y,k,w∗
+y,k+1−w∗
+y,k⟩
+≤
+
+1 +λk
+4
+
+∥wy,k+1−w∗
+y,k∥2
+| {z }
+(i)
++
+
+1 + 4
+λk
+
+∥w∗
+y,k+1−w∗
+y,k∥2
+| {z }
+(ii)
+, (26)
+whereweused ⟨a,b⟩≤ c∥a∥2 + 1
+4c∥b∥2,and λk =Tkγk/(4ρ)asdefined. Theyareboundedintwofollowing
+lemmas.
+Lemma C.1At everykth iteration, the following holds:
+E[∥wy,k+1−w∗
+y,k∥2|Fk]≤
+
+1− γk
+4ρ
+Tk
+E[∥wy,k−w∗
+y,k∥2|Fk] + 2
+ 
+Tkγ2
+k
+
+(σ2
+k·σ2
+f +σ2
+g). (27)
+Similarly, we also have that
+E[∥wz,k+1−w∗
+z,k∥2|Fk]≤
+
+1− γk
+4ρ
+Tk
+E[∥wz,k−w∗
+z,k∥2|Fk] + 2(Tkγ2
+k)(σ2
+k·σ2
+f +σ2
+g), (28)
+33
+
+Proof. We use the linear convergence of projected gradient steps. To simplify the notation, let
+eGt =∇y(σkf(xk,ut;ζk,t
+wy) +g(xk,ut;ξk,t
+wy)) +ρ−1(ut−yk),
+andGt = E[eGt]. Also letG∗ =∇hσk(x,w∗
+y,k) +ρ−1(w∗
+y,k−yk). We first check that
+∥ut+1−w∗
+y,k∥2 =
+
+
+
+ΠY
+n
+ut−γkeGt
+o
+− ΠY
+
+w∗
+y,k−γkG∗	
+
+
+2
+≤
+
+
+
+ut−γkeGt− (w∗
+y,k−γkG∗)
+
+
+
+2
+=
+
+
+ut−w∗
+y,k
+
+
+2 +γ2
+k
+
+
+
+eGt−G∗
+
+
+
+2
+− 2γk⟨ut−w∗
+y,k,eGt−G∗⟩.
+Taking expectation conditioned onFk,t yields:
+E[∥ut+1−w∗
+y,k∥2|Fk,t]≤ E[∥ut−w∗
+y,k∥2|Fk,t] +γ2
+kE[∥eGt−G∗∥2|Fk,t]
+− 2γk⟨ut−w∗
+y,k,Gt−G∗⟩.
+Note that
+E[∥eGt−G∗∥2|Fk]≤ 2∥Gt−G∗∥2 + 2E[∥eGt−Gt∥2|Fk,t].
+By co-coercivity of strongly convex function, since the inner minimization is(1/(3ρ))-strongly convex and
+(1/ρ)-smooth, we have
+∥Gt−G∗∥2≤ (1/ρ)·⟨ut−w∗
+y,k,Gt−G∗⟩,
+1
+3ρ·∥ut−w∗
+y,k∥2≤⟨ut−w∗
+y,k,Gt−G∗⟩.
+Givenγk≪ρ, we have
+E[∥ut+1−w∗
+y,k∥2|Fk,t]≤
+
+1− γk
+4ρ
+
+E[∥ut−w∗
+y,k∥2|Fk,t] + 2γ2
+k(σ2
+k·σ2
+f +σ2
+g).
+Applying this forTk steps, we get the lemma. □
+Lemma C.2At everykth iteration, the following holds:
+E[∥wy,k+1−w∗
+y,k+1∥2|Fk]≤
+
+1 +λk
+4
+
+E[∥wy,k+1−w∗
+y,k∥2|Fk] +O
+ 
+ρ2l2
+f,0
+λk
+!
+|σk−σk+1|2
++O
+ρlg,1
+λk
+
+∥xk+1−xk∥2 + 8
+λk
+∥yk+1−yk∥2. (29)
+Similarly, we have
+E[∥wz,k+1−w∗
+z,k+1∥2|Fk]≤
+
+1 +λk
+4
+
+E[∥wz,k+1−w∗
+z,k∥2|Fk] +O
+ 
+ρ2l2
+f,0
+λk
+!
+|σk−σk+1|2
++O
+ρlg,1
+λk
+
+∥xk+1−xk∥2 + 8
+λk
+∥zk+1−zk∥2. (30)
+34
+
+Proof. By Lemmas A.3 and A.4, we have
+∥w∗
+y,k+1−w∗
+y,k∥≤ O(ρlg,1)∥xk+1−xk∥ +∥yk+1−yk∥ +O(ρlf,0)|σk−σk+1|.
+Take square and conditional expectation, and plug this to the bound for(i), (ii) in (26), we get the lemma.□
+C.2 Descent Lemma for Φσ,ρ
+Proposition C.3At everykth iteration, we have
+σk
+ 
+Φσk+1,ρ(xk+1,yk+1,zk+1)− Φσk,ρ(xk,yk,zk)
+
+≤C1ρ−1
+(
+∥yk−yk+1∥2 +
+l2
+f,0
+µ2|σk−σk+1|2 + dist2(zk,T (xk, 0)) + dist2(yk,T (xk,σk))
+)
++
+ 
+C1l2
+g,1
+ρµ2 − 1
+4αk
+!
+∥xk−xk+1∥2 +
+C1
+ρ +O(ρ−2)αk
+ 
+∥zk−zk+1∥2 + dist2(zk,T (xk, 0))
+
+− βk
+4ρ(∥yk−w∗
+y,k∥2 +∥yk−wy,k+1∥2)− βk
+ρ (∥zk−w∗
+z,k∥2 +∥zk−wz,k+1∥2)
++O
+ 
+l2
+g,1αk +ρ−1βk
+ 
+∥w∗
+y,k−wy,k+1∥2 +∥w∗
+z,k−wz,k+1∥2
++αk∥eG−G∥2 +σk+1C1Cf (31)
+whereC1 =O
+
+σk−σk+1
+σk+1
+
+.
+Proof. To start with, note that
+Φσk+1,ρ(xk+1,yk+1,zk+1)− Φσk,ρ(xk,yk,zk) = Φσk,ρ(xk+1,yk+1,zk+1)− Φσk,ρ(xk,yk,zk)| {z }
+(i)
++ Φσk+1,ρ(xk+1,yk+1,zk+1)− Φσk,ρ(xk+1,yk+1,zk+1)| {z }
+(ii)
+.
+Note that by Lemma 3.7, we havedist(T (x1,σ 1),T (x2,σ 2)) ≤ lg,1
+µ∥x1−x2∥ + lf,0
+µ|σ1−σ2| for all
+x1,x 2∈X ,σ1,σ 2∈ [0,δ/Cf]. Applying this to (32) in the subsequent subsection, we obtain that
+(ii)≤O
+σk−σk+1
+σkσk+1
+
+ρ−1
+(
+∥yk−yk+1∥2 +∥zk−zk+1∥2 + l2
+g,1
+µ2∥xk−xk+1∥2 +
+l2
+f,0
+µ2|σk−σk+1|2
+dist2(zk,T (xk, 0)) + dist2(yk,T (xk,σk))
+)
++O
+σk−σk+1
+σk
+
+Cf.
+Combining this with the estimation of(i) given in (36), we conclude. □
+C.2.1 Bounding (ii)
+For (ii), we realize that for anyx,y,z withσk+1<σ k,
+Φσk+1,ρ(x,y,z )− Φσk,ρ(x,y,z ) =
+h∗
+σk+1,ρ(x,y )−g∗(x,z )
+σk+1
+− h∗
+σk,ρ(x,y )−g∗(x,z )
+σk
++
+ C
+σk+1
+− C
+σk
+ 
+g∗
+ρ(x,z )−g∗(x)
+
+35
+
+≤
+h∗
+σk+1,ρ(x,y )−g∗
+ρ(x,y )
+σk+1
+− h∗
+σk,ρ(x,y )−g∗
+ρ(x,y )
+σk| {z }
+(iii)
++
+σk−σk+1
+σkσk+1
+ 
+g∗
+ρ(x,y )−g∗(x)
+
+| {z }
+(iv)
++
+C(σk−σk+1)
+σk+1σk
+ 
+g∗
+ρ(x,z )−g∗(x)
+
+| {z }
+(v)
+.
+To bound(iii), for anyσ1>σ 2, note that
+h∗
+σ1,ρ(x,y )≤σ1f(x,w∗
+2)−g(x,w∗
+2) +∥w∗
+2−y∥2
+2ρ =h∗
+σ2,ρ(x,y ) + (σ1−σ2)f(x,w∗
+2),
+wherew∗
+2 = arg minw∈Yσ2f(x,w ) +g(x,w ) +∥w−y∥2
+2ρ . Thus,
+(iii)≤
+ 1
+σk+1
+− 1
+σk
+
+(h∗
+σk+1,ρ(x,y )−h∗
+0,ρ(x,y ))− 1
+σk
+(h∗
+σk,ρ(x,y )−h∗
+σk+1,ρ(x,y ))
+≤ 2σk−σk+1
+σk
+· max
+w∈Y
+|f(x,w )|≤ σk−σk+1
+σk
+·O(Cf).
+In order to bound(iv), note that for anyy∗
+σ∈T (x,σ ),
+g∗
+ρ(x,y )−g∗(x) = (g∗
+ρ(x,y )−h∗
+σ(x)) + (h∗
+σ(x)−g∗(x))
+≤ (h∗
+σ,ρ(x,y )−h∗
+σ,ρ(x,y∗
+σ)) +O(σCf)
+≤⟨∇ yh∗
+σ,ρ(x,y∗
+σ)
+| {z }
+=0
+,y−y∗
+σ⟩ +O(ρ−1)∥y−y∗
+σ∥2 +O(σCf).
+where∇yh∗
+σ,ρ(x,y∗
+σ) =ρ−1(y∗
+σ−proxρhσ(x,·)(y∗
+σ)) = 0 sincey∗
+σ is a fixed point ofproxρhσ(x,·) operation.
+Takingy∗
+σ the closest element toy, we get
+(iv)≤ σk−σk+1
+σkσk+1
+ 
+ρ−1dist2(yk+1,T (xk+1,σk+1)) +O(σk+1Cf)
+
+.
+Similarly, we can also show that
+(v)≤ C(σk−σk+1)
+σkσk+1
+·ρ−1dist2(zk+1,T (xk+1, 0)).
+Thus, we can conclude that
+(ii)≤O
+σk−σk+1
+σkσk+1
+ 
+σk+1Cf +ρ−1dist2(yk+1,T (xk+1,σk+1)) +ρ−1dist2(zk+1,T (xk+1, 0))
+
+≤O
+σk−σk+1
+σkσk+1
+
+ρ−1 
+∥zk+1−zk∥2 + dist2(zk,T (xk, 0)) + dist2(T (xk+1, 0),T (xk, 0))
+
++O
+σk−σk+1
+σkσk+1
+
+ρ−1 
+∥yk+1−yk∥2 + dist2(yk,T (xk,σk)) + dist2(T (xk+1,σk+1),T (xk,σk))
+
++O
+σk−σk+1
+σk
+
+Cf. (32)
+36
+
+C.2.2 Bounding (i)
+Henceforth, to simplify the notation, we simply denoteσ =σk.
+(i) = 1
+σ
+ 
+h∗
+σ,ρ(xk+1,yk+1)−g∗
+ρ(xk+1,zk+1)− (h∗
+σ,ρ(xk,yk)−g∗
+ρ(xk,zk))
+
+| {z }
+(a)=σ·(ψσ,ρ(xk+1,yk+1,zk+1)−ψσ,ρ(xk,yk,zk))
++ C
+σ
+ 
+(g∗
+ρ(xk+1,zk+1)−g∗(xk+1))− (g∗
+ρ(xk,zk)−g∗(xk))
+
+| {z }
+(b)
+.
+Bounding (a). It is easy to check using Lemma A.2 that
+∇yh∗
+σ,ρ(xk,yk) =ρ−1(yk−w∗
+y,k),
+∇zg∗
+ρ(xk,zk) =ρ−1(zk−w∗
+z,k),
+Note thatyk+1−yk =−βk(yk−wy,k+1), and thus,
+⟨∇yh∗
+σ,ρ(xk,yk),yk+1−yk⟩ =−βk
+ρ ⟨yk−w∗
+y,k,yk−wy,k+1⟩
+=−βk
+2ρ
+ 
+∥yk−w∗
+y,k∥2 +∥yk−wy,k+1∥2−∥w∗
+y,k−wy,k+1∥2
+.
+Similarly,zk+1−zk =−βk(zk−wz,k+1), and thus
+⟨∇zg∗
+ρ(xk,zk),zk+1−zk⟩ =−βk
+ρ ⟨zk−w∗
+z,k,zk−wz,k+1⟩
+=−βk
+2ρ
+ 
+∥zk−w∗
+z,k∥2 +∥zk−wz,k+1∥2−∥w∗
+z,k−wz,k+1∥2
+.
+Using smoothness ofh∗
+σ,ρ andg∗
+ρ, and noting that
+∇x(h∗
+σ,ρ(xk,yk)−g∗
+ρ(xk,zk)) =∇xψσ,ρ(xk,yk,zk) =∇x(hσ(xk,w∗
+y,k)−g(xk,w∗
+z,k)),
+we get (caution on the sign ofg∗
+ρ(xk,zk) terms):
+(a)≤⟨σ·∇xψσ,ρ(xk,yk,zk),xk+1−xk⟩ + O(1)
+ρ ∥xk+1−xk∥2
+− βk
+2ρ
+
+∥yk−w∗
+y,k∥2 + 1
+2∥yk−wy,k+1∥2
+
++ βk
+2ρ∥w∗
+y,k−wy,k+1∥2
++ βk
+2ρ
+ 
+∥zk−w∗
+z,k∥2 + 2∥zk−wz,k+1∥2
+− βk
+2ρ∥w∗
+z,k−wz,k+1∥2. (33)
+where we assumeβk≪ 1. For terms regardingx, let
+eG := 1
+Mk
+MkX
+m=1
+∇x
+
+σkf(xk,wy,k+1;ζk,m
+x ) +g(xk,wy,k+1;ξk,m
+xy )−g(xk,wz,k+1;ξk,m
+xz )
+
+,
+andG = E[eG]. By projection lemma, we have
+⟨(xk−αkeG)−xk+1,x−xk+1⟩≤ 0, ∀x∈X ,
+37
+
+and therefore⟨eG,xk+1−x⟩≤− 1
+αk
+⟨xk−xk+1,x−xk+1⟩ for allx∈X . Pluggingx =xk here, we have
+⟨G∗,xk+1−xk⟩≤− 1
+αk
+∥xk−xk+1∥2 +⟨G∗− eG,xk+1−xk⟩
+≤− 1
+2αk
+∥xk−xk+1∥2 +αk
+
+∥G∗−G∥2 +∥eG−G∥2
+
+.
+Note that
+∥G∗−G∥≤ lg,1(∥w∗
+y,k−wy,k+1∥ +∥w∗
+z,k−wz,k+1∥).
+In conclusion, omitting expectations on both sides, we have
+(a)≤− 1
+2αk
+∥xk+1−xk∥2− βk
+4ρ(∥yk−w∗
+y,k∥2 +∥yk−wy,k+1∥2)
++ O(1)
+ρ ∥xk+1−xk∥2 + βk
+ρ (∥zk−w∗
+z,k∥2 +∥zk−wz,k+1∥2)
++
+
+O(l2
+g,1)αk + βk
+2ρ
+
+(∥w∗
+y,k−wy,k+1∥2 +∥w∗
+z,k−wz,k+1∥2) +αk∥eG−G∥2. (34)
+Bounding (b). We realize that in(34), coefficients of proximal error terms onz, i.e.,∥zk−w∗
+z,k∥2 are
+positive, unlike terms regardingyk. We show that these terms will be canceled out with(b)when Assumption
+1 holds. Using Lemma 3.7,
+(b) = (g∗
+ρ(xk+1,zk+1)−g∗(xk+1))− (g∗
+ρ(xk,zk+1)−g∗(xk)) + (g∗
+ρ(xk,zk+1)−g∗
+ρ(xk,zk))
+≤⟨∇ xg∗
+ρ(xk,zk+1)−∇xg∗(xk),xk+1−xk⟩ +O
+lg,1
+µ
+
+∥xk+1−xk∥2
++⟨∇zg∗
+ρ(xk,zk),zk+1−zk⟩ +O(ρ−1)∥zk+1−zk∥2. (35)
+Taking conditional expectation on both sides and usingzk+1−zk =−βk(zk−wz,k+1)and∇zg∗
+ρ(xk,zk) =
+ρ−1(zk−w∗
+z,k),
+E[(b)|F′
+k]≤−⟨∇ xg∗
+ρ(xk,zk+1)−∇xg∗(xk),xk+1−xk⟩ +O
+lg,1
+µ
+
+E[∥xk+1−xk∥2|F′
+k]
+−βk⟨∇zg∗
+ρ(xk,zk),zk−wz,k+1⟩ +O(β2
+kρ−1)∥zk−wz,k+1∥2
+≤
+
+O(ρ−2)αkC· dist2(zk+1,T (xk, 0)) +∥xk−xk+1∥2
+16Cαk
+
++O
+lg,1
+µ
+
+E[∥xk+1−xk∥2|F′
+k]
+− βk
+2ρ
+ 
+∥zk−w∗
+z,k∥2 +∥zk−wz,k+1∥2−∥w∗
+z,k−wz,k+1∥2
++O
+β2
+k
+ρ
+
+∥zk−wz,k+1∥2.
+Combining (a) and (b).We takeC≥ 4. Given thatα−1
+k ≪ max(ρ−1,lg,1/µ), we can conclude that
+σk· (i)≤− 1
+4αk
+∥xk+1−xk∥2− βk
+4ρ(∥yk−w∗
+y,k∥2 +∥yk−wy,k+1∥2)− βk
+ρ (∥zk−w∗
+z,k∥2 +∥zk−wz,k+1∥2)
++O
+ 
+l2
+g,1αk +ρ−1βk
+ 
+∥w∗
+y,k−wy,k+1∥2 +∥w∗
+z,k−wz,k+1∥2
++O(ρ−2)αk
+ 
+dist2(zk,T (xk, 0)) +∥zk−zk+1∥2
++αk∥eG−G∥2. (36)
+38
+
+C.3 Proof of Theorem 5.1
+Note that
+∥xk+1− ˆxk∥2 =∥ΠX
+n
+xk−αkeG
+o
+− ΠX{xk−αkG∗}∥ 2≤α2
+k∥eG−G∗∥2
+≤O(l2
+g,1)α2
+k(∥w∗
+y,k−wy,k+1∥2 +∥w∗
+z,k−wz,k+1∥2) + 2α2
+kE[∥eG−G∥2],
+and also note that
+∥xk−xk+1∥2≥ 1
+2∥xk− ˆxk∥2− 2∥ˆxk−xk+1∥2,
+E[∥eG−G∥2]≤ 1
+Mk
+(σ2
+kσ2
+f +σ2
+g).
+The following lemma is also useful:
+Lemma C.4Under Assumption 1, for allx∈X ,y∈Y andσ∈ [0,δ/Cf], we have
+dist(y,T (x,σ ))≤
+ 1
+µ + DY
+δ
+
+ρ−1
+
+
+
+y−proxρhσ(x,·)(y)
+
+
+
+.
+Proof. This can be shown with a simple algebra:
+dist(y,T (x,σ ))≤ 1
+µ·ρ−1∥y−proxρhσ(x,·)(y)∥· 1
+n
+ρ−1∥y−proxρhσ(x,·)(y)∥≤ δ
+o
++DY· 1
+n
+ρ−1∥y−proxρhσ(x,·)(y)∥>δ
+o
+,
+and noting that1
+n
+ρ−1∥y−proxρhσ(x,·)(y)∥>δ
+o
+< 1
+δ
+
+ρ−1∥y−proxρhσ(x,·)(y)∥
+
+. □
+WenowcombineresultsinPropositionC.3,LemmaC.2andLemma3.7,wehave(omittingexpectations):
+Vk+1− Vk≤− 1
+16σkαk
+∥xk− ˆxk∥2− 1
+8σkαk
+∥xk−xk+1∥2− βk
+4σkρ
+ 
+∥yk−w∗
+y,k∥2 +∥zk−w∗
+z,k∥2
++O
+σk−σk+1
+σkσk+1
+
+ρ−1(dist2(yk,T (xk,σk)) + dist2(zk,T (xk, 0)))
++O
+ αk
+ρ2σk
+
+dist2(zk,T (xk, 0)) +O
+σk−σk+1
+σk
+
+Cf
++O
+σk−σk+1
+σkσk+1
+
+ρ−1
+ 
+∥yk−yk+1∥2 +∥zk−zk+1∥2 + l2
+g,1
+µ2∥xk−xk+1∥2 +
+l2
+f,0
+µ2|σk−σk+1|2
+!
++ O(1 +lg,1/µ +Cwρlg,1)
+σkρ ∥xk+1−xk∥2 +
+O(Cwρl2
+f,0)
+σk
+|σk−σk+1|2
+− 1
+σkρ
+ 1
+4βk
+− 16Cw−ρ−1αk
+
+(∥yk−yk+1∥2 +∥zk−zk+1∥2)
++ Cwλk
+σkρ
+ 
+1 +σk−σk+1
+σk+1
++ λk
+4 + O(l2
+g,1)ραk + 2βk
+Cwλk
+!
+ 
+∥w∗
+y,k−wy,k+1∥2 +∥w∗
+z,k−wz,k+1∥2
+− Cwλk
+σkρ
+ 
+∥w∗
+y,k−wy,k∥2 +∥w∗
+z,k−wz,k∥2
++ 2αk
+σk
+∥eG−G∥2.
+39
+
+Note thatw∗
+y,k = proxρhσk(xk,·)(yk)andw∗
+z,k = proxρg(xk,·)(zk). Using Lemma C.4 and rearranging the
+terms in the above inequality, we obtain that
+Vk+1− Vk≤− 1
+16σkαk
+∥xk− ˆxk∥2 +
+ 
+O(1 +lg,1/µ +Cwρlg,1)
+σkρ − 1
+8σkαk
++ dkl2
+g,1
+σkρµ2
+!
+∥xk−xk+1∥2
++
+
+− βk
+4σkρ + dkCδ
+ρσk
+
+∥yk−w∗
+y,k∥2 +
+ 
+l2
+f,0
+µ2 +
+O(Cwρl2
+f,0)
+σk
+!
+|σk−σk+1|2
++
+
+− βk
+4σkρ + dkCδ
+ρσk
++CδO
+ αk
+ρ2σk
+
+∥zk−w∗
+z,k∥2 +dkCf
++
+ dk
+σkρ− 1
+σkρ
+ 1
+4βk
+− 16Cw−ρ−1αk
+ 
+∥yk−yk+1∥2 +∥zk−zk+1∥2
++ Cwλk
+σkρ
+ 
+1 +σk−σk+1
+σk+1
++ λk
+4 + O(l2
+g,1)ραk + 2βk
+Cwλk
+!
+ 
+∥w∗
+y,k−wy,k+1∥2 +∥w∗
+z,k−wz,k+1∥2
+− Cwλk
+σkρ
+ 
+∥w∗
+y,k−wy,k∥2 +∥w∗
+z,k−wz,k∥2
++ 2αk
+σk
+∥eG−G∥2.
+wheredk =O
+
+σk−σk+1
+σk+1
+
+, andCδ =
+
+1
+µ + DY
+δ
+2
+ρ−2.
+We state several step-size conditions to keep target quantities to be bounded via telescope sum.
+1. To keep the∥xk−xk+1∥2 term negative, we needαk≪ρ(1 +lg,1/µ +Cwρlg,1)−1.
+2. To keep∥yk−w∗
+y,k∥2 term negative, along with Lemma C.4, we require
+βk≫
+σk−σk+1
+σk+1
+
+ρ−2 
+µ−2 +D2
+Y/δ2
+.
+3. To keep∥zk−w∗
+z,k∥2 term negative, we additionally require
+βk≫ρ−3 
+µ−2 +D2
+Y/δ2
+αk.
+4. To keep terms on∥yk−yk+1∥2 and∥zk−zk+1∥2 negative, we first require
+βk≪Cw,ρα−1
+k ,
+and then
+1
+βk
+≫ σk−σk+1
+σk+1
+,
+which trivially holds asβk =o(1) and (σk−σk+1/σk) =O(1/k).
+Once the above are satisfied, we get
+Vk+1− Vk≤− αk
+16σk
+∥∆x
+k∥2− βk
+16σkρ
+ 
+∥yk−w∗
+y,k∥2 +∥zk−w∗
+z,k∥2
+− 1
+16σkβkρ(∥yk−yk+1∥2 +∥zk−zk+1∥2)
++O
+1 +lg,1/µ +Cwρlg,1
+σkρ
+ (α2
+k +αkρ)
+Mk
+· (σ2
+kσ2
+f +σ2
+g) + (σk−σk+1)
+σk
+·O(Cf)
+40
+
++ Cwλk
+σkρ
+ 
+1 +σk−σk+1
+σk+1
++ λk
+4 + O(l2
+g,1)ραk + 2βk
+Cwλk
+!
+ 
+∥w∗
+y,k−wy,k+1∥2 +∥w∗
+z,k−wz,k+1∥2
+− Cwλk
+σkρ
+ 
+∥w∗
+y,k−wy,k∥2 +∥w∗
+z,k−wz,k∥2
++o(1/k), (37)
+whereo(1/k)-term collectively represents the terms asymptotically smaller thanσk−σk+1
+σk
+=O(1/k) since
+we use polynomially decaying penalty parameters{σk}. Now we can apply Lemma C.1, and plugλk = Tkγk
+4ρ ,
+and using the step-size condition:
+σk−σk+1
+σk+1
+≪λk, max
+ 
+ρl2
+g,1αk,βk
+
+≪Cwλ2
+k,
+we get
+Vk+1− Vk≤− αk
+16σk
+∥∆x
+k∥2− βk
+16σkρ
+ 
+∥yk−w∗
+y,k∥2 +∥zk−w∗
+z,k∥2
++O
+1 +lg,1/µ +Cwρlg,1
+ρ
+ αk
+σkMk
+(σ2
+kσ2
+f +σ2
+g) +O
+Cw
+ρ2
+T 2
+kγ3
+k
+σk
+(σ2
+kσ2
+f +σ2
+g). (38)
+Arranging terms and sum overk = 0 toK− 1, we have
+E
+"K−1X
+k=0
+αk
+16σk
+∥∆x
+k∥2 + ρβk
+16σk
+(∥∆y
+k∥2 +∥∆z
+k∥2)
+#
+≤ (V0− VK) +O(Cf)·
+K−1X
+k=0
+σk−σk+1
+σk+1
+
++ O(lg,1/µ +Cw)
+ρ
+ K−1X
+k=0
+σ−1
+k
+αk
+Mk
++ρ−1T 2
+kγ3
+k
+
+(σ2
+kσ2
+f +σ2
+g)
+!
+.
+C.4 Proof of Corollary 5.2
+The remaining part is to show thatVK is lower-bounded byO(1), and to check the rates. To see this, recall
+our definition in (14), and note that
+VK≥ h∗
+σ,ρ(x,y )−g∗(x)
+σ ,
+as long asC≥ 1. Then,
+h∗
+σ,ρ(x,y )≥σf (x,w∗
+y,k) +g(x,w∗
+y,k)≥σf (x,w∗
+y,k) +g∗(x),
+and thereforeVK≥f(x,w∗
+y,k)>−Cf by Assumption 3 on the lower bounded value off.
+Now, sinceσk =k−s for somes> 0, we know that
+σk−σk+1
+σk+1
+=O(1/k),
+and thus,
+E
+"K−1X
+k=0
+αk
+16σk
+∥∆x
+k∥2 + ρβk
+16σk
+(∥∆y
+k∥2 +∥∆z
+k∥2)
+#
+≤O(logK) +O
+ K−1X
+k=0
+σ−1
+k
+αk
+Mk
++ρ−1T 2
+kγ3
+k
+
+(σ2
+kσ2
+f +σ2
+g)
+!
+.
+Plugging the step-size rates, the right-hand side is bounded byO(logK), and thus we get the corollary.
+41
+
+Appendix D Analysis for Algorithm 2
+In addition to descent lemmas forwy,k and wz,k, we also need descent lemmas for noise variances in
+momentum-assisted gradient estimators. We define the outer-variable gradient estimators as the following:
+efk
+x :=∇xf(xk,wy,k+1;ζk
+x) + (1−ηk)
+
+efk−1
+x −∇xf(xk−1,wy,k;ζk
+x)
+
+,
+egk
+xy :=∇xg(xk,wy,k+1;ξk
+xy) + (1−ηk)
+
+egk−1
+xy −∇xg(xk−1,wy,k;ξk
+xy)
+
+,
+egk
+xz :=∇xg(xk,wy,k+1;ξk
+xz) + (1−ηk)
+
+egk−1
+xz −∇xg(xk−1,wz,k;ξk
+xz)
+
+,
+D.1 Descent Lemma for Noise-Variances
+We first show that noise-variances forek
+wy andek
+wz decay.
+Lemma D.1At everykth iteration, the following holds:
+E[∥ek+1
+wz ∥2]≤ (1−ηk+1)2E[∥ek
+wz∥2] + 2η2
+k+1σ2
+g
++O(l2
+g,1)
+ 
+∥xk+1−xk∥2 +∥wz,k+1−wz,k∥2
+,
+and similarly,
+E[∥ek+1
+wy ∥2]≤ (1−ηk+1)2E[∥ek
+wy∥2] + 4η2
+k+1(σ2
+kσ2
+f +σ2
+g) + 2(σk−σk+1)2σ2
+f
++O(l2
+g,1)
+ 
+∥xk+1−xk∥2 +∥wy,k+1−wy,k∥2
+.
+Proof. We start with
+E
+h
+∥ek+1
+wz ∥2
+i
+= E
+h
+∥egk+1
+wz −Gk+1
+wz ∥2
+i
+= E
+h
+∥(∇yg(xk+1,wz,k+1;ξk+1
+wz )−Gk+1
+wz ) + (1−ηk+1)(egk
+wz−∇yg(xk,wz,k;ξk+1
+wz ))∥2
+i
+= (1−ηk+1)2E[∥ek
+wz∥2]
++ E
+h
+∥(∇yg(xk+1,wz,k+1;ξk+1
+wz )−Gk+1
+wz ) + (1−ηk+1)(Gk
+wz−∇yg(xk,wz,k;ξk+1
+wz ))∥2
+i
+,
+where the inequality holds since gradient-oracles are unbiased:
+E[⟨ek
+wz,∇yg(xk+1,wz,k+1;ξk+1
+wz )−Gk+1
+wz ⟩|Fk+1] = 0,
+E[⟨ek
+wz,∇yg(xk,wz,k;ξk+1
+wz )−Gk
+wz⟩|Fk+1] = 0.
+The remaining part is to bound
+E
+h
+∥(∇yg(xk+1,wz,k+1;ξk+1
+wz )−Gk+1
+wz ) + (1−ηk+1)(Gk
+wz−∇yg(xk,wz,k;ξk+1
+wz ))∥2
+i
+≤ 2η2
+k+1E[∥∇yg(xk+1,wz,k+1;ξk+1
+wz )−Gk+1
+wz ∥2]
++ 2(1−ηk+1)2E
+h
+∥(∇yg(xk+1,wz,k+1;ξk+1
+wz )−∇yg(xk,wz,k;ξk+1
+wz )) + (Gk
+wz−Gk+1
+wz )∥2
+i
+≤ 2η2
+k+1σ2
+g +O(l2
+g,1)
+ 
+∥xk+1−xk∥2 +∥wz,k+1−wz,k∥2
+.
+Similarly, we can show the similar result forek
+wy. Let ¯Gk
+wy =σk+1∇yf(xk,wy,k) +∇yg(xk,wy,k), and we
+have that
+E
+h
+∥ek+1
+wy ∥2
+i
+= E
+h
+∥σk+1efk+1
+wy +egk+1
+wy −Gk+1
+wy ∥2
+i
+42
+
+= (1−ηk+1)2E[∥ek
+wy∥2] + 2(σk−σk+1)2E[∥∇yf(xk,wy,k;ξk+1
+wy )−∇yf(xk,wy,k)∥2]
++ 2E
+h
+∥(∇yhσk+1(xk+1,wy,k+1;ξk+1
+wy )−∇yhσk+1(xk,wy,k;ξk+1
+wy )) + (1−ηk+1)(Gk+1
+wy − ¯Gk
+wy)∥2
+i
+≤ (1−ηk+1)2E[∥ek
+wy∥2] + 2(σk−σk+1)2σ2
+f + 4η2
+k+1(σ2
+kσ2
+f +σ2
+g)
++O(l2
+g,1)
+ 
+∥xk+1−xk∥2 +∥wy,k+1−wy,k∥2
+.
+□
+We can state a similar descent lemma forek
+x:
+Lemma D.2At everykth iteration, the following holds:
+E[∥ek+1
+x ∥2]≤ (1−ηk+1)2E[∥ek
+x∥2] +O(η2
+k+1)(σ2
+kσ2
+f +σ2
+g) +O(σk+1−σk)2σ2
+f +O(l2
+g,1)∥xk+1−xk∥2
++O(l2
+g,1)
+ 
+∥wy,k+2−wy,k+1∥2 +∥wz,k+2−wz,k+1∥2
+.
+The proof follows exactly the same procedure for boundingek+1
+wy , and thus we omit the proof.
+D.2 Descent Lemma forwy,k,wz,k
+The strategy is again to start with (26):
+∥wy,k+1−w∗
+y,k+1∥2 =∥wy,k+1−w∗
+y,k∥2 +∥w∗
+y,k+1−w∗
+y,k∥2− 2⟨wy,k+1−w∗
+y,k,w∗
+y,k+1−w∗
+y,k⟩
+≤
+
+1 +λk
+4
+
+∥wy,k+1−w∗
+y,k∥2
+| {z }
+(i)
++
+
+1 + 4
+λk
+
+∥w∗
+y,k+1−w∗
+y,k∥2
+| {z }
+(ii)
+,
+For bounding(ii), we can recall Lemma C.2. For bounding(i), we can slightly modify Lemma C.1.
+Lemma D.3At everykth iteration, the following holds:
+E[∥wy,k+1−w∗
+y,k∥2|Fk]≤
+
+1− γk
+4ρ
+
+E[∥wy,k−w∗
+y,k∥2|Fk] +O(γkρ)E[∥ek
+wy∥2|Fk]. (39)
+Similarly, we also have that
+E[∥wz,k+1−w∗
+z,k∥2|Fk]≤
+
+1− γk
+4ρ
+
+E[∥wz,k−w∗
+z,k∥2|Fk] +O(γkρ)E[∥ek
+wz∥2|Fk], (40)
+Proof. We use the linear convergence of projected gradient steps. To simplify the notation, leteG =
+σkefk
+wy +egk
+wy +ρ−1(wy,k−yk)andG =∇yhσk(xk,wy,k)+ρ−1(wy,k−yk). AlsoletG∗ =∇hσk(x,w∗
+y,k)+
+ρ−1(w∗
+y,k−yk). We first check that
+∥wy,k+1−w∗
+y,k∥2 =
+
+
+
+ΠY
+n
+wy,k−γkeG
+o
+− ΠY
+
+w∗
+y,k−γkG∗	
+
+
+2
+≤
+
+
+
+wy,k−γkeG− (w∗
+y,k−γkG∗)
+
+
+
+2
+=
+
+
+wy,k−w∗
+y,k
+
+
+2 +γ2
+k
+
+
+
+eG−G∗
+
+
+
+2
+− 2γk⟨wy,k−w∗
+y,k,eG−G∗⟩.
+Taking expectation conditioned onFk yields:
+E[∥wy,k+1−w∗
+y,k∥2|Fk]≤ E[∥wy,k−w∗
+y,k∥2|Fk] +γ2
+kE[∥eG−G∗∥2|Fk]
+43
+
+− 2γk⟨wy,k−w∗
+y,k,G−G∗⟩− 2γkE[⟨wy,k−w∗
+y,k,G− eG⟩|Fk].
+Note that we have
+E[∥eG−G∗∥2|Fk]≤ 2∥G−G∗∥2 + 2E[∥eG−G∥2|Fk],
+γkE[|⟨wy,k−w∗
+y,k,G− eG⟩||Fk]≤ γk
+8ρ∥wy,k−w∗
+y,k∥2 + (2γkρ)E[∥eG−G∥2|Fk],
+Now again using the co-coercivity of strongly convex function, since the inner minimization is(1/(3ρ))-
+strongly convex and(1/ρ)-smooth, we have
+∥G−G∗∥2≤ (1/ρ)·⟨wy,k−w∗
+y,k,G−G∗⟩,
+1
+3ρ·∥wy,k−w∗
+y,k∥2≤⟨wy,k−w∗
+y,k,G−G∗⟩.
+Givenγk≪ρ, and noting thateG−G =ek
+wy, we have
+E[∥wy,k+1−w∗
+y,k∥2]≤
+
+1− γk
+4ρ
+
+E[∥wy,k−w∗
+y,k∥2] +O(γkρ)E[∥ek
+wy∥2].
+Similar arguments can show the bound on∥wz,k+1−w∗
+z,k∥. □
+In addition to the contraction ofwy,k toward the proximal operators, we will also use the following on the
+bounds on expected movements:
+Lemma D.4At everykth iteration, the following holds:
+1
+2γk
+E[∥wy,k+1−wy,k∥2]≤ E[hσk(xk,yk,wy,k)−hσk(xk,yk,wy,k+1) + 4γk∥ek
+wy∥2]. (41)
+Similarly forwz,k, we have
+1
+2γk
+E[∥wz,k+1−wz,k∥2]≤ E[g(xk,zk,wz,k)−g(xk,zk,wz,k+1) + 4γk∥ek
+wz∥2]. (42)
+Proof. By 2ρ−1-smoothness ofhσk(x,y,w ), we have
+hσk(xk,yk,wy,k+1)≤hσk(xk,yk,wy,k) +⟨∇whσk(xk,yk,wy,k),wy,k+1−wy,k⟩ + 1
+ρ∥wy,k+1−wy,k∥2.
+Let ¯wk =wy,k−γk(∇whσk(xk,yk,wy,k) +ek
+wy), and thus∇whσk(xk,yk,wy,k) = 1
+γk
+(wy,k− ¯wk)−ek
+wy.
+Plugging this back, we have
+hσk(xk,yk,wy,k+1)≤hσk(xk,yk,wy,k) +γ−1
+k ⟨wy,k− ¯wk,wy,k+1−wy,k⟩
+−⟨ek
+wy,wy,k+1−wy,k⟩ + 1
+ρ∥wy,k+1−wy,k∥2
+≤hσk(xk,yk,wy,k)−γ−1
+k ∥wy,k−wy,k+1∥2 +γ−1
+k ⟨wy,k+1− ¯wk,wy,k+1−wy,k⟩
++ 4γk∥ek
+wy∥2 + 1
+16γk
+∥wy,k+1−wy,k∥2 + 1
+ρ∥wy,k+1−wy,k∥2.
+By projection lemma,⟨wy,k+1− ¯wk,wy,k+1−wy,k⟩≤ 0, and sinceγk≪ρ, we have
+hσk(xk,yk,wy,k+1)≤hσk(xk,yk,wy,k)− 1
+2γk
+∥wy,k+1−wy,k∥2 + 4γk∥ek
+wy∥2.
+Arranging this, we get (41). (42) can be obtained similarly, and hence we omit the details. □
+44
+
+D.3 Descent Lemma for Φσ,ρ
+For simplicity, letG = Gk
+x =∇x(σkf(xk,wy,k+1) +g(xk,wy,k+1)−g(xk,wz,k+1)) and eG = ek
+x +Gk
+x.
+This part follows exactly the same as Appendix C.2, yielding the similar result to (36):
+σk· (i)≤− 1
+4αk
+∥xk+1−xk∥2− βk
+4ρ(∥yk−w∗
+y,k∥2 +∥yk−wy,k+1∥2)− βk
+ρ (∥zk−w∗
+z,k∥2 +∥zk−wz,k+1∥2)
++O
+ 
+l2
+g,1αk +ρ−1βk
+ 
+∥w∗
+y,k−wy,k+1∥2 +∥w∗
+z,k−wz,k+1∥2
++O(ρ−2)αk
+ 
+dist2(zk,T (xk, 0)) +∥zk−zk+1∥2
++αk∥eG−G∥2.
+D.4 Descent in Potentials
+Note again that
+E[∥xk+1− ˆxk∥2] = E
+h
+∥ΠX
+n
+xk−αkeG
+o
+− ΠX{xk−αkG∗}∥ 2
+i
+≤α2
+k∥eG−G∗∥2
+≤O(l2
+g,1)α2
+k(∥w∗
+y,k−wy,k+1∥2 +∥w∗
+z,k−wz,k+1∥2) + 2α2
+kE[∥eG−G∥2],
+and also note that
+∥xk−xk+1∥2≥ 1
+2∥xk− ˆxk∥2− 2∥ˆxk−xk+1∥2,
+E[∥eG−G∥2] = E[∥ek
+x∥2].
+SimilarlytotheproofofAppendixC.3, usingLemmaC.2, (32),(36),andLemmaC.4,andusingthestep-size
+conditions, we obtain a similar inequality to (37), with extra terms on noise-variances:
+Vk+1− Vk≤− αk
+16σk
+∥∆x
+k∥2− βk
+16σkρ
+ 
+∥yk−w∗
+y,k∥2 +∥zk−w∗
+z,k∥2
+− 1
+16σkβkρ(∥yk−yk+1∥2 +∥zk−zk+1∥2) + (σk−σk+1)
+σk
+·O(Cf)
++ Cw
+σkρ
+ 
+1 +σk−σk+1
+σk+1
++ λk
+4 + O(l2
+g,1)ραk + 2βk
+Cw
+!
+ 
+∥w∗
+y,k−wy,k+1∥2 +∥w∗
+z,k−wz,k+1∥2
+− Cw
+σkρ
+ 
+∥w∗
+y,k−wy,k∥2 +∥w∗
+z,k−wz,k∥2
+− 1
+16σkαk
+∥xk−xk+1∥2 +o(1/k)
++ (Cηρ2)
+ 1
+σk+1γk
+∥ek
+x∥2− 1
+σkγk−1
+∥ek−1
+x ∥2
+
++O
+1 +lg,1/µ +Cwρlg,1
+σk
+
+(αk +ρ−1α2
+k)·∥ek
+x∥2
+| {z }
+(i)
++ (Cηρ2)
+ 1
+σk+1γk
+∥ek+1
+wy ∥2− 1
+σkγk−1
+∥ek
+wy∥2
+
+| {z }
+(ii)
++ (Cηρ2)
+ 1
+σk+1γk
+∥ek+1
+wz ∥2− 1
+σkγk−1
+∥ek
+wz∥2
+
+| {z }
+(iii)
+.
+In order to boundek
+x term, given that
+ηk+1≫
+σkγk−1
+σk+1γk
+− 1 +lg,1/µ +Cw
+Cηρ2 αkγk−1
+
+,
+45
+
+using Lemma D.2, we have
+(i)≤− Cηρ2ηk
+σkγk−1
+∥ek−1
+x ∥2 +Cηρ2·
+O(η2
+k)(σ2
+k−1σ2
+f +σ2
+g) +O(l2
+g,1)∥xk−xk−1∥2
+σkγk−1
++Cηρ2· O(l2
+g,1)(∥wy,k+1−wy,k∥2 +∥wz,k+1−wz,k∥2)
+σkγk−1
+.
+Similarly, by Lemma D.1,
+(ii)≤− Cηρ2ηk+1
+σkγk−1
+∥ek
+wy∥2 +Cηρ2·
+O(η2
+k+1)(σ2
+kσ2
+f +σ2
+g) +O(l2
+g,1)∥xk+1−xk∥2
+σkγk−1
++Cηρ2· O(l2
+g,1)∥wy,k+1−wy,k∥2
+σkγk−1
+,
+(iii)≤− Cηρ2ηk+1
+σkγk−1
+∥ek
+wz∥2 +Cηρ2· O(η2
+k+1)σ2
+g +O(l2
+g,1)∥xk+1−xk∥2
+σkγk−1
++Cηρ2· O(l2
+g,1)∥wz,k+1−wz,k∥2
+σkγk−1
+.
+Now settingCη > 0andρ≪ 1/lg,1 properly, withαk≪γk, we can keep∥xk+1−xk∥2 terms negative, and
+have
+Vk+1− Vk≤− αk
+16σk
+∥∆x
+k∥2− βk
+16σkρ
+ 
+∥yk−w∗
+y,k∥2 +∥zk−w∗
+z,k∥2
+− 1
+16σkβkρ(∥yk−yk+1∥2 +∥zk−zk+1∥2) + (σk−σk+1)
+σk
+·O(Cf)
++ Cw
+σkρ
+ 
+1 +σk−σk+1
+σk+1
++ λk
+4 + O(l2
+g,1)ραk + 2βk
+Cw
+!
+ 
+∥w∗
+y,k−wy,k+1∥2 +∥w∗
+z,k−wz,k+1∥2
+− Cw
+σkρ
+ 
+∥w∗
+y,k−wy,k∥2 +∥w∗
+z,k−wz,k∥2
+− 1
+32σkαk
+∥xk−xk+1∥2 +
+O(ρ2l2
+g,1)
+σkγk−1
+∥xk−xk−1∥2
+− Cηρ2ηk+1
+σkγk−1
+(∥ek
+wy∥2 +∥ek
+wz∥2) +CηO(ρ2l2
+g,1)∥wy,k+1−wy,k∥2 +∥wz,k+1−wz,k∥2
+σkγk−1
++Cηρ2O(η2
+k+1)
+σkγk
+(σ2
+kσ2
+f +σ2
+g) +o(1/k).
+Given that
+ηk+1≫O(l2
+g,1)γ2
+k,
+using Lemma D.4, we can manipulate∥wy,k+1−wy,k∥ and∥wz,k+1−wz,k∥terms to be bounded by
+Vk+1− Vk≤− αk
+16σk
+∥∆x
+k∥2− βk
+16σkρ
+ 
+∥yk−w∗
+y,k∥2 +∥zk−w∗
+z,k∥2
+− 1
+16σkβkρ(∥yk−yk+1∥2 +∥zk−zk+1∥2) + (σk−σk+1)
+σk
+·O(Cf)
++ Cw
+σkρ
+ 
+1 +σk−σk+1
+σk+1
++ λk
+4 +
+O(l2
+g,1)ραk + 2βk
+Cw
+!
+ 
+∥w∗
+y,k−wy,k+1∥2 +∥w∗
+z,k−wz,k+1∥2
+46
+
+− Cw
+σkρ
+ 
+∥w∗
+y,k−wy,k∥2 +∥w∗
+z,k−wz,k∥2
+− 1
+32σkαk
+∥xk−xk+1∥2 + O(ρ2l2
+g,1)
+σkγk−1
+∥xk−xk−1∥2
+− Cηρ2ηk+1
+2σkγk−1
+(∥ek
+wy∥2 +∥ek
+wz∥2) +Cηρ2O(η2
+k+1)
+σkγk
+(σ2
+kσ2
+f +σ2
+g) +o(1/k)
++ CηO(ρ2l2
+g,1)
+σk
+
+hσk(xk,yk,wy,k)−hσk(xk,yk,wy,k+1)| {z }
+(iv)
++g(xk,zk,wz,k)−g(xk,zk,wz,k+1)| {z }
+(v)
+
+.
+(43)
+To proceed, we note that
+(iv) = (hσk(xk,yk,wy,k)−h∗
+σk,ρ(xk,yk))− (hσk(xk,yk,wy,k+1)−h∗
+σk,ρ(xk,yk))
+= (hσk(xk,yk,wy,k)−h∗
+σk,ρ(xk,yk))− (hσk(xk+1,yk+1,wy,k+1)−h∗
+σk,ρ(xk+1,yk+1))
++hσk(xk+1,yk+1,wy,k+1)−h∗
+σk,ρ(xk+1,yk+1))− (hσk(xk,yk,wy,k+1)−h∗
+σk,ρ(xk,yk))
+| {z }
+(a)
+,
+and the term(a) is bounded as
+(a)≤⟨∇ x(hσk(xk,yk,wy,k+1)−h∗
+σk,ρ(xk,yk)),xk+1−xk⟩ +lg,1∥xk+1−xk∥2
++⟨∇y(hσk(xk,yk,wy,k+1)−h∗
+σk,ρ(xk,yk)),yk+1−yk⟩ +ρ−1∥yk+1−yk∥2
+=⟨∇x(hσk(xk,wy,k+1)−hσk(xk,w∗
+y,k)),xk+1−xk⟩ +lg,1∥xk+1−xk∥2
++ρ−1⟨(yk−wy,k+1)− (yk−w∗
+y,k),yk+1−yk⟩ +ρ−1∥yk+1−yk∥2
+≤ 32l2
+g,1αk∥wy,k+1−w∗
+y,k∥2 + 1
+128αk
+∥xk+1−xk∥2 + 16βk
+ρ ∥wy,k+1−w∗
+y,k∥2 + 1
+64βkρ∥yk+1−yk∥2.
+Thus, we can conclude that
+(iv)≤ (hσk(xk,yk,wy,k)−h∗
+σk,ρ(xk,yk))− (hσk(xk+1,yk+1,wy,k+1)−h∗
+σk,ρ(xk+1,yk+1))
++ 32l2
+g,1αk∥wy,k+1−w∗
+y,k∥2 + 1
+128αk
+∥xk+1−xk∥2
++ 16βk
+ρ ∥wy,k+1−w∗
+y,k∥2 + 1
+64βkρ∥yk+1−yk∥2.
+Similarly, we have
+(v)≤ (g(xk,zk,wz,k)−g∗
+ρ(xk,zk))− (g(xk+1,zk+1,wz,k+1)−g∗
+ρ(xk+1,zk+1))
++ 32l2
+g,1αk∥wz,k+1−w∗
+z,k∥2 + 1
+128αk
+∥xk+1−xk∥2
++ 16βk
+ρ ∥wz,k+1−w∗
+z,k∥2 + 1
+64βkρ∥zk+1−zk∥2.
+Now plugging this back, we have reduced (43) to
+Vk+1− Vk
+≤− αk
+16σk
+∥∆x
+k∥2− βk
+16σkρ
+ 
+∥yk−w∗
+y,k∥2 +∥zk−w∗
+z,k∥2
+− 1
+32σkβkρ(∥yk−yk+1∥2 +∥zk−zk+1∥2) + (σk−σk+1)
+σk
+·O(Cf)
+47
+
++ Cw
+σkρ
+ 
+1 +σk−σk+1
+σk+1
++ λk
+4 + O(l2
+g,1ρ)αk +O(1)βk
+Cw
+!
+ 
+∥w∗
+y,k−wy,k+1∥2 +∥w∗
+z,k−wz,k+1∥2
+− Cw
+σkρ
+ 
+∥w∗
+y,k−wy,k∥2 +∥w∗
+z,k−wz,k∥2
+− 1
+64σkαk
+∥xk−xk+1∥2 + O(ρ2l2
+g,1)
+σkγk−1
+∥xk−xk−1∥2
+− Cηρ2ηk+1
+2σkγk−1
+(∥ek
+wy∥2 +∥ek
+wz∥2) +Cηρ2O(η2
+k+1)
+σkγk
+(σ2
+kσ2
+f +σ2
+g) +o(1/k)
++CηO(ρ2l2
+g,1)
+hσk(xk,yk,wy,k)−h∗
+σk,ρ(xk,yk)
+σk
+− hσk(xk+1,yk+1,wy,k+1)−h∗
+σk,ρ(xk+1,yk+1)
+σk
+
++CηO(ρ2l2
+g,1)
+g(xk,zk,wz,k)−g∗
+ρ(xk,zk)
+σk
+− g(xk+1,zk+1,wz,k+1)−g∗
+ρ(xk+1,zk+1)
+σk
+
+. (44)
+Now applying Lemma D.3, along with
+λk = γk
+4ρ≫ O(l2
+g,1ρ)αk +O(βk)
+Cw
+,
+and
+ηk+1≫ Cw
+Cη
+λkγk
+ρ ≫ Cwγ2
+k
+4Cηρ2,
+we can further bound (44) by
+Vk+1− Vk
+≤− αk
+16σk
+∥∆x
+k∥2− βk
+16σkρ
+ 
+∥yk−w∗
+y,k∥2 +∥zk−w∗
+z,k∥2
+− 1
+32σkβkρ(∥yk−yk+1∥2 +∥zk−zk+1∥2)− 1
+64σkαk
+∥xk−xk+1∥2 + O(ρ2l2
+g,1)
+σkγk−1
+∥xk−xk−1∥2
++ (σk−σk+1)
+σk
+·O(Cf) +Cηρ2O(η2
+k+1)
+σkγk
+(σ2
+kσ2
+f +σ2
+g) +o(1/k)
+− Cwλk
+16σkρ(∥w∗
+y,k−wy,k∥2 +∥w∗
+z,k−wz,k∥2)
++CηO(ρ2l2
+g,1)
+hσk(xk,yk,wy,k)−h∗
+σk,ρ(xk,yk)
+σk
+− hσk(xk+1,yk+1,wy,k+1)−h∗
+σk,ρ(xk+1,yk+1)
+σk
+
++CηO(ρ2l2
+g,1)
+g(xk,zk,wz,k)−g∗
+ρ(xk,zk)
+σk
+− g(xk+1,zk+1,wz,k+1)−g∗
+ρ(xk+1,zk+1)
+σk
+
+. (45)
+D.5 Proof of Theorem 5.4
+Summing the bound (45) fork = 0 toK− 1, we can cancel out∥xk−xk+1∥2 terms given that
+O(ρ2l2
+g,1)αk≪ σk
+σk+1
+γk.
+Leaving only relevant terms in the final bound, we get
+VK− V0
+48
+
+≤
+K−1X
+k=0
+
+− αk
+16σk
+∥∆x
+k∥2− βk
+16σkρ
+ 
+∥yk−w∗
+y,k∥2 +∥zk−w∗
+z,k∥2
++
+K−1X
+k=0
+ 
+(σk−σk+1)
+σk
+·O(Cf) +Cηρ2O(η2
+k+1)
+σkγk
+(σ2
+kσ2
+f +σ2
+g)
+!
++
+K−1X
+k=0
+
+−Cwλk
+16σkρ(∥w∗
+y,k−wy,k∥2 +∥w∗
+z,k−wz,k∥2)
+
++
+K−2X
+k=0
+ 1
+σk+1
+− 1
+σk
+ 
+hσk(xk,yk,wy,k)−h∗
+σk,ρ(xk,yk) +g(xk,zk,wz,k)−g∗
+ρ(xk,zk)
+
++CηO(ρ2l2
+g,1)
+hσ0(x0,y 0,wy,0)−h∗
+σ0,ρ(x0,y 0)
+σ0
+− hσK(xK,yK,wy,K)−h∗
+σK,ρ(xK,yK)
+σK−1
+
++CηO(ρ2l2
+g,1)
+g(x0,z 0,wz,0)−g∗
+ρ(x0,z 0)
+σ0
+− g(xK,zK,wz,K)−g∗
+ρ(xK,zK)
+σK−1
+
+,
+where the last two lines come from the telescoping sum. Note that
+hσK(xK,yK,wy,K)−h∗
+σK,ρ(xK,yK)≥ 0,
+g(xK,zK,wz,K)−g∗
+ρ(xK,zK)≥ 0,
+by definition, and furthermore,
+hσk(xk,yk,wy,k)−h∗
+σk,ρ(xk,yk)≤⟨∇ whσk(xk,yk,w∗
+y,k),wy,k−w∗
+y,k⟩,
+g(xk,zk,wz,k)−g∗
+ρ(xk,zk)≤⟨∇ wg(xk,zk,w∗
+z,k),wz,k−w∗
+z,k⟩.
+Here we rely on Assumption 12 (along withY being compact) to bound them:
+hσk(xk,yk,wy,k)−h∗
+σk,ρ(xk,yk)≤Mw∥wy,k−w∗
+y,k∥,
+g(xk,zk,wz,k)−g∗
+ρ(xk,zk)≤Mw∥wz,k−w∗
+z,k∥.
+Plugging this back, and using−ax2 +bx≤ b2
+4a, we have
+VK− V0≤
+K−1X
+k=0
+
+− αk
+16σk
+∥∆x
+k∥2− βk
+16σkρ
+ 
+∥yk−w∗
+y,k∥2 +∥zk−w∗
+z,k∥2
++
+K−1X
+k=0
+ 
+(σk−σk+1)
+σk
+·O(Cf) +Cηρ2O(η2
+k+1)
+σkγk
+(σ2
+kσ2
+f +σ2
+g)
+!
++
+K−1X
+k=0
+ 
+O(M 2
+w)ρ2
+Cwσkγk
+σk−σk+1
+σk+1
+2!
++CηO(ρ2l2
+g,1)
+hσ0(x0,y 0,wy,0)−h∗
+σ0,ρ(x0,y 0)
+σ0
++ g(x0,z 0,wz,0)−g∗
+ρ(x0,z 0)
+σ0
+
+.
+Note thatwy,0 = y0,wz,0 = z0, and thushσ0(x0,y 0,wy,0) = hσ0(x0,y 0),g (x0,z 0,wz,0) = g(x0,z 0).
+Arranging the terms, we have the theorem.
+D.6 Proof of Corollary 5.5
+The proof is almost identical to the proof of Corollary 5.2 in Appendix C.4, and thus we omit the proof.
+49
+
+Appendix E Proofs of Auxiliary Lemmas
+E.1 Proof of Lemma 3.7
+The Lemma essentially follows the proof of Proposition 4 in [51]. It suffices to show thelocal Lipschitz-
+continuityofsolution-sets. Forevery x1,x 2∈X suchthat∥x1−x2∥≤ cxµδ/lg,1 and|σ1−σ2|≤ csµδ/lf,0
+with sufficiently small constantscx,cs > 0, lety1 ∈ T (x1,σ 1) and ¯y = proxρhσ2(x2,·)(y1). Note that
+y1 = proxρhσ1(x1,·)(y1). By Lemma A.3 and Lemma A.4,
+∥y1− ¯y∥ =∥proxρhσ1(x1,·)(y1)−proxρhσ2(x2,·)(y1)∥
+≤O(ρlg,1)∥x1−x2∥ +O(ρlf,0)|σ1−σ2|≤ ρδ.
+Thus,ρ−1∥y1−proxρhσ2(x2,·)(y1)∥≤ δ, and applying Assumption 1,
+dist(y1,T (x2,σ 2))≤µ−1· (O(lg,1)∥x1−x2∥ +O(lf,0)|σ1−σ2|),
+proving the (local)O(lg,1/µ)-Lipschitz continuity inx andO(lf,0/µ)-Lipscthiz continuity inσ ofT (x,σ ).
+E.2 Proof of Lemma 4.1
+Proof. By Danskin’s theorem (Theorem A.1), if∇h∗
+σ(x) and∇g∗(x) exist, then they are given by
+∇h∗
+σ(x) =∇xhσ(x,w∗
+σ),∇g∗(x) =∇xg(x,w∗),
+for anyw∗
+σ∈T (x,σ ),w∗∈T (x, 0). Letw∗
+y = proxρhσ(x∗,·)(y∗),w∗
+z = proxρg(x∗,·)(z∗). By Assumption 1,
+there existsw∗
+σ∈T (x,σ ) that satisfies
+σϵ≥ρ−1∥y∗−w∗
+y∥≥ µ∥y∗−w∗
+σ∥,
+and thus∥y∗−w∗
+σ∥≤ σϵ
+µ . Similarly,∥z∗−w∗∥≤ σϵ
+µ . Therefore, we have
+∥∇xψσ(x∗,y∗,z∗)−∇ψσ(x∗)∥≤ ∥∇xhσ(x∗,y∗)−∇xhσ(x,w∗
+σ)∥ +∥∇xg(x∗,z∗)−∇xg(x∗,w∗)∥
+σ
+≤ lg,1
+σ (∥y∗−w∗
+σ∥ +∥z∗−w∗∥)≤ 2lg,1ϵ
+µ .
+To bound the projection error, note that
+1
+ρ∥ΠX{x∗−ρ∇ψσ(x∗)}− ΠX{x∗−ρ∇xψσ(x∗,y∗,z∗)}∥≤∥∇ xψσ(x∗,y∗,z∗)−∇ψσ(x∗)∥≤ 2lg,1
+µ ϵ,
+by non-expansiveness of projection operators. Thus,
+1
+ρ∥x∗− ΠX{x∗−ρ∇ψσ(x∗)}∥≤ (1 + 2lg,1/µ)·ϵ,
+concluding thatx∗ is anO(ϵ)-stationary point of∇ψσ(x).
+Thesecondpartcomesfromthemean-valuetheorem: bytheassumption,thereexists σ′∈ [0,σ ]suchthat
+∇ψσ(x) = ∂xl(x,σ )−∂xl(x, 0)
+σ = ∂2
+∂σ∂xl(x,σ′) = ∂2
+∂x∂σl(x,σ′).
+50
+
+We also assumedLσ-Lipschitz continuity of second cross-partial derivatives, and thus
+
+
+
+
+∂2
+∂x∂σl(x,σ′)− ∂2
+∂x∂σl(x, 0)
+
+
+
+
+≤Lσσ′≤Lσσ,
+which implies∥∇ψσ(x)−∇ψ(x)∥≤ Lσσ. Using a similar projection non-expansiveness argument, we can
+show that
+1
+ρ∥x− ΠX{x−ρ∇ψ(x)}∥≤ (1 + 2lg,1/µ)·ϵ +Lσσ,
+concluding the proof. □
+E.3 Proof of Lemma A.3
+Proof. Note that
+∥proxρg(x1,·)(y1)−proxρg(x2,·)(y2)∥≤∥ proxρg(x1,·)(y1)−proxρg(x2,·)(y1)∥
++∥proxρg(x2,·)(y1)−proxρg(x2,·)(y2)∥.
+Due to non-expansiveness of proximal operators, the second term is less than∥y1−y2∥. For bounding the
+first term, define
+w∗
+1 = proxρg(x1,·)(y1) = arg min
+y∈Y
+g(x1,w ) + 1
+2ρ∥w−y1∥2,
+w∗
+2 = proxρg(x2,·)(y1) = arg min
+y∈Y
+g(x2,w ) + 1
+2ρ∥w−y1∥2.
+Due to the optimality condition, for anyβ =ρ/4, we can check that
+w∗
+1 = ΠY
+
+w∗
+1−β(∇yg(x1,w∗
+1) +ρ−1(w∗
+1−y1))
+	
+.
+Ontheotherhand,define w′ = ΠY
+
+w∗
+1−β(∇yg(x2,w∗
+1) +ρ−1(w∗
+1−y1))
+	
+. Thisisoneprojectedgradient-
+descent step (PGD) for findingw∗
+2 started fromw∗
+1. By the linear convergence of PGD for strongly convex
+functions over convex domain [9], since the inner function is1/(3ρ)-strongly convex and1/ρ-smooth by
+choosing properρ, we have
+∥w′−w∗
+2∥≤ 9
+10∥w∗
+1−w∗
+2∥.
+Thus,
+∥w∗
+1−w∗
+2∥
+≤∥w∗
+1−w′∥ +∥w′−w∗
+2∥
+≤∥ ΠY
+
+w∗
+1−β(∇yg(x1,w∗
+1) +ρ−1(w∗
+1−y1))
+	
+− ΠY
+
+w∗
+1−β(∇yg(x2,w∗
+1) +ρ−1(w∗
+1−y1))
+	
+∥
++ 9
+10∥w∗
+1−w∗
+2∥
+≤β∥∇yg(x1,w∗
+1)−∇yg(x2,w∗
+1)∥ + 9
+10∥w∗
+1−w∗
+2∥
+=βO(lg,1)∥x1−x2∥ + 9
+10∥w∗
+1−w∗
+2∥.
+where in the third inequality we used non-expansive property of projection onto convex sets. Arranging the
+term and plugβ =ρ/4, we get
+∥w∗
+1−w∗
+2∥≤ O (ρlg,1)∥x1−x2∥.
+□
+51
+
+E.4 Proof of Lemma A.4
+Proof. Again, letw∗
+1 = proxρhσ1(x,·)(y) andw∗
+2 = proxρhσ2(x,·)(y). Using similar arguments to the proof
+in Appendix E.3, we have
+∥w∗
+1−w∗
+2∥≤ β∥∇yhσ1(x,w∗
+1)−∇yhσ2(x,w∗
+1)∥ + 9
+10∥w∗
+1−w∗
+2∥
+≤β∥σ1∇yf(x,w∗
+1)−σ2∇yf(x,w∗
+1)∥ + 9
+10∥w∗
+1−w∗
+2∥.
+whereβ =ρ/4. Arranging terms and using∥∇yf(x,w∗
+1)∥≤ lf,0, we get the lemma. □
+E.5 Proof of Lemma A.5
+Proof. ByLemmaA.3,weknowthatthesolutionof minw∈Yhσ(x,w ) + 1
+2ρ∥w−y∥2 isO(ρlg,1)Lipschitz-
+continuous inx and 1 Lipschitz-continuous iny. Therefore by Lemma A.2, since the inner minimization
+problem isρ−1-smooth,h∗
+σ,ρ(x,y ) is 2ρ−1-smooth. □
+52

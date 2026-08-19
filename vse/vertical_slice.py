@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 from typing import Any
 
-from .hashing import content_hash
+from .hashing import content_hash, file_hash
 from .paper_capsule import audit_capsule, capsule_from_mapping, sealed_target_from_mapping
 from .semantic_review import load_semantic_review
 from .trusted_producer import verify_trusted_receipt
@@ -95,6 +95,17 @@ def run_vertical_slice(
         failures.append("trust_anchor_digest_mismatch")
     if not 3 <= len(cases) <= 5:
         failures.append("vertical_slice_requires_3_to_5_cases")
+    stage_container_digests = manifest.get("stage_container_digests", {})
+    if set(stage_container_digests) != {"generation", "execution", "evaluation"}:
+        failures.append("stage_container_digest_registry_incomplete")
+    for stage, digest in stage_container_digests.items():
+        if (
+            not isinstance(digest, str)
+            or len(digest) != 71
+            or not digest.startswith("sha256:")
+            or any(char not in "0123456789abcdef" for char in digest[7:])
+        ):
+            failures.append(f"{stage}_container_digest_invalid")
     receipts: list[VerticalSliceCaseReceipt] = []
     seen_ids: set[str] = set()
     for case in cases:
@@ -154,10 +165,18 @@ def run_vertical_slice(
                     "stdout_digest"
                 ):
                     case_failures.append(f"{kind}_producer_output_binding_mismatch")
+                if not producer.get("artifact_digest"):
+                    case_failures.append(f"{kind}_producer_artifact_binding_missing")
+                if stage_values[kind].get("producer_artifact_digest") != producer.get(
+                    "artifact_digest"
+                ):
+                    case_failures.append(f"{kind}_producer_artifact_binding_mismatch")
                 if stage_values[kind].get("runtime_container_digest") != producer.get(
                     "container_digest"
                 ):
                     case_failures.append(f"{kind}_producer_container_binding_mismatch")
+                if producer.get("container_digest") != stage_container_digests.get(kind):
+                    case_failures.append(f"{kind}_container_not_frozen")
                 if kind in {"generation", "execution"} and producer.get(
                     "proposal_digest"
                 ) != stage_values[kind].get("proposal_digest"):
@@ -181,6 +200,37 @@ def run_vertical_slice(
                 case_failures.append("evaluation_execution_binding_mismatch")
             if not evaluation.get("trusted_evaluator_digest"):
                 case_failures.append("trusted_evaluator_digest_missing")
+        for kind in ("generation", "execution", "evaluation"):
+            artifact_name = case.get(f"{kind}_artifact")
+            if not artifact_name:
+                case_failures.append(f"{kind}_artifact_path_missing")
+                continue
+            try:
+                artifact_path = (public_root / artifact_name).resolve()
+                if kind == "generation":
+                    proposals_root = (public_root.parent / "proposals").resolve()
+                    artifact_path = (public_root.parent / artifact_name).resolve()
+                    artifact_path.relative_to(proposals_root)
+                else:
+                    artifact_path.relative_to(public_root.resolve())
+                if file_hash(artifact_path) != stage_values[kind].get(
+                    "producer_artifact_digest"
+                ):
+                    case_failures.append(f"{kind}_artifact_digest_mismatch")
+                if kind == "generation":
+                    proposal = json.loads(artifact_path.read_text())
+                    implementation = (
+                        artifact_path.parent / str(proposal["implementation"])
+                    ).resolve()
+                    implementation.relative_to(artifact_path.parent.resolve())
+                    if file_hash(implementation) != proposal.get(
+                        "implementation_sha256"
+                    ):
+                        case_failures.append(
+                            "generation_implementation_digest_mismatch"
+                        )
+            except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
+                case_failures.append(f"{kind}_artifact_unreadable")
         try:
             vds_score = float(evaluation.get("vds_score", 0.0))
         except (TypeError, ValueError):

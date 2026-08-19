@@ -1,0 +1,12 @@
+{
+  "capsule_path": "public/realpilot_linear_coupling/capsule.json",
+  "capsule_pre_review_digest": "00e5fbb38027b9241d891f4ff676eab05432734f3e22b791a8a72e99a6acfabd",
+  "case_id": "realpilot_linear_coupling",
+  "cutoff_provisional": true,
+  "cutoff_utc": "2025-04-26T21:44:15Z",
+  "first_public_at_utc": "2025-10-23T21:44:15Z",
+  "openreview_metadata_status": "challenge_fallback",
+  "root_code_commit": "bcfbe57d74376144e16ff3ebe737ff0f73b17310",
+  "target_commitment": "78502a5b6f564e429b93c83a12fe9fa3f6254c05e931291f4db2d96b9fdf9466",
+  "target_path": "sealed/realpilot_linear_coupling/target.json"
+}

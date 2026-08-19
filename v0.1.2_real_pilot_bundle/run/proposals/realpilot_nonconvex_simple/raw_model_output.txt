@@ -1,0 +1,4 @@
+{
+  "algorithm_family": "Decoupled Bilevel Optimization",
+  "hypothesis": "By decoupling the bilevel optimization process, we can ensure that both the upper and lower level objectives are optimized simultaneously while maintaining seed reproducibility and adhering to the oracle call limit."
+}

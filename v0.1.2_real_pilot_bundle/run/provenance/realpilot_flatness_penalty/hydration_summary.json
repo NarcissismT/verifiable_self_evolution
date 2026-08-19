@@ -1,0 +1,12 @@
+{
+  "capsule_path": "public/realpilot_flatness_penalty/capsule.json",
+  "capsule_pre_review_digest": "e4789c5f8b69bb4c831641bdf945e81cf78ad596ce3f680f43ae3ab3d563bbb0",
+  "case_id": "realpilot_flatness_penalty",
+  "cutoff_provisional": true,
+  "cutoff_utc": "2024-11-07T18:23:29Z",
+  "first_public_at_utc": "2025-05-06T18:23:29Z",
+  "openreview_metadata_status": "challenge_fallback",
+  "root_code_commit": "415acbeab836b1ae7c7eb8c6fe79a1dcfee54d76",
+  "target_commitment": "1c824c602cd39d88e158ec80bb59e2ad7c8e4c177725d387e70df070422f2da9",
+  "target_path": "sealed/realpilot_flatness_penalty/target.json"
+}

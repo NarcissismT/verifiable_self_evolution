@@ -1,0 +1,1869 @@
+On Penalty-based Bilevel Gradient Descent Method
+Han Shen shenh5@rpi.edu
+Rensselaer Polytechnic Institute
+Tianyi Chen chentianyi19@gmail.com
+Rensselaer Polytechnic Institute
+Abstract
+Bilevel optimization enjoys a wide range of applications in hyper-parameter opti-
+mization, meta-learning and reinforcement learning. However, bilevel optimization
+problems are difﬁcult to solve. Recent progress on scalable bilevel algorithms mainly
+focuses on bilevel optimization problems where the lower-level objective is either
+strongly convex or unconstrained. In this work, we tackle the bilevel problem through
+the lens of the penalty method. We show that under certain conditions, the penalty
+reformulation recovers the solutions of the original bilevel problem. Further, we pro-
+pose the penalty-based bilevel gradient descent (PBGD) algorithm and establish its
+ﬁnite-time convergence for the constrained bilevel problem without lower-level strong
+convexity. Experiments showcase the efﬁciency of the proposed PBGD algorithm.
+1 Introduction
+Bilevel optimization plays an increasingly important role in machine learning [Liu et al., 2021a],
+image processing [Crockett and Fessler, 2022] and communications [Chen et al., 2023a]. Speciﬁcally,
+in machine learning, it has a wide range of applications including hyper-parameter optimization
+[Maclaurin et al., 2015, Franceschi et al., 2018], meta-learning [Finn et al., 2017], reinforcement
+learning [Cheng et al., 2022] and adversarial learning [Jiang et al., 2021].
+Deﬁne f : Rdx× Rdy↦→ R and g : Rdx× Rdy↦→ R. We consider the following bilevel problem:
+BP : min
+x,y
+f (x, y) s.t. x∈C , y∈S (x) := arg min
+y∈U (x)
+g(x, y)
+whereC,U (x) andS(x) are non-empty and closed sets given any x∈ C. We call f and g
+respectively as the upper-level and lower-level objective.
+The bilevel optimization problemBP can be extremely difﬁcult to solve due to the coupling
+between the upper-level and lower-level problems. Even for the simpler case where g(x,·) is
+strongly-convex,U (x) = Rdy andC = Rdx, it was not until recently that the veil of an efﬁcient
+method was partially lifted. Under the strong convexity of g(x,·), the lower-level solution set
+S(x) is a singleton. In this case, BP reduces to minimizing f (x,S(x)), the gradient of which can
+be calculated with the implicit gradient (IG) method [Pedregosa, 2016, Ghadimi and Wang, 2018].
+It has been later shown by [Chen et al., 2021] that the IG method converges almost as fast as the
+gradient-descent method. However, existing IG methods cannot handle either the lower-level
+The work of H. Shen and T. Chen was supported by National Science Foundation MoDL-SCALE project 2134168,
+the RPI-IBM Artiﬁcial Intelligence Research Collaboration (AIRC) and an Amazon Research Award.
+1
+arXiv:2302.05185v1  [cs.LG]  10 Feb 2023
+
+constraintU (x) or the non-strong convexity of g(x,·) due to the difﬁculty of computing the
+implicit gradient and thus can not be applied to more complicated bilevel problems.
+To overcome the above challenges, recent work aims to develop gradient-based methods
+without lower-level strong convexity. A prominent branch of algorithms are based on the iterative
+differentiation method; see e.g., [Franceschi et al., 2017, Liu et al., 2021b]. In this case, the lower-
+level solution setS(x) is replaced by the output of an iterative optimization algorithm that solves
+the lower-level problem (e.g., gradient descent (GD)) which allows for explicit differentiation.
+However, these methods are typically restricted to the unconstrained case since the lower-level
+algorithm with the projection operator is difﬁcult to differentiate. Furthermore, the algorithm has
+high memory and computational costs when the number of lower-level iterations is large.
+On the other hand, it is tempting to penalize certain optimality metric of the lower-level
+problem (e.g.,‖∇yg(x, y)‖2) to the upper-level objective, leading to the single-level optimization
+problem. The high-level idea is that minimizing the optimality metric guarantees the lower-level
+optimality y∈S (x) and as long as the optimality metric admits simple gradient evaluation, the
+penalized objective can be optimized via gradient-based algorithms. However, as we will show in
+the next example, GD for a straightforward penalization mechanism may not lead to the desired
+solution of the original bilevel problems.
+Example 1. Consider the following special case ofBP :
+min
+x,y∈R
+f (x, y) :=sin2(y− 2π
+3 ) s.t. y∈ arg min
+y∈R
+g(x, y) := y2+2 sin2 y. (1.1)
+The only solution of (1.1) is y∗ = 0. In this example, it can be checked that ‖∇yg(x, y)‖2 = 0
+if only if y∈ arg miny∈R g(x, y) and thus‖∇yg(x, y)‖2 = 0 is a lower-level optimality metric.
+Penalizing f (x, y) with the penalty function ‖∇yg(x, y)‖2 and a penalty constant γ > 0 gives
+min f (x, y) + γ(y + sin(2y))2. For any γ, y = 2π
+3 is a local solution of the penalized problem while
+is is neither a global solution nor a local solution of the original problem (1.1).
+0 10 20 30 40 50
+step k
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+‖yk − y ∗‖2
+1e1
+Naive penalty
+V-PBGD
+Figure 1: Naive penalty yields sub-
+optimal points while the proposed
+algorithm ﬁnds the solution.
+In Figure 1, we show that in Example 1 the naive penalty
+method, i.e. solving min f (x, y) + γ(y + sin(2y))2, can get
+stuck at sub-optimal points. To tackle such issues, it is
+crucial to study the relation between the bilevel problem
+and its penalized problem. Speciﬁcally, what impact do differ-
+ent penalty terms, penalization constants and problem properties
+have on this relation? Through studying this relation, we
+aim to develop an efﬁcient penalty-based bilevel gradient
+descent method forBP .
+Our contributions. In this work, we will ﬁrst consider
+the following penalty reformulation ofBP , given by
+BP γp : min
+x,y
+f (x, y) + γp(x, y), s.t. x∈C , y∈U (x)
+where p(x, y) is a certain penalty term that will be speciﬁed
+in Section 3. Our ﬁrst result shows that under certain generic conditions on g(x, y), one can
+recover approximate global (local) solutions ofBP by solvingBP γp globally (locally). Further,
+we show that these generic conditions hold without the strong convexity of g(x,·). Then we
+propose a penalized bilevel GD (PBGD) method and establish its ﬁnite-time convergence when
+2
+
+Table 1: Comparison of this work (V-PBGD) and IAPTT-GM [Liu et al., 2021b], BOME [Ye et al.,
+2022], AiPOD [Xiao et al., 2023]. In the table, U is a convex compact set.
+V-PBGD BOME IAPTT-GM AiPOD
+Upper-level constraint    
+Lower-level constraint U (x) =Rdx orU  U (x) =U equality constraint
+Lower-level non-strongly-convex    
+Non-singletonS(x)    
+First-order    
+Convergence ﬁnite-time ﬁnite-time asymptotic ﬁnite-time
+U (x) =Rdy orU (x) =U which is a compact convex set. We summarize the convergence results of
+our algorithm and compare them with several related works in Table 1. Finally, we empirically
+showcase the performance, computation and memory efﬁciency of the proposed algorithm in
+comparison with several competitive baselines.
+1.1 Related works
+The bilevel optimization problem can be dated back to [Stackelberg, 1952]. Recently, the gradient-
+based bilevel optimization methods have gained growing popularity in the machine learning area;
+see, e.g., [Sabach and Shtern, 2017, Franceschi et al., 2018, Liu et al., 2020]. A branch of gradient-
+based methods belongs to the IG method [Pedregosa, 2016]. The ﬁnite-time convergence was
+ﬁrst established in [Ghadimi and Wang, 2018] for the unconstrained strongly-convex lower-level
+problem. Later, the convergence was improved in [Hong et al., 2023, Ji et al., 2021, Chen et al., 2022,
+2021, Khanduri et al., 2021, Shen and Chen, 2022, Li et al., 2022, Sow et al., 2022]. Recent works
+extend IG to constrained strongly-convex lower-level problems; see, e.g., the equality-constrained
+IG method [Xiao et al., 2023] and a 2nd-derivative-free approach [Giovannelli et al., 2022].
+Another branch of methods is based on the iterative differentiation (ITD) methods [Maclaurin
+et al., 2015, Franceschi et al., 2017, Nichol et al., 2018, Shaban et al., 2019]. Later, [Liu et al., 2021b]
+proposes an ITD method with initialization optimization and shows asymptotic convergence.
+Recently, the iterative differentiation of non-smooth lower-level algorithms has been studied
+in [Bolte et al., 2022]. The ITD methods generally lack ﬁnite-time guarantee unless restrictive
+assumptions are made for the iteration mapping [Grazzi et al., 2020, Ji et al., 2022]. A recent work
+[Gao et al., 2022] proposes a bilevel method based on the difference-of-convex algorithm.
+Recently, bilevel optimization methods have also been studied in distributed learning [Tarzanagh
+et al., 2022, Lu et al., 2022, Yang et al., 2022], corset selection [Zhou et al., 2022], overparametrized
+setting [Vicol et al., 2022], multi-block min-max [Hu et al., 2022], game theory [Arbel and Mairal,
+2022] and several acceleration methods have been proposed [Huang et al., 2022, Dagréou et al.,
+2022]. Another work [Gao et al., 2022] proposes a bilevel optimization method based on the
+difference-of-convex algorithm. In preparing our ﬁnal version, a concurrent work [Chen et al.,
+2023b] studies the bilevel problem with convex lower-level objectives and proposes a zeroth-order
+optimization method with ﬁnite-time convergence to the Goldstein stationary point. Another
+concurrent work [Lu and Mei, 2023] proposes a penalty method for the bilevel problem with
+a convex lower-level objective g(x,·). It shows convergence to a weak KKT point of the bilevel
+problem while does not study the relation between the bilevel problem and its penalized problem.
+The relation between the bilevel problem and its penalty reformulation has been ﬁrst studied
+in [Ye et al., 1997] under the calmness condition paired with other conditions such as the 2-Hölder
+3
+
+continuity, which are difﬁcult to satisfy. A recent work [Ye et al., 2022] proposes a novel ﬁrst-order
+method that is termed BOME. By assuming the constant rank constraint qualiﬁcation (CRCQ), [Ye
+et al., 2022] shows convergence of BOME to a KKT point of the bilevel problem. However, it is
+unclear when CRCQ can be satisﬁed and the convergence relies on restrictive assumptions like
+the uniform boundedness of‖∇g‖,‖∇ f‖,| f| and|g|. It is also difﬁcult to argue when the KKT
+point is a solution of the bilevel problem under lower-level non-convexity.
+Notations. We use‖·‖ to denote the l2-norm. Given r > 0 and z∈ Rd, deﬁne N (z, r) :=
+{z′∈ Rd :‖z− z′‖≤ r}. Given vectors x and y, we use (x, y) to indicate the concatenated vector
+of x, y. Given a non-empty closed set S ⊆Rd, deﬁne the distance of y∈ Rd to the set S as
+dS (y) := miny′∈S‖y− y′‖. We use ProjZ to denote the projection to the set Z.
+2 Penalty Reformulation of Bilevel Problems
+In this section, we study the relation between the solutions of the bilevel problem BP and those
+of its penalty reformulationBP γp. SinceS(x) is closed, y∈S (x) is equivalent to dS(x)(y) = 0.
+We therefore rewriteBP as
+min
+x,y
+f (x, y) s.t. x∈C , d2
+S(x)(y) = 0. (2.1)
+The squared distance d2
+S(x)(y) is non-differentiable, and thus penalizing it to the upper-level
+objective is computationally-intractable. Instead, we consider its upper bounds deﬁned as follows.
+Deﬁnition 1 (Squared-distance bound function) . A function p : Rdx× Rdy↦→ R is a ρ-squared-
+distance-bound if there exists ρ > 0 such that for any x∈C , y∈U (x), it holds
+p(x, y)≥ 0, ρp(x, y)≥ d2
+S(x)(y) (2.2a)
+p(x, y) = 0 if and only if dS(x)(y) = 0. (2.2b)
+Suppose p(x, y) is a squared-distance bound function. Given ϵ > 0, we deﬁne the following
+ϵ-approximate problem of the original bilevel problemBP :
+BP ϵ : min
+x,y
+f (x, y) s.t. x∈C , y∈U (x), p(x, y)≤ ϵ.
+It is clear thatBP ϵ with ϵ = 0 recoversBP . For ϵ > 0,BP ϵ is an ϵ-approximate problem ofBP
+since p(x, y) is an upper bound of d2
+S(x)(y) and is smaller than ϵ.
+We start by considering the relation between the global solutions ofBP ϵ andBP γp. Before we
+introduce the theorem, we ﬁrst give the following deﬁnition and assumption.
+Deﬁnition 1 (Lipschitz continuity). Given L > 0, a function 𝓁 : Rd↦→ Rd′
+is said to be L-Lipschitz-
+continuous onX⊆ Rd if it holds for any x, x′∈X that‖𝓁(x)− 𝓁(x′)‖≤ L‖x− x′‖. A function 𝓁
+is said to be L-Lipschitz-smooth if its gradient is L-Lipschitz-continuous.
+Assumption 1. There exists L >0 that given any x∈C , f (x,·) is L-Lipschitz continuous onU (x).
+The above assumption is standard and has been made in several other works studying bilevel
+optimization; see, e.g., [Ghadimi and Wang, 2018, Chen et al., 2021, 2023b]. In order to establish
+4
+
+relation between the solutions ofBP γp and those ofBP , a crucial step is to guarantee that (xγ, yγ),
+which is a solution of BP γp, is feasible for BP ϵ, i.e., to guarantee p(xγ, yγ) is small. Under
+Assumption 1, the growth of f (xγ,·) is controlled. Then an important intuition is that increasing
+γ inBP γp likely makes p(xγ,·) more dominant, and thus decreases p(xγ, yγ). With this intuition,
+we introduce the theorem as follows.
+Theorem 1 (Relation on global solutions) . Assume p(x, y) is a ρ-squared-distance-bound function and
+Assumption 1 holds. Given any ϵ1 > 0, any global solution ofBP is an ϵ1-global-minimum point ofBP γp
+with any γ≥ γ∗ = L2ρ
+4 ϵ−1
+1 . Conversely, given ϵ2≥ 0, if (xγ, yγ) achieves ϵ2-global-minimum ofBP γp
+with γ > γ∗, (xγ, yγ) is the global solution ofBP ϵγ with some ϵγ≤ (ϵ1+ϵ2)/(γ−γ∗).
+The proof of Theorem 1 can be found in Appendix A.1. In Example 1, ‖∇yg(x, y)‖2 is a
+squared-distance-bound and the above theorem regarding global solutions holds. However, as
+illustrated in Example 1, a penalized problem with any γ > 0 always admits a local solution that
+is meaningless to the original problem. In fact, the relationship between local solutions is more
+intricate than that between global solutions. Nevertheless, we prove in the following theorem that
+under some veriﬁable conditions, the local solutions of BP γp are local solutions of theBP ϵ.
+Theorem 2 (Relation on local solutions). Assume p(x,·) is continuous given any x∈C and p(x, y) is ρ-
+squared-distance-bound function. Given γ > 0, let (xγ, yγ) be a local solution ofBP γp onN ((xγ, yγ), r).
+Assume f (xγ,·) is L-Lipschitz-continuous onN (yγ, r). Assume either one of the following is true:
+(i) There exists ¯y ∈ N(yγ, r) such that ¯y ∈ U(xγ) and p(xγ, ¯y) ≤ ϵ for some ϵ ≥ 0. Deﬁne
+¯ϵγ = L2ρ
+γ2 +2ϵ.
+(ii) The set U (xγ) is convex and the function p (xγ,·) is convex. Deﬁne ¯ϵγ = L2ρ
+γ2 .
+Then (xγ, yγ) is a local solution ofBP ϵγ with ϵγ≤ ¯ϵγ.
+The proof of Theorem 2 can be found in Appendix A.2. We provide a remark below.
+Remark 1 (Intuition of the conditions) . In (i) of Theorem 2, we need an approximate global
+minimizer of p(xγ,·); and, in (ii), we assume p(xγ,·) is convex. Loosely speaking, these conditions
+essentially require minU (x) p(x,·) to be globally solvable. Such a requirement is natural since
+ﬁnding a feasible point in S(x) is possible only if one can solve for p(x,·) = 0 onU (x). While
+they appear to be abstract, we will show how Conditions (i) and (ii) in Theorem 2 can be veriﬁed
+in the following sections.
+3 Solving Bilevel Problems with Non-convex Lower-level Objectives
+To develop algorithms with non-asymptotic convergence, we considerBP with unconstrained
+lower-level problem (U (x) =Rdy in this case), given by
+UP : min
+x,y
+f (x, y) s.t. x∈C , y∈ arg min
+y∈Rdy
+g(x, y)
+where we assumeC is a closed convex set and f , g are continuously differentiable.
+5
+
+3.1 Candidate penalty terms
+Following Section 2, to reformulateUP , we ﬁrst seek a squared-distance bound function p that
+satisﬁes Deﬁnition 1. For a non-convex function g(x,·), an interesting property is the Polyak-
+Łojasiewicz (PL) inequality which is deﬁned in the next assumption.
+Assumption 2 (Polyak-Lojasiewicz function). The lower-level function g(x,·) satisﬁes the 1
+µ-PL in-
+equality; that is, there exists µ > 0 such that given any x∈C , it holds for any y∈ Rdy that
+‖∇yg(x, y)‖2≥ 1
+µ (g(x, y)− v(x)) where v(x) := min
+y∈Rdy
+g(x, y). (3.1)
+In reinforcement learning, it has been proven in [Mei et al., 2020, Lemma 8&9] that the non-
+convex discounted return objective satisﬁes the PL inequality under certain parameterization.
+Moreover, recent studies found that over-parameterized neural networks can lead to losses that
+satisfy the PL inequality [Liu et al., 2022].
+Under the PL inequality, we consider the following potential penalty functions:
+p(x, y) =g(x, y)− v(x) (3.2a)
+p(x, y) =‖∇yg(x, y)‖2 (3.2b)
+The next lemma shows that the above penalty functions are squared-distance bound functions.
+Lemma 1. Consider the following assumptions:
+(i) Suppose Assumption 2 holds, and there exists L g such that∀x∈C , g(x,·) is L g-Lipschitz-smooth.
+(ii) Suppose Assumption 2 holds with modulus 1√µ.
+Then (3.2a) and (3.2b) are µ-squared-distance-bound functions respectively under (i) and (ii).
+The proof of Lemma 1 can be found in Appendix B.1.
+3.2 Penalty reformulation
+Given a squared-distance bound p(x, y) and constants γ > 0 and ϵ > 0, deﬁne the penalized
+problem and the ϵ-approximate bilevel problem ofUP respectively as
+UP γp : min
+x,y
+Fγ(x, y) := f (x, y) + γp(x, y)
+s.t. x∈C .
+UP ϵ : min
+x,y
+f (x, y)
+s.t. x∈C , p(x, y)≤ ϵ.
+It remains to show that the solutions of UP γp are meaningful toUP . Starting with the global
+solutions, we give the following proposition.
+Proposition 1 (Relation on global solutions). Assume Assumption 1 and either of the following holds:
+(a) Condition (i) Lemma 1 hold; and, choose p (x, y) = g(x, y)− v(x).
+6
+
+(b) Condition (ii) in Lemma 1 holds; and, choose p (x, y) =‖∇yg(x, y)‖2.
+Suppose γ≥ L
+√
+µδ−1 with some δ > 0. Let (xγ, yγ) be a global solution ofUP γp. Then (xγ, yγ) is a
+global solution ofUP ϵγ with ϵγ≤ δ.
+Proposition 1 follows directly from Theorem 1 with ϵ1 = L
+√
+ρδ/2, γ≥ 2γ∗ = L
+√
+µδ−1 and
+ϵ2 = 0. By Proposition 1, the global solution of UP γp solves an approximate bilevel problem
+ofUP . However, sinceUP γp is generally non-convex, it is also important to consider the local
+solutions. Following Theorem 2, the next proposition captures the relation on the local solutions.
+Proposition 2 (Relation on local solutions). Assume Assumption 1 and either of the following holds:
+(a) Condition (i) in Lemma 1 holds; with some δ > 0, choose
+p(x, y) = g(x, y)− v(x) and γ≥ L
+√
+3µδ−1.
+(b) Condition (ii) in Lemma 1 holds; with some δ > 0, choose
+p(x, y) =‖∇yg(x, y)‖2 and γ≥ max{L
+√
+2µδ−1, Lσ−1√
+δ−1}
+where σ > 0 is the lower-bound of the singular values of∇yyg(x, y) on{(x, y)∈C× Rdy : y /∈S (x)}.
+If (xγ, yγ) is a local solution ofUP γp, then it is a local solution ofUP ϵγ with some ϵγ≤ δ.
+The proof of Proposition 2 can be found in Appendix B.2. Proposition 2 explains the obser-
+vations in Figure 1 and Example 1. The failing point y = 2π
+3 mentioned in Example 1 yields
+∇yyg(x, y) = 0 which violates (b) in Proposition 2. It can be checked that (a) of Proposition 2
+holds in Example 1.
+Propositions 1 and 2 suggest γ = Ω(δ−0.5) to achieve ϵγ≤ δ. Next we show this is tight.
+Corollary 1. In Proposition 1 or 2, to guarantee ϵγ =O(δ), the lower-bound on the penalty constant
+γ = Ω(δ−0.5) is tight.
+Proof. Consider the following special case ofUP :
+min
+y∈R
+f (x, y) = y, s.t. y∈ arg min
+y∈R
+g(x, y) = y2. (3.3)
+In the example, the two penalty terms 1
+4‖∇yg(x, y)‖2 and g(x, y)− v(x) coincide to be p(x, y) = y2.
+In this case, solutions of UP andUP γp are respectively 0 and− 1
+2γ. Thus − 1
+2γ is a solution of
+CP ϵγ with ϵγ = 1/(4γ2). To ensure ϵγ =O(δ), γ = Ω(δ−0.5) is required in this example. Then the
+poof is complete by the fact that the assumptions in Proposition 1 and 2 hold in this example.
+Propositions 1 and 2 imply that UP andUP γp are related in the sense that one can glob-
+ally/locally solve an approximate bilevel problem ofUP by globally/locally solving the penalized
+problemUP γp instead. A natural approach to solving the penalized problem is the projected
+gradient method. At each iteration k, we assume access to hk which is either∇p(xk, yk) or its
+estimate if∇p cannot be exactly evaluated. We then update (xk, yk) with∇Fγ(xk, yk) evaluated
+using hk. The process is summarized in Algorithm 1.
+When p(x, y) = ‖∇yg(x, y)‖2,∇p(x, y) can be exactly evaluated. In this case, Algorithm 1
+is a standard projected gradient method and the convergence property directly follows from
+the existing literature. In the next subsection, we focus on the other penalty function p(x, y) =
+g(x, y)− v(x) and discuss whenUP γp can be efﬁciently solved.
+7
+
+Algorithm 1 PBGD: Penalized bilevel GD
+1: Select (x1, y1)∈Z :=C×U (x). Select step size α, penalty constant γ and iteration number K.
+2: for k = 1 to K do
+3: Compute hk =∇p(xk, yk) or its estimate.
+4: (xk+1, yk+1) = ProjZ
+(
+(xk, yk)− α
+(
+∇ f (xk, yk) + γhk
+))
+.
+5: end for
+Algorithm 2 V-PBGD: Function value gap based PBGD
+1: Select (x1, y1)∈Z =C× Rdy. Select step sizes α, β, constant γ, iteration numbers Tk and K.
+2: for k = 1 to K do
+3: Obtain ˆyk = ω(k)
+Tk+1 following (3.4a).
+4: Update (xk, yk) following (3.4b).
+5: end for
+3.3 PBGD with function value gap
+We consider solvingUP γp with the function value gap penalty (3.2a). To solveUP γp with the
+gradient-based method, the obstacle is that ∇p(x, y) requires∇v(x). On one hand, v(x) is not
+necessarily smooth. Even if v(x) is differentiable,∇v(x)⁄=∇xg(x, y∗) in general, where y∗∈
+S(x). However, it is possible to compute∇v(x) efﬁciently under some relatively mild conditions.
+Lemma 2 ([Nouiehed et al., 2019, Lemma A.5]) . Assume Assumption 2 holds, and g is Lg-Lipschitz-
+smooth. Then∇v(x) =∇xg(x, y∗) for any y∗∈S (x), and v(x) is (Lg+L2
+gµ)-Lipschitz-smooth.
+Under the conditions in Lemma 2, ∇v(x) can be evaluated directly at any optimal solution
+of the lower-level problem. This suggests one ﬁnd a lower-level optimal solution y∗∈S (x), and
+evaluate the penalized gradient∇Fγ(x, y) with∇v(x) =∇xg(x, y∗). Following this idea, given
+outer iteration k and xk, we run Tk steps of inner GD update to solve the lower-level problem:
+ω(k)
+t+1 = ω(k)
+t − β∇yg(xk, ω(k)
+t ), t = 1, . . . ,Tk (3.4a)
+where ω(k)
+1 = yk. Update (3.4a) yields an approximate lower-level solution ˆyk = ω(t)
+Tk+1. Then we
+can approximate∇Fγ(xk, yk) with ˆyk and update (xk, yk) via:
+(xk+1, yk+1) = ProjZ
+(
+(xk, yk)− α
+(
+∇ f (xk, yk) + γ(∇g(xk, yk)−∇xg(xk, ˆyk)
+))
+(3.4b)
+whereZ =C× Rdy and∇xg(x, y) := (∇xg(x, y), 0) with 0∈ Rdy. The update is summarized
+in Algorithm 2, which is a function value gap-based special case of PBGD (Algorithm 1) with
+hk =∇g(xk, yk)−∇xg(xk, ˆyk).
+Notice that only ﬁrst-order information is required in update (3.4), which is in contrast to the
+implicit gradient methods or some iterative differentiation methods where higher-order derivatives
+are required; see, e.g., [Ghadimi and Wang, 2018, Franceschi et al., 2017, Liu et al., 2021b]. In
+modern machine learning applications, this could substantially save computational cost since the
+dimension of parameter is often large, making higher-order derivatives particularly costly.
+8
+
+3.4 Analysis of PBGD with function value gap
+We ﬁrst introduce the following regularity assumption commonly made in the convergence
+analysis of the gradient-based bilevel optimization methods [Chen et al., 2021, Grazzi et al., 2020].
+Assumption 3 (smoothness). There exist constants L f and Lg such that f (x, y) and g(x, y) are respec-
+tively L f -Lipschitz-smooth and L g-Lipschitz-smooth in (x, y).
+Deﬁne the projected gradient of UP γp at (xk, yk)∈Z as
+Gγ(xk, yk) := 1
+α
+(
+(xk, yk)− ( ¯xk+1, ¯yk+1)
+)
+, (3.5)
+where ( ¯xk+1, ¯yk+1) := ProjZ ((xk, yk)− α∇Fγ(xk, yk)). This deﬁnition (3.5) is commonly used as
+the convergence metric for the projected gradient methods. It is known that given a convex Z,
+Gγ(x, y) =0 if and only if (x, y) is a stationary point ofUP γp [Ghadimi et al., 2016]. We provide
+the following theorem on the convergence of V-PBGD.
+Theorem 3. Consider V-PBGD (Algorithm 2). Suppose Assumption 1,2 and 3 hold. Select ω(k)
+1 = yk and
+α∈ (0, (L f + γ(2Lg + L2
+gµ))−1], β∈ (0, L−1
+g ], γ≥ L
+√
+3µδ−1, Tk = Ω(log(αk)).
+i) With C f =inf(x,y)∈Z f (x, y), it holds that
+1
+K
+K
+∑
+k=1
+‖Gγ(xk, yk)‖2≤ 18
+(
+Fγ(x1, y1)− C f
+)
+αK +
+10L2L2
+g
+K .
+ii) Suppose limk→∞(xk, yk) = ( x∗, y∗), then (x∗, y∗) is a stationary point of UP γp. If (x∗, y∗) is a
+local/global solution ofUP γp, it is a local/global solution ofUP ϵγ with some ϵγ≤ δ.
+The proof of Theorem 3 can be found in Appendix B.3. Theorem 3 implies an iteration com-
+plexity of ~O(γϵ−1) to ﬁnd an ϵ-stationary-point ofUP γp. This recovers the iteration complexity
+of the projected GD method [Nesterov, 2013] with a smoothness constant of Θ(γ). If we choose
+δ = ϵ, then we get an iteration complexity of ~O(ϵ−1.5). In (ii), under no stronger conditions
+needed for the projected GD method to yield meaningful solutions, the V-PBGD algorithm ﬁnds a
+local/global solution of the approximateUP . In addition, an analysis of the stochastic V-PBGD
+algorithm is provided in Appendix B.4.
+4 Solving Bilevel Problems with Lower-level Constraints
+In the previous section, we have introduced the PBGD method to solve a class of non-convex
+bilevel problems with only upper-level constraints. When the lower-level constraints are involved,
+it becomes more difﬁcult to develop a gradient-based algorithm with ﬁnite-time guarantees.
+In this section, under assumptions on the lower-level objective that are weaker than the
+commonly used smooth and strong-convexity assumptions, we propose an algorithm with ﬁnite-
+time convergence guarantee. Speciﬁcally, consider the special case of BP withU (x) =U:
+CP : min
+x,y
+f (x, y) s.t. x∈C , y∈ argmin
+y∈U
+g(x, y)
+where we assumeC andU are convex compact in this section.
+9
+
+4.1 Penalty reformulation
+Following Section 2, we seek to reformulateCP with a suitable penalty function p(x, y). In this
+section, we consider choosing p(x, y) as the lower-level function value gap g(x, y)− v(x) where
+v(x) := miny∈U g(x, y). We ﬁrst list some assumptions that will be repeatedly used in this section.
+Assumption 4. Consider the following conditions:
+(i) There exists µ > 0 such that∀x∈C , g(x,·) has 1
+µ-quadratic-growth, that is,∀y∈U , it holds that
+g(x, y)− v(x)≥ 1
+µ d2
+S(x)(y).
+(ii) There exists ¯µ > 0 such that∀x∈C , g(x,·) satisﬁes 1
+¯µ-proximal-error-bound, i.e.,∀y∈U , it holds
+1
+β
+‖‖y− ProjU
+(
+y− β∇yg(x, y)
+)‖‖≥ 1
+¯µ dS(x)(y)
+where β is a constant step size.
+(iii) Given any x ∈C , g(x,·) is convex.
+Note that the above assumptions do not need to hold simultaneously. Now we are ready to
+introduce the following lemma.
+Lemma 3. Assume (i) in Assumption 4 holds. Then g (x, y)− v(x) is a µ-squared-distance-bound.
+The proof is similar to that of Lemma 1 and thus is omitted. Given γ > 0 and ϵ > 0, we
+can deﬁne the penalized problem and the approximate bilevel problem of CP respectively as:
+CP γp : min
+x,y
+Fγ(x, y) := f (x, y)+ γ
+(
+g(x, y)− v(x)
+)
+s.t. x∈C , y∈U .
+CP ϵ : min
+x,y
+f (x, y)
+s.t. x∈C , y∈U , g(x, y)−v(x)≤ ϵ.
+It remains to show that the solutions of CP γp are meaningful to CP . In the following
+proposition, we show that the solutions ofCP γp approximately solveCP .
+Proposition 3 (Relation on the local/global solutions) . Assume Assumption 1 and either of the
+following holds:
+(a) Conditions (i) and (ii) in Assumption 4 hold. Choose
+γ≥ max{L
+√
+µδ−1, L
+√
+3 ¯µδ−1, 3L1,g ¯µLδ−1}
+with L1,g = maxx∈C,y∈U‖∇yg(x, y)‖ and some δ > 0;
+(b) Conditions (i) and (iii) in Assumption 4 hold. Choose γ≥ L
+√
+µδ−1 with some δ > 0.
+If (xγ, yγ) is a local/global solution ofCP γp, it is a local/global solution ofCP ϵγ with some ϵγ≤ δ.
+The proof of Proposition 3 can be found in Appendix C.1. In the above proposition, L1,g is
+ﬁnite sinceC×U is compact and∇yg(x, y) is continuous.
+10
+
+4.2 PBGD under lower-level constraints
+To study the gradient-based method for solving CP γp, it is crucial to identify when v(x) is
+Lipschitz-smooth. In the unconstrained lower-level case, we have shown that v(x) is Lipschitz-
+smooth by Lemma 2. However, the proof of Lemma 2 relies on the condition that ∇yg(x, y) = 0
+for any y∈S (x) which is not necessarily true under lower-level constraint.
+To characterize v(x), we introduce the following lemma.
+Lemma 4. [Dem’yanov and Malozemov, 1971, Theorem 2.2.1] Given any d∈ Rdx such that‖d‖ = 1,
+∇dv(x) which is the directional derivative of v (x) along d exists at any x∈C . It holds that
+∇dv(x) = min
+y∗∈S (x)
+⟨∇xg(x, y∗), d⟩,∀x∈C . (4.1)
+In order for v(x) to have Lipschitz continuous gradient, all its directional derivatives are
+necessarily Lipschitz-continuous. By Lemma 4, one will need ∇xg(x, y) andS(x) to be Lipschitz-
+continuous in some sense, which is formalized next.
+Lemma 5 (Lipschitz-continuity ofS(x)). Assume there exists Lg such that g is Lg-Lipschitz-smooth.
+Assume either one of the following is true:
+(a) Condition (ii) in Assumption 4 holds;
+(b) Conditions (i) and (iii) in Assumption 4 hold.
+Then there exists L S >0 that given any x 1, x2∈C , for any y 1∈S (x1),∃y2∈S (x2) such that
+‖y1− y2‖≤ LS‖x1− x2‖.
+The proof of Lemma 5 can be found in Appendix C.2. It is worth noting that Lemma 5 is
+not sufﬁcient for v(x) to be smooth. Given any d in Lemma 4, consider∇dv(x1) and∇dv(x2) at
+different points x1, x2 in a small neighborhood. Suppose in Lemma 4, the minimum are achieved
+at y1∈S (x1) and y2∈S (x2). Since y1 and y2 are not necessarily close in any sense, ∇dv(x) is
+not guaranteed to be continuous. To address this issue, we provide a sufﬁcient condition under
+which v(x) is (Lipschitz) smooth in the following lemma.
+Lemma 6 (Lipschitz-smoothness of v(x)). Suppose the conditions in Lemma 5 hold. Given any x∈C ,
+if∇xg(x, y1) =∇xg(x, y2) for any y1, y2∈S (x), then it holds
+∇v(x) =∇xg(x, y∗),∀y∗∈S (x) (4.2)
+and v(x) is L v-Lipschitz-smooth with L v = Lg(1+LS).
+The proof of Lemma 6 can be found in Appendix C.2. In Lemma 6 , a sufﬁcient condition for
+the assumption on∇xg(x, y) to hold isS(x) is a singleton. Alternatively, the assumption holds if
+the constraint setU allows∇yg(x, y∗) = 0 for any y∗∈S (x) by following the proof of Lemma 2.
+Below we give a simple example where Lemma 6 holds without a singleton S(x).
+Example 2. SupposeC = [0, ∞) andU = [2, 3]. Let
+g(x, y) =
+
+
+
+1
+2 (y− x− 1)2 y≥ x + 1
+0 x− 1 < y < x + 1
+1
+2 (y− x + 1)2 y≤ x− 1.
+11
+
+Algorithm 3 V-PBGD under lower-level constraint
+1: Select (x1, y1)∈Z =C×U . Select step sizes α, β, constant γ and iteration numbers Tk,K.
+2: for k = 1 to K do
+3: Obtain ˆyk = ω(k)
+Tk+1 following (4.3).
+4: Update (xk, yk) following (3.4b) withZ =C×U .
+5: end for
+It can be checked that Lemma 5 holds for this example. When 0≤ x≤ 1 or x≥ 4,S(x) is
+a singleton. Otherwise, ∇xg(x, y) = 0 on a non-singleton S(x). Thus for any x∈C , we have
+∇xg(x, y1) =∇xg(x, y2) for any y1, y2∈S (x), further indicating Lemma 6 holds for this example.
+Lemma 6 suggests one evaluate∇v(x) with any solution of the lower-level problem. Given
+iteration k and xk, it is then natural to run the projected GD method to ﬁnd the solution of the
+lower-level problem:
+ω(k)
+t+1 = ProjU
+(
+ω(k)
+t − β∇yg(xk, ω(k)
+t )
+)
+, t = 1, . . . ,Tk. (4.3)
+We can then calculate∇v(xk)≈∇ xg(xk, ˆyk) with ˆyk = ω(k)
+Tk+1 and update (xk, yk) following (3.4b)
+withZ =C×U . The V-PBGD update for the constrained lower-level problem is summarized in
+Algorithm 3. Next, we provide the convergence result for Algorithm 3.
+Theorem 4. Consider V-PBGD with lower-level constraint (Algorithm 3). Suppose Assumption 1,
+Assumption 3, and either (i)&(ii) or (i)&(iii) in Assumption 4 hold. Also assume the condition in Lemma 6
+holds. With a prescribed accuracy δ > 0, select
+α = ( L f + γ(Lg + Lv))−1, β = L−1
+g , γ chosen by Proposition 3, Tk = Ω(log(αγk)).
+i) With C f =inf(x,y)∈Z f (x, y), it holds that
+1
+K
+K
+∑
+k=1
+‖Gγ(xk, yk)‖2≤ 8
+(
+Fγ(x1, y1)− C f
+)
+αK +
+3L2
+gµCg
+K .
+ii) Suppose limk→∞(xk, yk) = ( x∗, y∗), then (x∗, y∗) is a stationary point of CP γp. If (x∗, y∗) is a
+local/global solution ofCP γp, then it is a local/global solution ofCP ϵγ with some ϵγ≤ δ.
+The proof of Theorem 4 can be found in Appendix C.3. The above theorem implies an
+iteration complexity of ~O(γϵ−1) to ﬁnd an ϵ-stationary-point ofCP γp. This recovers the iteration
+complexity of the projected GD method [Nesterov, 2013] with a smoothness constant of Θ(γ). If
+we choose δ = ϵ, then the iteration complexity is ~O(ϵ−1.5) under Condition (b) or ~O(ϵ−2) under
+Condition (a) in Proposition 3.
+5 Simulations
+In this section, we ﬁrst verify our main theoretical results in a toy problem and then compare the
+PBGD1 algorithm with several other baselines on the data hyper-cleaning task.
+1The code is available on github (link).
+12
+
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0
+3.5
+4
+3
+2
+1
+01
+0.5
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0
+Graph of the bilevel problem
+z = f(x, y)|y ∈ S(x)
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0
+3.5
+4
+3
+2
+1
+01
+0.5
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0
+3.5
+Point spread by V-PBGD
+z = f(x, y)|y ∈ S(x)
+(xK, yK, f(xK, yK))
+(a) Left ﬁgure: the graph of z = f (x, y) and z =
+f (x, y)|y∈S (x); right ﬁgure: the last iterates generated
+by 1000 runs of V-PBGD with random initial points.
+0 20 40
+γ
+0
+100
+200
+300
+400
+500Total iteration K
+Iteration complexity versus γ
+PBGD
+y = Θ(γ)
+100 101
+γ
+10-4
+10-3
+10-2
+10-1
+d 2
+S(xK)(yK)
+Lower-level optimality gap versus γ
+PBGD
+y = Θ(1/γ2)
+(b) Test of V-PBGD with different constant γ. The
+ﬁgure is generated by running V-PBGD (Algorithm
+2) for K steps such that‖Gγ(xK, yK)‖2≤ 10−4.
+Figure 2: Test of V-PBGD in the bilevel problem (5.1).
+5.1 Numerical veriﬁcation
+We ﬁrst consider the following non-convex bilevel problem:
+min
+x,y
+f (x, y) = cos(4y + 2)
+1 + e2−4x + 1
+2 ln((4x− 2)2 + 1) (5.1)
+s.t. x∈ [0, 3], y∈ arg min
+y∈R
+g(x, y) = ( y + x)2 + x sin2(y + x)
+which is a special case ofUP . It can be checked that the assumptions in Theorem 3 are satisﬁed.
+We plot the graph of z = f (x, y) in Figure 2a (left). Notice that given any x∈ [0, 3], we have
+S(x) ={−x}. Thus the the bilevel problem in (5.1) can be reduced to minx∈C f (x, y)|y=−x. We
+plot the single-level objective function z = f (x, y)|y=−x in Figure 2a (left) as the intersected line of
+the surface z = f (x, y) and the plane y =−x. We then run V-PBGD with γ = 10 for 1000 random
+initial points (x1, y1) and plot the last iterates in Figure 2a (right). It can be observed that V-PBGD
+consistently ﬁnds the local solutions of the bilevel problem (5.1).
+Next we test the impact of γ on the performance of V-PBGD, and report the results in Figure
+2b. From Figure 2b, the iteration complexity is Θ(γ), while the lower-level accuracy is Θ(1/γ2),
+consistent with Theorem 3.
+5.2 Data hyper-cleaning
+In this section, we test PBGD in the data hyper-cleaning task [Franceschi et al., 2017, Shaban et al.,
+2019]. In this task, one is given a set of polluted training data, along with a set of clean validation
+and test data. The goal is to train a data cleaner that assigns smaller weights to the polluted data
+to improve the generalization in unseen clean data.
+We evaluate the performance of our algorithm in terms of speed, memory usage and solution
+quality in comparison with several competitive baseline algorithms including the IAPTT-GM
+[Liu et al., 2021b], BOME [Ye et al., 2022], RHG [Franceschi et al., 2017] and T-RHG [Shaban
+et al., 2019]. In addition to V-PBGD, we also test G-PBGD which is a special case of PBGD with
+p(x, y) =‖∇yg(x, y)‖2. Adopting the settings in [Franceschi et al., 2017, Liu et al., 2021b, Shaban
+et al., 2019], we randomly split the MNIST data-set into a training data-set of size 5000, a validation
+set of size 5000 and a test set of size 10000; and pollute 50% of the training data with uniformly
+drawn labels. Then we run the algorithms with a linear model and an MLP network.
+13
+
+Table 2: Comparison of solution quality. The results are averaged over 20 runs and± is followed
+by an estimated margin of error under 95% conﬁdence. F1 score measures the quality of the data
+cleaner [Franceschi et al., 2017].
+Method Linear model 2-layer MLP
+Test accuracy F1 score Test accuracy F1 score
+RHG 87.64± 0.19 89.71± 0.25 87.50± 0.23 89.41± 0.21
+T-RHG 87.63± 0.19 89.04± 0.24 87.48± 0.22 89.20± 0.21
+BOME 87.09± 0.14 89.83± 0.18 87.42± 0.16 89.26± 0.17
+G-PBGD 90.09± 0.12 90.82± 0.19 92.17± 0.09 90.73± 0.27
+IAPTT-GM 90.44± 0.14 91.89± 0.15 91.72± 0.11 91.82± 0.19
+V-PBGD 90.48± 0.13 91.99± 0.14 94.58± 0.08 93.16± 0.15
+Table 3: Comparison of GPU memory usage and the runtime to reach the highest test accuracy
+averaged over 20 runs.
+RHG T-RHG BOME G-PBGD IAPTT-GM V-PBGD
+GPU memory (MB) linear 1369 1367 1149 1149 1237 1149
+GPU memory (MB) MLP 7997 7757 1201 1235 2613 1199
+Runtime (sec.) linear 73.21 32.28 5.92 7.72 693.65 9.12
+Runtime (sec.) MLP 94.78 54.96 39.78 185.08 1310.63 207.53
+We report the solution quality in Table 2. It can be observed that both PBGD algorithms
+achieve competitive performance, and V-PBGD achieves the best performance among the baselines.
+We also evaluate PBGD in terms of convergence speed and memory usage, which is reported in
+Table 3. It can be observed that PBGD does not have a steep increase in memory consumption or
+runtime as compared to the ITD baselines, indicating PBGD is potentially more scalable.
+6 Conclusions
+In this work, we study the bilevel optimization problem through the lens of the penalty method.
+We prove that the solutions of the penalized problem approximately solve the original bilevel
+problem under certain generic conditions veriﬁable with commonly made assumptions. To solve
+the penalized problem, we propose the penalty-based bilevel GD method and establish its ﬁnite-
+time convergence under unconstrained and constrained lower-level problems. Experiments verify
+the effectiveness of the proposed algorithm.
+References
+M. Arbel and J. Mairal. Non-convex bilevel games with critical point selection maps. In Proc. of
+Advances in Neural Information Processing Systems, 2022.
+J. Bolte, E. Pauwels, and S. Vaiter. Automatic differentiation of nonsmooth iterative algorithms. In
+Proc. of Advances in Neural Information Processing Systems , 2022.
+L. Chen, S. T. Jose, I. Nikoloska, S. Park, T. Chen, and O. Simeone. Learning with limited samples:
+Meta-learning and applications to communication systems. Foundations and Trends® in Signal
+Processing, 17(2):79–208, 2023a.
+14
+
+L. Chen, J. Xu, and J. Zhang. On bilevel optimization without lower-level strong convexity. arXiv
+preprint arXiv:2301.00712, 2023b.
+T. Chen, Y. Sun, and W. Yin. Tighter analysis of alternating stochastic gradient method for
+stochastic nested problems. In Proc. of Advances in Neural Information Processing Systems , 2021.
+T. Chen, Y. Sun, Q. Xiao, and W. Yin. A single-timescale method for stochastic bilevel optimization.
+In Proc. of International Conference on Artiﬁcial Intelligence and Statistics , 2022.
+C. Cheng, T. Xie, N. Jiang, and A. Agarwal. Adversarially trained actor critic for ofﬂine reinforce-
+ment learning. In Proc. of International Conference on Machine Learning , 2022.
+C. Crockett and J. Fessler. Bilevel methods for image reconstruction. Foundations and Trends® in
+Signal Processing, 15(2-3):121–289, 2022.
+M. Dagréou, P . Ablin, S. Vaiter, and T. Moreau. A framework for bilevel optimization that enables
+stochastic and global variance reduction algorithms. In Proc. of Advances in Neural Information
+Processing Systems, 2022.
+V . F. Dem’yanov and V . N. Malozemov. On the theory of non-linear minimax problems.Russian
+Mathematical Surveys, 26(3):57, 1971.
+D. Drusvyatskiy and A. Lewis. Error bounds, quadratic growth, and linear convergence of
+proximal methods. Mathematics of Operations Research, 43(3):919–948, 2018.
+C. Finn, P . Abbeel, and S. Levine. Model-agnostic meta-learning for fast adaptation of deep
+networks. In Proc. of International Conference on Machine Learning , 2017.
+L. Franceschi, M. Donini, P . Frasconi, and M. Pontil. Forward and reverse gradient-based
+hyperparameter optimization. In Proc. of International Conference on Machine Learning , 2017.
+L. Franceschi, P . Frasconi, S. Salzo, R. Grazzi, and M. Pontil. Bilevel programming for hyperpa-
+rameter optimization and meta-learning. In Proc. of International Conference on Machine Learning ,
+2018.
+L. Gao, J. Ye, H. Yin, S. Zeng, and J. Zhang. Value function based difference-of-convex algorithm
+for bilevel hyperparameter selection problems. In Proc. of International Conference on Machine
+Learning, 2022.
+S. Ghadimi and M. Wang. Approximation methods for bilevel programming. arXiv preprint
+arXiv:1802.02246, 2018.
+S. Ghadimi, G. Lan, and H. Zhang. Mini-batch stochastic approximation methods for nonconvex
+stochastic composite optimization. Mathematical Programming, 155(1):267–305, 2016.
+T. Giovannelli, G. Kent, and L. Vicente. Inexact bilevel stochastic gradient methods for constrained
+and unconstrained lower-level problems. arXiv preprint arXiv:2110.00604, 2022.
+R. Grazzi, L. Franceschi, M. Pontil, and S. Salzo. On the iteration complexity of hypergradient
+computation. In Proc. of International Conference on Machine Learning , pages 3748–3758, 2020.
+15
+
+M. Hong, H.-T. Wai, Z. Wang, and Z. Yang. A two-timescale framework for bilevel optimization:
+Complexity analysis and application to actor-critic. SIAM Journal on Optimization, 33(1), 2023.
+Q. Hu, Y. Zhong, and T. Yang. Multi-block min-max bilevel optimization with applications in
+multi-task deep auc maximization. Proc. of Advances in Neural Information Processing Systems ,
+2022.
+F. Huang, J. Li, S. Gao, and H. Huang. Enhanced bilevel optimization via bregman distance. In
+Proc. of Advances in Neural Information Processing Systems , 2022.
+K. Ji, J. Yang, and Y. Liang. Provably faster algorithms for bilevel optimization and applications to
+meta-learning. In Proc. of International Conference on Machine Learning , 2021.
+K. Ji, M. Liu, Y. Liang, and L. Ying. Will bilevel optimizers beneﬁt from loops. In Proc. of Advances
+in Neural Information Processing Systems, 2022.
+H. Jiang, Z. Chen, Y. Shi, B. Dai, and T. Zhao. Learning to defend by learning to attack. In Proc. of
+International Conference on Artiﬁcial Intelligence and Statistics , 2021.
+H. Karimi, J. Nutini, and M. Schmidt. Linear convergence of gradient and proximal-gradient
+methods under the polyak-lojasiewicz condition. In Proc. of Joint European conference on machine
+learning and knowledge discovery in databases , 2016.
+P . Khanduri, S. Zeng, M. Hong, H.-T. Wai, Z. Wang, and Z. Yang. A near-optimal algorithm for
+stochastic bilevel optimization via double-momentum. In Proc. of Advances in Neural Information
+Processing Systems, 2021.
+J. Li, B. Gu, and H. Huang. A fully single loop algorithm for bilevel optimization without hessian
+inverse. In Proc. of AAAI Conference on Artiﬁcial Intelligence , 2022.
+C. Liu, L. Zhu, and M. Belkin. Loss landscapes and optimization in over-parameterized non-linear
+systems and neural networks. Applied and Computational Harmonic Analysis, 59:85–116, 2022.
+R. Liu, P . Mu, X. Yuan, S. Zeng, and J. Zhang. A generic ﬁrst-order algorithmic framework for
+bi-level programming beyond lower-level singleton. In Proc. of International Conference on Machine
+Learning, 2020.
+R. Liu, J. Gao, J. Zhang, D. Meng, and Z. Lin. Investigating bilevel optimization for learning and
+vision from a uniﬁed perspective: A survey and beyond. IEEE Transactions on Pattern Analysis
+and Machine Intelligence, 44(12):10045–10067, 2021a.
+R. Liu, Y. Liu, S. Zeng, and J. Zhang. Towards gradient-based bilevel optimization with non-convex
+followers and beyond. In Proc. of Advances in Neural Information Processing Systems , 2021b.
+S. Lu, X. Cui, M. Squillante, B. Kingsbury, and L. Horesh. Decentralized bilevel optimization for
+personalized client learning. In Proc. of IEEE International Conference on Acoustics, Speech and
+Signal Processing, 2022.
+Z. Lu and S. Mei. First-order penalty methods for bilevel optimization. arXiv preprint
+arXiv:2301.01716, 2023.
+16
+
+D. Maclaurin, D. Duvenaud, and R. Adams. Gradient-based hyperparameter optimization through
+reversible learning. In Proc. of International Conference on Machine Learning , 2015.
+J. Mei, C. Xiao, C. Szepesvari, and D. Schuurmans. On the global convergence rates of softmax
+policy gradient methods. In Proc. of International Conference on Machine Learning , 2020.
+Y. Nesterov. Gradient methods for minimizing composite functions. Mathematical programming,
+140(1):125–161, 2013.
+Y. Nesterov and B. Polyak. Cubic regularization of newton method and its global performance.
+Mathematical Programming, 108(1):177–205, 2006.
+A. Nichol, J. Achiam, and J. Schulman. On ﬁrst-order meta-learning algorithms. arXiv preprint
+arXiv:1803.02999, 2018.
+M. Nouiehed, M. Sanjabi, T. Huang, J. Lee, and M. Razaviyayn. Solving a class of non-convex
+min-max games using iterative ﬁrst order methods. In Proc. of Advances in Neural Information
+Processing Systems, 2019.
+F. Pedregosa. Hyperparameter optimization with approximate gradient. In Proc. of International
+Conference on Machine Learning, 2016.
+S. Sabach and S. Shtern. A ﬁrst order method for solving convex bilevel optimization problems.
+SIAM Journal on Optimization, 27(2):640–660, 2017.
+A. Shaban, C. Cheng, N. Hatch, and By. Boots. Truncated back-propagation for bilevel optimization.
+In Proc. of International Conference on Artiﬁcial Intelligence and Statistics , 2019.
+H. Shen and T. Chen. A single-timescale analysis for stochastic approximation with multiple
+coupled sequences. In Proc. of Advances in Neural Information Processing Systems , 2022.
+D. Sow, K. Ji, and Y. Liang. On the convergence theory for hessian-free bilevel algorithms. In Proc.
+of Advances in Neural Information Processing Systems , 2022.
+H. Stackelberg. The Theory of Market Economy. Oxford University Press, 1952.
+D. Tarzanagh, M. Li, C. Thrampoulidis, and S. Oymak. Fednest: Federated bilevel, minimax, and
+compositional optimization. In Proc. of International Conference on Machine Learning , 2022.
+P . Vicol, J. Lorraine, F. Pedregosa, D. Duvenaud, and R. Grosse. On implicit bias in overparameter-
+ized bilevel optimization. In Proc. of International Conference on Machine Learning , 2022.
+Q. Xiao, H. Shen, W. Yin, and T. Chen. Alternating implicit projected sgd and its efﬁcient variants
+for equality-constrained bilevel optimization. In Proc. of International Conference on Artiﬁcial
+Intelligence and Statistics, 2023.
+S. Yang, X. Zhang, and M. Wang. Decentralized gossip-based stochastic bilevel optimization over
+communication networks. In Proc. of Advances in Neural Information Processing Systems , 2022.
+J. Ye, D. Zhu, and Q. Zhu. Exact penalization and necessary optimality conditions for generalized
+bilevel programming problems. SIAM Journal on Optimization, 7(2), 1997.
+17
+
+M. Ye, B. Liu, S. Wright, P . Stone, and Q. Liu. Bome! bilevel optimization made easy: A simple
+ﬁrst-order approach. In Proc. of Advances in Neural Information Processing Systems , 2022.
+X. Zhou, R. Pi, W. Zhang, Y. Lin, Z. Chen, and T. Zhang. Probabilistic bilevel coreset selection. In
+Proc. of International Conference on Machine Learning , 2022.
+Appendix for
+“On Penalty-based Bilevel Gradient Descent Method"
+A Proof in Section 2
+For ease of reading, we restateBP andBP γp below.
+BP : min
+x,y
+f (x, y) s.t. x∈C , y∈S (x) := arg min
+y∈U (x)
+g(x, y),
+and
+BP γp : min
+x,y
+f (x, y) + γp(x, y), s.t. x∈C , y∈U (x).
+A.1 Proof of Theorem 1
+Theorem 1. Assume p(x, y) is an ρ-squared-distance-bound function and f (x,·) is L-Lipschitz continuous
+onU (x) for any x∈C . Given any ϵ1 > 0, any global solution ofBP is an ϵ1-global-minimum point of
+BP γp with any γ≥ γ∗ = L2ρ
+4 ϵ−1
+1 . Conversely, given ϵ2≥ 0, let (xγ, yγ) achieves ϵ2-global-minimum of
+BP γp with γ > γ∗. Then (xγ, yγ) is the global solution of the following approximate problem of BP with
+some 0≤ ϵγ≤ (ϵ1+ϵ2)/(γ−γ∗); given by
+min
+x,y
+f (x, y) s.t. x∈C , y∈U (x),
+p(x, y)≤ ϵγ. (A.1)
+Proof. Given any x∈C and y∈U (x), sinceS(x) is closed and non-empty, we can ﬁnd yx∈
+arg miny′∈S (x)‖y′− y‖. By Lipschitz continuity assumption on f (x,·), given any x∈C , it holds
+for any y∈U (x) that
+f (x, y)− f (x, yx)≥− LdS(x)(y) by dS(x)(y) =‖yx− y‖.
+Then it follows that
+f (x, y) + γ∗p(x, y)− f (x, yx)≥− LdS(x)(y) + γ∗p(x, y)
+≥− LdS(x)(y) + γ∗
+ρ d2
+S(x)(y)
+≥ min
+z∈R≥0
+−Lz + γ∗
+ρ z2 =−ϵ1 with γ∗ = L2ρ
+4 ϵ−1
+1 . (A.2)
+Since yx∈S (x) (thus yx∈U (x)) and x∈C , (x, yx) is feasible for BP . Let f∗ be the optimal
+objective value forBP , we know f (x, yx)≥ f∗. This along with (A.2) indicates
+f (x, y) + γ∗p(x, y)− f∗≥− ϵ1,∀x∈C , y∈U (x). (A.3)
+18
+
+Let (x∗, y∗) be a global solution ofBP so that f (x∗, y∗) = f∗. Since y∗∈S (x∗), p(x∗, y∗) = 0 . By
+(A.3), we have
+f (x∗, y∗) + γ∗p(x∗, y∗)≤ f (x, y) + γ∗p(x, y) + ϵ1,∀x∈C ,∀y∈U (x). (A.4)
+Inequality (A.4) along with the fact that the global solution of BP is feasible forBP γp prove that
+the global solution ofBP achieves ϵ1-global-minimum forBP γp.
+Now for the converse part. Since (xγ, yγ) achieves ϵ2-global-minimum, it holds for any x, y
+feasible forBP γp that
+f (xγ, yγ) + γp(xγ, yγ)− ϵ1≤ f (x, y) + γp(x, y)− ϵ1 + ϵ2. (A.5)
+In (A.5), choosing (x, y) = ( x∗, y∗) which is a global solution ofBP yields
+f (xγ, yγ) + γp(xγ, yγ)− ϵ1≤ f (x∗, y∗)− ϵ1 + ϵ2 since p(x∗, y∗) = 0
+≤ f (xγ, yγ) + γ∗p(xγ, yγ) + ϵ2 by (A.3).
+Then we have
+(γ− γ∗)p(xγ, yγ)≤ ϵ1 + ϵ2⇒ p(xγ, yγ)≤ (ϵ1 + ϵ2)/(γ− γ∗).
+Deﬁne ϵγ = p(xγ, yγ), then ϵγ≤ (ϵ1 + ϵ2)/(γ− γ∗). By (A.5), it holds for any (x, y) feasible for
+problem (A.1) that
+f (xγ, yγ) + γp(xγ, yγ)≤ f (x, y) + γp(x, y)⇒ f (xγ, yγ)− f (x, y)≤ γ(p(x, y)− ϵγ)≤ 0,
+where the last inequality follows from the feasibility of (x, y). This along with the fact that (xγ, yγ)
+is feasible for problem (A.1) prove that (xγ, yγ) is a global solution for problem (A.1).
+A.2 Proof of Theorem 2
+In this section, we give the proof of a stronger version of Theorem 2 in the sense of weaker
+assumptions.
+We ﬁrst deﬁne a new class of functions as follows.
+Deﬁnition 2 (Restricted α-sublinearity). LetX⊆ Rd. We say a function 𝓁 :X↦→ R is restricted
+α-sublinear on x∈X if there exists α∈ [0, 1] and x∗∈X which is the projection of x onto the
+minimum point set of 𝓁 such that the following inequality holds.
+𝓁
+(
+(1− α)x + αx∗)
+≤ (1− α)𝓁(x) + α𝓁(x∗).
+Suppose 𝓁 is a continuous convex or more generally a star-convex function [Nesterov and
+Polyak, 2006, Deﬁnition 1] deﬁned on a closed convex set X and 𝓁 has a non-empty minimum
+point set, then 𝓁 is restricted α-sublinear for any α∈ [0, 1] on every x∈X .
+Now we are ready to give the stronger version of Theorem 2.
+Theorem 5 (Stronger version of Theorem 2) . Assume p(x,·) is continuous given any x∈C and
+p(x, y) is ρ-squared-distance-bound function. Given γ > 0, let (xγ, yγ) be a local solution ofBP γp on
+N ((xγ, yγ), r). Assume f (xγ,·) is L-Lipschitz-continuous onN (yγ, r).
+Assume either one of the following is true:
+19
+
+(i) There exists ¯y ∈ N(yγ, r) such that ¯y ∈ U(xγ) and p(xγ, ¯y) ≤ ϵ for some ϵ ≥ 0. Deﬁne
+¯ϵγ = L2ρ
+γ2 +2ϵ.
+(ii) The setU (xγ) is convex and p(xγ,·) is restricted α-sublinear on yγ with some α∈ (0, min{ r
+dS(xγ )(yγ), 1}].
+Deﬁne ¯ϵγ = L2ρ
+γ2 .
+Then (xγ, yγ) is a local solution of the following approximate problem ofBP with 0≤ ϵγ≤ ¯ϵγ.
+min
+x,y
+f (x, y) s.t. x∈C , y∈U (x) (A.6)
+p(x, y)≤ ϵγ.
+The above theorem is stronger than Theorem 2 in the sense that the condition (ii) in above
+theorem is weaker than (ii) in Theorem 2 since the continuity and convexity of p(xγ,·) implies the
+restricted α-sublinearity of p(xγ,·) on yγ with any α∈ [0, 1].
+Proof of Theorem 5. We will prove the theorem for two cases separately.
+(i). Assume (i) is true. For δ≥ 0, deﬁne
+Sδ(x) :={y∈U (x) : p(x, y)≤ δ}, x∈C .
+Since p(x, y) = 0 if and only if (iff) y∈S (x) = arg miny∈U (x) g(x, y), it follows thatS(x) ={y∈
+U (x) : p(x, y) = 0}. Then Sδ(x)⊇S (x), and thus Sδ(x)⁄= ∅. Moreover, Sδ(x) is closed by
+continuity of p(x,·) and closeness ofU (x) for x∈C .
+Since (xγ, yγ) is a local solution ofBP γp onN ((xγ, yγ), r), it holds for any (x, y)∈N ((xγ, yγ), r)
+that is feasible forBP γp that
+f (xγ, yγ) + γp(xγ, yγ)≤ f (x, y) + γp(x, y). (A.7)
+SinceSϵ(xγ) is closed and non-empty, we can ﬁnd yx∈ arg miny′∈Sϵ(xγ)‖y′− yγ‖. Since ¯y∈
+N (yγ, r)∩S ϵ(xγ), we have‖yx− yγ‖≤‖ ¯y− yγ‖≤ r. This indicates yx∈N (yγ, r) and (xγ, yx)∈
+N ((xγ, yγ), r). Moreover, since yx∈U (xγ), (xγ, yx) is feasible forBP γp. This allows to choose
+(x, y) = ( xγ, yx) in (A.7), leading to
+f (xγ, yγ) + γp(xγ, yγ)≤ f (xγ, yx) + γϵ since yx∈S ϵ(xγ).
+By Lipschitz continuity of f (xγ,·) onN (yγ, r), we further have
+γp(xγ, yγ)− L‖yx− yγ‖− γϵ≤ 0. (A.8)
+SinceSϵ(xγ)⊇S (xγ), we have‖yx− yγ‖ = dSϵ(xγ)(yγ)≤ dS(xγ)(yγ)≤
+√
+ρp(xγ, yγ). Plugging
+this into (A.8) yields
+γp(xγ, yγ)− L
+√
+ρp(xγ, yγ)− γϵ≤ 0
+which implies p(xγ, yγ)≤ ¯ϵγ = L2ρ
+γ2 + 2ϵ. Let ϵγ = p(xγ, yγ), then ϵγ≤ ¯ϵγ and (xγ, yγ) is feasible
+for problem (A.6). By (A.7), it holds for any (x, y)∈N ((xγ, yγ), r) that are feasible for problem
+(A.6) that
+f (xγ, yγ)− f (x, y)≤ γ(p(x, y)− ϵγ)≤ 0.
+20
+
+This and the fact that (xγ, yγ) is feasible for (A.6) imply (xγ, yγ) is a local solution of (A.6).
+(ii). Assume (ii) is true. Since S(xγ) is closed and non-empty, we can ﬁnd yx such that
+yx ∈ arg miny∈S (xγ)‖y− yγ‖. Let ¯y = ( 1− α)yγ + αyx. Since 0 < α≤ min{r/‖yγ− yx‖, 1},
+we know ¯y∈N (yγ, r) and (xγ, ¯y)∈N ((xγ, yγ), r). Moreover, since U (xγ) is convex, we have
+¯y∈U (xγ) and (xγ, ¯y) is feasible forBP γp.
+Since (xγ, yγ) is a local solution ofBP γp onN ((xγ, yγ), r), we have
+f (xγ, yγ) + γp(xγ, yγ)≤ f (xγ, ¯y) + γp(xγ, ¯y). (A.9)
+Since p(xγ, y)≥ 0 and p(xγ, y) = 0 iff dS(xγ)(y) = 0, we know the minimum point set of p(xγ,·)
+isS(xγ). Then by the restricted α-sublinearity of p(xγ,·) on yγ, we have
+p(xγ, ¯y)≤ αp(xγ, yx) + (1− α)p(xγ, yγ) = ( 1− α)p(xγ, yγ).
+Substituting the above inequality into (A.9) yields
+f (xγ, yγ) + γp(xγ, yγ)≤ f (xγ, ¯y) + γ(1− α)p(xγ, yγ).
+Re-arranging the above inequality and using the Lipschitz continuity of f (xγ,·) onN (yγ, r) yield
+γαp(xγ, yγ)≤ LαdS(xγ)(yγ)⇒ γαp(xγ, yγ)≤ Lα
+√
+ρp(xγ, yγ)
+which implies p(xγ, yγ)≤ ¯ϵγ = L2ρ
+γ2 . Let ϵγ = p(xγ, yγ), then ϵγ≤ ¯ϵγ and (xγ, yγ) is feasible
+for problem (A.6). Since (xγ, yγ) is a local solution of BP γp onN ((xγ, yγ), r), it holds for any
+(x, y)∈N ((xγ, yγ), r) that is feasible forBP γp that
+f (xγ, yγ) + γp(xγ, yγ)≤ f (x, y) + γp(x, y).
+Following from the above inequality, it holds for any (x, y)∈N ((xγ, yγ), r) that are feasible for
+problem (A.6) that
+f (xγ, yγ)− f (x, y)≤ γ(p(x, y)− ϵγ)≤ 0.
+This and the fact that (xγ, yγ) is feasible for (A.6) imply (xγ, yγ) is a local solution of (A.6).
+B Proof in Section 3
+B.1 Proof of Lemma 1
+(i). Assume (i) in this lemma holds. By the deﬁnition of v(x), it is clear that g(x, y)− v(x)≥ 0 for
+any x∈C and y∈ Rdy. SinceS(x) is closed, y∈S (x) iff dS(x)(y) = 0. Then by the deﬁnition of
+S(x), it holds for any x∈C and y∈ Rdy that
+g(x, y)− v(x) = 0 iff y∈S (x)⇒ g(x, y)− v(x) = 0 iff dS(x)(y) = 0.
+It then sufﬁces to check whether g(x, y)− v(x) is an upper-bound of dS(x)(y). By 1
+µ-PL condition
+of g(x,·) and [Karimi et al., 2016, Theorem 2], g(x,·) satisﬁes the 1
+µ-quadratic-growth condition,
+and thus for any x∈C and y∈ Rdy, it holds that
+g(x, y)− v(x)≥ 1
+µ d2
+S(x)(y). (B.1)
+21
+
+This completes the proof.
+(ii). Assume (ii) in this lemma holds. We consider when g(x,·) satisﬁes PL condition given
+any x∈C . By the PL inequality, it is clear that ‖∇yg(x, y)‖2 = 0 is equivalent to g(x, y) =
+miny∈Rdy g(x, y) given any x∈C , thus‖∇yg(x, y)‖2 = 0 iff dS(x)(y) = 0 for any x∈C .
+By 1√µ-PL condition of g(x,·), we have‖∇yg(x, y)‖2≥ 1√µ (g(x, y)− v(x)). By (B.1), we have
+g(x, y)− v(x)≥ 1√µ d2
+S(x)(y). Thus it holds that
+‖∇yg(x, y)‖2≥ 1
+µ d2
+S(x)(y),
+which completes the proof.
+B.2 Proof of Proposition 2
+We prove the proposition from the two conditions separately.
+(a) Since (xγ, yγ) is a local solution of UP γp, yγ is a local solution of UP γp with x = xγ. By
+the ﬁrst-order stationary condition, it holds that
+∇y f (xγ, yγ) + γ∇yg(xγ, yγ) = 0⇒‖∇ yg(xγ, yγ)‖≤ L/γ.
+Since g(xγ,·) satisﬁes 1/ µ-PL inequality, it holds that
+‖∇yg(xγ, yγ)‖2≥ 1
+µ p(xγ, yγ).
+The above two inequalities imply p(xγ, yγ)≤ L2µ
+γ2 . Further notice thatUP andUP γp are respec-
+tively special cases ofBP andBP γp withU (x) = Rdy; and p(x, y) is a squared distance bound by
+Lemma 1, then the result directly follows from Theorem 2 where condition (i) is met with ¯y = yγ,
+ρ = µ and ϵ = L2µ
+γ2 with γ≥ L
+√
+3µδ−1.
+(b) Suppose yγ /∈S (xγ). Since (xγ, yγ) is a local solution of UP γp, yγ is a local solution of
+UP γp with x = xγ. By the ﬁrst-order stationary condition, it holds that
+∇y f (xγ, yγ) + 2γ∇yyg(xγ, yγ)∇yg(xγ, yγ) = 0⇒‖∇ yyg(xγ, yγ)∇yg(xγ, yγ)‖≤ L/2γ
+which along with the assumption that the singular values of ∇yyg(x, y) on{x∈C , y∈U (x) : y /∈
+S(x)} are lower bounded by σ > 0 gives
+p(xγ, yγ) =‖∇yg(xγ, yγ)‖2≤‖∇yyg(xγ, yγ)∇yg(xγ, yγ)‖2
+σ2 ≤ L2/(4γ2σ2). (B.2)
+When yγ∈S (xγ), we know p(xγ, yγ) = 0 and thus (B.2) still holds. Further notice thatUP and
+UP γp are special cases ofBP andBP γp withU (x) = Rdy; and p(x, y) is a squared distance bound
+by Lemma 1, then the result directly follows from Theorem 2 where condition (i) is met with
+¯y = yγ, ρ = µ and ϵ = L2/(4γ2σ2) with γ≥ max{L
+√
+2µδ−1, L
+√
+δ−1/σ}.
+22
+
+B.3 Proof of Theorem 3
+We ﬁrst provide the convergence theorem on the sequence {ω(k)
+t } given the outer iteration k.
+Theorem 6. Assume there exist Lg > 0 and µ > 0 such that g(x,·) is Lg-Lipschitz-smooth and 1
+µ-PL
+given any x∈C . Choose β∈ (0, 1
+Lg
+]. Given any xk∈ C, ω(k)
+1 ∈ Rdy, running Tk steps of inner GD
+updates (3.4a) gives ˆyk satisfying
+d2
+S(xk)( ˆyk)≤ µ
+(
+1− β
+2µ
+)Tk(
+g(xk, ω(k)
+1 )− v(xk)
+)
+. (B.3)
+Proof of Theorem 6. We omit all index k since this proof holds given any k. By Lipschitz smoothness
+of g(x,·), it holds that
+g(x, ωt+1)≤ g(x, ωt)− β‖∇yg(x, ωt)‖2 + Lgβ2
+2 ‖∇yg(x, ωt)‖2
+≤ g(x, ωt)− β
+2‖∇yg(x, ωt)‖2 since Lgβ≤ 1.
+By 1
+µ-PL condition of g(x,·), we further have
+g(x, ωt+1)− v(x)≤ g(x, ωt)− v(x)− β
+2µ
+(
+g(x, ωt)− v(x)
+)
+≤
+(
+1− β
+2µ
+)(
+g(x, ωt)− v(x)
+)
+.
+Iteratively applying the above inequality for t = 1, . . . ,T yields
+g(x, ωT+1)− v(x)≤
+(
+1− β
+2µ
+)T(
+g(x, ω1)− v(x)
+)
+. (B.4)
+By [Karimi et al., 2016, Theorem 2], the 1
+µ-PL condition of g(x,·) also implies the error bound
+of g(x,·), which leads to
+g(x, ωT+1)− v(x)≥ 1
+µ d2
+S(x)(ωT+1), x∈C
+which along with (B.4) proves the result in (B.3).
+Notice the term g(xk, ω(k)
+1 )− v(xk) in (B.3) depends on the drifting variable xk. If ω(k)
+1 is
+not carefully chosen, g(xk, ω(k)
+1 )− v(xk) can grow unbounded with k and hence hinder the
+convergence. To prevent this, we choose ω(k)
+1 = yk in the analysis. Since g(x,·) is 1
+µ-PL for any
+x∈C , it holds that
+g(xk, ω(k)
+1 )− v(xk)≤ 1
+µ‖∇yg(xk, ω(k)
+1 )‖2 = 1
+µ
+‖‖‖‖
+yk− yk+1− α∇y f (xk, yk)
+αγ
+‖‖‖‖
+2
+≤ 2
+µγ2α2‖yk+1− yk‖2 + 2L2
+µγ2 (B.5)
+where we have used Young’s inequality and the condition that f (xk,·) is L-Lipschitz-continuous.
+Later we will show that the inexact gradient descent update (3.4b) decreases‖(xk+1, yk+1)−
+(xk, yk)‖ and therefore upper-bounds g(xk, ω(k)
+1 )− v(xk).
+Next we give the proof of Theorem 3.
+23
+
+Proof of Theorem 3. In this proof, we write z = ( x, y). Update (3.4b) can be written as
+zk+1 = ProjZ
+(
+zk− α ˆ∇Fγ(zk; ˆyk)
+)
+where ˆ∇Fγ(zk; ˆyk
+) :=∇ f (zk) + γ(∇g(zk)−∇xg(xk, ˆyk)
+)
+.
+By the assumptions made in this theorem and Lemma 2, Fγ is Lγ-Lipschitz-smooth with
+Lγ = L f + γ(2Lg + L2
+gµ). Then by Lipschitz-smoothness of Fγ, it holds that
+Fγ(zk+1)≤ Fγ(zk) +⟨∇Fγ(zk), zk+1− zk⟩ + Lγ
+2‖zk+1− zk‖2
+α≤ 1
+Lγ
+≤ Fγ(zk) +⟨ ˆ∇Fγ(zk; ˆyk), zk+1− zk⟩ + 1
+2α‖zk+1− zk‖2 +⟨∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk), zk+1− zk⟩.
+(B.6)
+Consider the second term in the RHS of (B.6). By Lemma 7, zk+1 can be written as
+zk+1 = arg min
+z∈Z
+⟨ ˆ∇Fγ(zk; ˆyk), z⟩ + 1
+2α‖z− zk‖2.
+By the ﬁrst-order optimality condition of the above problem, it holds that
+⟨ ˆ∇Fγ(zk; ˆyk) + 1
+α (zk+1− zk), zk+1− z⟩≤ 0,∀z∈Z .
+Since zk∈Z , we can choose z = zk in the above inequality and obtain
+⟨ ˆ∇Fγ(zk; ˆyk), zk+1− zk⟩≤− 1
+α‖zk+1− zk‖2. (B.7)
+Consider the last term in the RHS of (B.6). By Young’s inequality, we ﬁrst have
+⟨∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk), zk+1− zk⟩≤ α‖∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk)‖2 + 1
+4α‖zk+1− zk‖2 (B.8)
+where the ﬁrst term in the above inequality can be bounded as
+‖∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk)‖2 = γ2‖∇v(xk)−∇xg(xk, ˆyk)‖2
+= γ2‖∇g(xk, y∗)|y∗∈S (xk)−∇xg(xk, ˆyk)‖2 by Lemma 2,
+≤ γ2L2
+gd2
+S(xk)( ˆyk) by choosing y∗∈ arg min
+y′∈S (xk)
+‖y′− ˆyk‖,
+≤ γ2L2
+gµ
+(
+1− β
+2µ
+)Tk(
+g(xk, ω(k)
+1 )− v(xk)
+)
+by Theorem 6,
+≤
+(
+1− β
+2µ
+)Tk(2L2
+g
+α2‖zk+1− zk‖2 + 2L2L2
+g
+)
+by (B.5),
+≤ 1
+8α2‖zk+1− zk‖2 +
+L2L2
+g
+2α2k2 (B.9)
+where the last inequality requires Tk≥ max{− logcβ
+(16L2
+g),−2 logcβ
+(2αk)} with cβ = 1− β
+2µ.
+Plugging the inequality (B.9) into (B.8) yields
+⟨∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk), zk+1− zk⟩≤ 3
+8α‖zk+1− zk‖2 +
+L2L2
+g
+2αk2 . (B.10)
+24
+
+Substituting (B.10) and (B.7) into (B.6) and rearranging the resulting inequality yield
+1
+8α‖zk+1− zk‖2≤ Fγ(zk)− Fγ(zk+1) +
+L2L2
+g
+2αk2 . (B.11)
+With ¯zk+1 deﬁned in (3.5), we have
+‖ ¯zk+1− zk‖2≤ 2‖ ¯zk+1− zk+1‖2 + 2‖zk+1− zk‖2
+≤ 2α2‖∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk)‖2+2‖zk+1−zk‖2
+≤ 9
+4‖zk+1− zk‖2 +
+L2L2
+g
+k2 (B.12)
+where the second inequality uses non-expansiveness of ProjZ and the last one follows from (B.9).
+Together (B.11) and (B.12) imply
+‖ ¯zk+1− zk‖2≤ 18α
+(
+Fγ(zk)− Fγ(zk+1)
+)
++
+10L2L2
+g
+k2 .
+Since f (z)≥ C f for any z∈Z and g(x, y)− v(x)≥ 0, Fγ(z)≥ C f for any z∈Z . Taking a
+telescope sum of the above inequality and using Gγ(zk) = 1
+α (zk− ¯zk+1) yield
+K
+∑
+k=1
+‖Gγ(zk)‖2≤ 18
+(
+Fγ(z1)− C f
+)
+α +
+K
+∑
+k=1
+10L2L2
+g
+k2
+which along with the fact ∑K
+k=1
+1
+k2≤∫ K
+1
+1
+x2 dx = 1− 1
+K implies
+K
+∑
+k=1
+‖Gγ(zk)‖2≤ 18
+(
+Fγ(z1)− C f
+)
+α + 10L2L2
+g. (B.13)
+This proves (i) in Theorem 3.
+Suppose limk→∞ zk = z∗. Since∇Fγ(z) is continuous, Gγ(z) is continuous and thus limk→∞ Gγ(zk) =
+Gγ(z∗). By (B.13), Gγ(z∗) = 0, that is z∗ = ProjZ
+(
+z∗− α∇Fγ(z∗)
+)
+. This further implies
+⟨∇Fγ(z∗), z∗− z⟩≤ 0,∀z∈Z
+which indicates z∗ is a stationary point ofUP γp. If z∗ is a local/global solution, it follows from
+Proposition 1 and 2 that the rest of the result holds.
+Lemma 7. LetZ⊆ Rd be a closed convex set. Given any z ∈Z , q∈ Rd and α > 0, it holds that
+ProjZ
+(
+z− αq
+)
+= arg min
+z′∈Z
+⟨q, z′⟩ + 1
+2α‖z− z′‖2.
+Proof. Given z∈ Rd, deﬁne z∗ = arg minz′∈Rd E(z′) where
+E(z′) :=⟨q, z′− z⟩ + 1
+2α‖z′− z‖2. (B.14)
+By the optimality condition, it follows z∗ = z− αq. For any z′∈ Rd, it follows that
+E(z′)− E(z∗) =⟨q, z′− z⟩ + 1
+2α‖z′− z‖2−⟨ q,−αq⟩− α
+2‖q‖2
+= 1
+2α‖z′− z‖2 +⟨q, z′− z⟩ + α
+2‖q‖2
+= 1
+2α‖z′− (z− αq)‖2. (B.15)
+25
+
+Then we have
+arg min
+z′∈Z
+⟨q, z′⟩ + 1
+2α‖z− z′‖2 = arg min
+z′∈Z
+E(z′)
+= arg min
+z′∈Z
+‖z′− (z− αq)‖2 by (B.15)
+= ProjZ
+(
+z− αq
+)
+. (B.16)
+This proves the result.
+B.4 Extension to the stochastic case
+In Seciton 3, we have studied the deterministic V-PBGD algorithm. In this section, we extend the
+V-PBGD algorithm to the stochastic case.
+With random variables ξ, ψ, we assume access to∇g(x, y; ψ) and∇ f (x, y; ξ) which are respec-
+tively stochastic versions of∇g(x, y) and∇ f (x, y). Following the idea of V-PBGD, given iteration
+k and xk, we ﬁrst solve the lower-level problem with the stochastic gradient descent method:
+ω(k)
+t+1 = ω(k)
+t − βt∇yg(xk, ω(k)
+t ; ψ(k)
+t ) for t = 1, . . . ,Tk (B.17)
+Then we choose the approximate lower-level solution ˆyk = ω(k)
+i where i is drawn from a step-size
+weighted distribution speciﬁed by P(i = t) = βt/ ∑Tk
+t=1 βt, t = 1, ...,Tk. Given ˆyk and the batch size
+M, (xk, yk) is updated with the approximate stochastic gradient of Fγ(xk, yk) as follows:
+(xk+1, yk+1) =ProjZ
+(
+(xk, yk)− αk
+M
+M
+∑
+i=1
+(
+∇ f (xk, yk; ξi
+k)+ γ(∇g(xk, yk; ψi
+k)−∇xg(xk, ˆyk; ψi
+k)
+))
+.
+The update is summarized in Algorithm 4.
+Algorithm 4 V-PBSGD: Value-gap based penalized bilevel stochastic gradient descent.
+1: Select (x1, y1)∈Z =C× Rdy. Select γ,K, Tk,αk, βt and M.
+2: for k = 1 to K do
+3: Choose ω(k)
+1 = yk, do ω(k)
+t+1 = ω(k)
+t − βt∇yg(xk, ω(k)
+t ; ψ(k)
+t ) for t = 1, . . . ,Tk
+4: Choose ˆyk = ω(k)
+i , i∼ P where P(i = t) = βt/ ∑Tk
+t=1 βt, t = 1, ...,Tk.
+5: (xk+1, yk+1) =ProjZ
+(
+(xk, yk)− αk
+M ∑M
+i=1
+(
+∇ f (xk, yk; ξi
+k)+ γ(∇g(xk, yk; ψi
+k)−∇xg(xk, ˆyk; ψi
+k)
+))
+.
+6: end for
+We make the following standard assumption commonly used in the analysis for stochastic
+gradient methods.
+Assumption 5. There exists constant c > 0 such that given any k, the stochastic gradients in Algorithm 4
+are unbiased and have variance bounded by c.
+With the above assumption, we provide the convergence result as follows.
+Theorem 7. Consider V-PBSGD (Algorithm 4). Assume Assumption 5 and the assumptions in Theorem
+3 hold. Choose αk = α≤ (L f + γ(2Lg + L2
+gµ))−1, βt = 1/(Lg
+√
+t) and Tk = T for any k. It holds that
+1
+K
+K
+∑
+k=1
+E‖Gγ(xk, yk)‖2 =O
+( 1
+αK
+)
++O
+( γ2c2
+M
+)
++O
+( γ2 ln T√
+T
+)
+. (B.18)
+26
+
+Proof. Convergence of ω. We omit the superscription (k) of ω(k)
+t and ψ(k)
+t since the proof holds
+for any k. We write Et[·] as the conditional expectation given the ﬁltration of samples before
+iteration (k, t). By the Lg-Lipschitz-smoothness of g(x,·), it holds that
+Et[g(xk, ωt+1)]≤ g(xk, ωt) +⟨∇yg(xk, ωt), Et[ωt+1− ωt]⟩ + Lg
+2 Et‖ωt+1− ωt‖2
+≤ g(xk, ωt)− βt‖∇yg(xk, ωt)‖2 + Lgβ2
+t
+2 Et‖∇yg(xk, ωt; ψt)‖2 (B.19)
+which follows∇yg(xk, ωt; ψt) is unbiased.
+The last term of (B.19) can be bounded as
+Et‖∇yg(xk, ωt; ψt)‖2 = Et‖∇yg(xk, ωt; ψt)−∇ yg(xk, ωt) +∇yg(xk, ωt)‖2
+= Et‖∇yg(xk, ωt; ψt)−∇ g(xk, ωt)‖2 +‖∇yg(xk, ωt‖2
+≤ c2 +‖∇yg(xk, ωt)‖2. (B.20)
+Substituting the above inequality back to (B.19) yields
+Et[g(xk, ωt+1)]≤ g(xk, ωt)− βt
+2‖∇yg(xk, ωt)‖2 + Lgc2
+2 β2
+t .
+≤ g(xk, ωt)− βt
+2µ2 d2
+S(xk)(ωt) + Lgc2
+2 β2
+t (B.21)
+where the ﬁrst inequality requires βt≤ L−1
+g and the last one follows from the fact that Lipschitz-
+smooth 1/µ-PL function g(x,·) satisﬁes 1/ µ2-error bound [Karimi et al., 2016, Theorem 2].
+We write Ek[·] as the conditional expectation given the ﬁltration of samples before iteration k.
+Taking Ek and a telescope sum over both sides of (B.21) yields
+Tk
+∑
+t=1
+βtEk[d2
+S(xk)(ω(k)
+t )]≤ 2µ2(g(xk, ω(k)
+1 )− g(xk, ω(k)
+Tk+1)) + 2Lgc2µ2
+2
+Tk
+∑
+t=1
+β2
+t
+≤ 2µ2(g(xk, ω(k)
+1 )− v(xk)) + Lgc2µ2
+Tk
+∑
+t=1
+β2
+t . (B.22)
+Convergence of (x, y). In this proof, we write z = ( x, y). Given zk, deﬁne ¯zk+1 = ProjZ (zk−
+αk∇Fγ(zk)). For convenience, we also write
+∇kFγ = 1
+M
+M
+∑
+i=1
+(
+∇ f (xk, yk; ξi
+k)+ γ(∇g(xk, yk; ψi
+k)−∇xg(xk, ˆyk; ψi
+k)
+)
+ˆ∇Fγ(zk; ˆyk) = Ek[∇kFγ] =∇ f (xk, yk)+ γ(∇g(xk, yk)−∇xg(xk, ˆyk)). (B.23)
+By the assumptions made in this theorem, Fγ is Lγ-Lipschitz-smooth with Lγ = L f + γ(2Lg + L2
+gµ).
+Then by Lipschitz-smoothness of Fγ, it holds that
+Ek[Fγ(zk+1)]≤ Fγ(zk) + Ek⟨∇Fγ(zk), zk+1− zk⟩ + Lγ
+2 Ek‖zk+1− zk‖2
+Lγ≤ 1
+αk
+≤ Fγ(zk) + Ek⟨∇kFγ, zk+1− zk⟩ + Ek⟨∇Fγ(zk)−∇kFγ, zk+1− ¯zk+1⟩
++ Ek⟨∇Fγ(zk)−∇kFγ, ¯zk+1− zk⟩ + 1
+2αk
+Ek‖zk+1− zk‖2. (B.24)
+27
+
+Consider the second term in the RHS of (B.24). By Lemma 7, zk+1 can be written as
+zk+1 = arg min
+z∈Z
+⟨∇kFγ, z⟩ + 1
+2αk
+‖z− zk‖2.
+By the ﬁrst-order optimality condition of the above problem, it holds that
+⟨∇kFγ + 1
+αk
+(zk+1− zk), zk+1− z⟩≤ 0,∀z∈Z .
+Since zk∈Z , we can choose z = zk in the above inequality and obtain
+⟨∇kFγ, zk+1− zk⟩≤− 1
+αk
+‖zk+1− zk‖2. (B.25)
+The third term in the RHS of (B.24) can be bounded as
+Ek⟨∇Fγ(zk)−∇kFγ, zk+1− ¯zk+1⟩≤ Ek[‖∇Fγ(zk)−∇kFγ‖‖zk+1− ¯zk+1‖]
+≤ αkEk‖∇Fγ(zk)−∇kFγ‖2 (B.26)
+where the second inequality follows from the non-expansiveness of the projection operator.
+The fourth term in the RHS of (B.24) can be bounded as
+Ek⟨∇Fγ(zk)−∇kFγ, ¯zk+1− zk⟩ =⟨∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk), ¯zk+1− zk⟩
+≤ 2αkEk‖∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk)‖2 + 1
+8αk
+‖ ¯zk+1− zk‖2 (B.27)
+where the last inequality follows from Young’s inequality. In addition, we have
+‖ ¯zk+1− zk‖2
+≤ 2Ek‖ ¯zk+1− zk+1‖2 + 2Ek‖zk+1− zk‖2
+≤ 2α2
+kEk‖∇Fγ(zk)−∇kFγ‖2 + 2Ek‖zk+1− zk‖2
+≤ 4α2
+kEk‖∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk)‖2 + 4α2
+kEk‖ ˆ∇Fγ(zk; ˆyk)−∇kFγ‖2 + 2Ek‖zk+1− zk‖2
+which after rearranging gives
+Ek‖zk+1− zk‖2
+≥ 1
+2‖ ¯zk+1− zk‖2− 2α2
+kEk‖∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk)‖2− 2α2
+kEk‖ ˆ∇Fγ(zk; ˆyk)−∇kFγ‖2. (B.28)
+Substituting (B.25)–(B.28) into (B.24) and rearranging yields
+1
+8αk
+Ek‖ ¯zk+1− zk‖2 ≤ Fγ(zk)− Ek[Fγ(zk+1)] + 2αkEk‖∇Fγ(zk)−∇kFγ‖2
++ 3αkEk‖∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk)‖2. (B.29)
+Under Assumption 5, the third term in the RHS of (B.29) is bounded by theO(1/M) dependence
+of variance as follows
+Ek‖∇Fγ(zk)−∇kFγ‖2≤ 3(2γ2 + 1)c2
+M . (B.30)
+28
+
+The fourth term in the RHS of (B.29) can be bounded by
+Ek‖∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk)‖2 = γ2Ek‖∇v(xk)−∇ xg(xk, ˆyk)‖2
+Lemma 2= γ2Ek‖∇xg(xk, y)|y∈S (xk)−∇ xg(xk, ˆyk)‖2
+≤ γ2L2
+gEk[d2
+S(xk)( ˆyk)]
+= γ2L2
+g
+T
+∑
+t=1
+βtEk[d2
+S(xk)(ω(k)
+t )]
+∑T
+i=1 βi
+(B.31)
+where the last equality follows from the distribution of ˆyk.
+By (B.22), it holds that
+T
+∑
+t=1
+βtEk[d2
+S(xk)(ω(k)
+t )]≤ 2µ2(g(xk, ω(k)
+1 )− v(xk)) + Lgc2µ2
+T
+∑
+t=1
+β2
+t . (B.32)
+In the above inequality, we can further bound the initial gap as (cf. ω(k)
+1 = yk)
+g(xk, ω(k)
+1 )− v(xk)≤ 1
+µ‖∇yg(xk, ω(k)
+1 )‖2 = 1
+µ‖ yk− ¯yk+1− αk∇y f (xk, yk)
+αkγ ‖2
+≤ 2
+µγ2α2
+k
+‖ ¯zk+1− zk‖2 + 2L2
+µγ2 (B.33)
+where the ﬁrst inequality follows from g(x,·) is 1/µ-PL; the equality follows from the deﬁnition
+of ¯zk+1; and the last one follows from Young’s inequality and the Lipschitz continuity of f (x,·).
+Substituting (B.32) and (B.33) into (B.31) yields
+Ek‖∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk)‖2≤ 1
+48α2
+k
+‖ ¯zk+1− zk‖2 +
+4µL2L2
+g
+∑T
+i=1 βi
++ γ2L3
+gc2µ2 ∑T
+t=1 β2
+t
+∑T
+t=1 βt
+(B.34)
+where we have also used ∑T
+i=1 β2
+i≥ 192µL2
+g to simplify the ﬁrst term. This can always be satisﬁed
+by a large enough T.
+Substituting (B.34) and (B.30) into (B.29), rearranging and taking total expectation yield
+1
+16αk
+E‖ ¯zk+1− zk‖2 ≤ E[Fγ(zk)− Fγ(zk+1)] + 6(2γ2 + 1)c2
+M αk
++
+(12µL2L2
+g
+∑T
+i=1 βi
++ 3γ2L3
+gc2µ2 ∑T
+t=1 β2
+t
+∑T
+t=1 βt
+)
+αk.
+Using‖ ¯zk+1− zk‖2 = α2
+k‖Gγ(zk)‖2 in the LHS of the above inequality and taking telescope sum
+over k = 1, . . . ,K yields
+K
+∑
+k=1
+αkE‖Gγ(zk)‖2 =O(Fγ(z1)− C f ) +O
+( γ2c2
+M αk
+)
++O
+( γ2 ∑T
+t=1 β2
+t
+∑T
+i=1 βi
+αk
+)
+(B.35)
+By the choice of step size, we have in the RHS ∑T
+i=1 βi ≥ ∑T
+i=1 βT = Θ(
+√
+T) and ∑T
+t=1 β2
+t ≤
+1 +∫ T
+1
+β1
+x dx = β1 ln T + 1. This proves the result.
+29
+
+C Proof in Section 4
+C.1 Proof of Proposition 3
+We prove the proposition from the two conditions separately.
+(a) Suppose condition (a) holds. Given x∈C , deﬁne the projected gradient of g(x,·) as
+G(y; x) = 1
+β
+(
+y− ProjU (y− β∇yg(x, y))
+)
+.
+Since yγ is a local solution ofCP γp given x = xγ, we have
+1
+β
+[
+yγ− ProjU
+(
+yγ− β
+( 1
+γ∇y f (x, yγ) +∇yg(xγ, yγ)
+))]
+= 0. (C.1)
+Then we have
+‖G(yγ; xγ)‖ = 1
+β
+‖‖‖ ProjU
+(
+yγ− β
+( 1
+γ∇y f (x, y) +∇yg(xγ, yγ)
+))
+− ProjU (yγ− β∇yg(xγ, yγ))
+‖‖‖
+≤ 1
+γ‖∇y f (x, y)‖≤ L
+γ. (C.2)
+By the proximal error bound inequality, we further have
+dS(xγ)(yγ)≤ ¯µ‖G(yγ; xγ)‖≤ ¯µL
+γ .
+Since g is continuously differentiable andC×U is compact, we can deﬁne L1,g = maxx∈C,y∈U‖∇yg(x, y)‖.
+Then g(x,·) is L1,g-Lipschitz-continuous onU given any x∈C , which yields
+p(xγ, yγ) = g(xγ, yγ)− v(xγ)≤ L1,gdS(xγ)≤ L1,g ¯µL
+γ . (C.3)
+In addition, Lemma 3 holds under condition (a) so p(x, y) is a squared distance bound. Further
+notice thatCP andCP γp are special cases ofBP andBP γp withU (x) =U, then the rest of the
+result follows from Theorem 1 with ϵ1 = L
+√
+ρδ/2, γ≥ 2γ∗ = L
+√
+µδ−1, ϵ2 = 0 and Theorem 2
+where condition (i) holds with (C.3).
+(b). Under condition (b), Lemma 3 holds so p(x, y) is a squared distance bound. Further notice
+thatCP andCP γp are special cases of BP andBP γp withU (x) = U, then the result follows
+directly from Theorem 1 with ϵ1 = L
+√
+ρδ/2, γ≥ 2γ∗ = L
+√
+µδ−1, ϵ2 = 0 and Theorem 2 where
+condition (ii) holds by the convexity of g(x,·).
+C.2 Proof of Lemma 5 and 6
+Lemma 5. Assume there exists Lg > 0 such that∇g(x, y) is Lg-Lipschitz-continuous. Assume either one
+of the following is true:
+(a) Condition (ii) in Assumption 4 holds. Let L S = Lg ¯µ.
+(b) Conditions (i) and (iii) in Assumption 4 hold. Let L S = Lg(µ+1)(Lg+1).
+30
+
+Then given any x 1, x2∈C , for any y 1∈S (x1) there exists y2∈S (x2) such that
+‖y1− y2‖≤ LS‖x1− x2‖.
+Proof. (a). Given x, deﬁne the projected gradient of g(x,·) at point y as
+G(y; x) = 1
+β
+(
+y− ProjU
+(
+y− β∇yg(x, y)
+))
+.
+By the assumption, the proximal-error-bound inequality holds, that is
+¯µ‖G(y; x)‖2≥ d2
+S(x)(y),∀y∈U and x∈C .
+Therefore, given x1, x2∈C , we have for any y1∈S (x1) there exists y2∈S (x2) such that
+‖y1− y2‖≤ ¯µ‖G(y1; x2)− G(y1; x1)‖2 since G(y1; x1) = 0
+= ¯µ
+β
+‖‖ ProjU
+(
+y1− β∇yg(x2, y1)
+)
+− ProjU
+(
+y1− β∇yg(x1, y1)
+)‖‖
+≤ ¯µ‖∇g(x1, y1)−∇ g(x2, y1)‖≤ Lg ¯µ‖x1− x2‖. (C.4)
+This completes the proof for condition (a).
+(b). By the 1/µ-quadratic-growth of g(x,·) and [Drusvyatskiy and Lewis, 2018, Corrolary 3.6],
+the proximal-error-bound inequality holds, that is
+(µ + 1)(Lg + 1)‖G(y; x)‖2≥ d2
+S(x)(y),∀y∈U and x∈C .
+where we set β = 1 to simplify the constant. The result then directly follows from case (a).
+Proof of Lemma 6. Given any x1, x2∈C , for any y1∈S (x1) there exists a y2∈S (x2) such that
+‖∇xg(x1, y1)−∇ xg(x2, y2)‖≤ Lg(‖x1− x2‖ +‖y1− y2‖)
+≤ Lg(1+LS)‖x1− x2‖ by Lemma 5. (C.5)
+By lemma 4 and the condition that ∇xg(x, y1) =∇xg(x, y2) for any y1, y2∈S (x), it holds that
+∇dv(x) =⟨∇xg(x, y∗), d⟩,∀y∗∈S (x). (C.6)
+This along with (C.5) gives
+|∇dv(x1)−∇ dv(x2)|≤ Lg(1+LS)‖x1− x2‖,∀x1, x2∈C .
+Thus∇v(x) exists by the continuity of ∇dv(x) for any d. Further,∇v(x) =∇xg(x, y∗) for any
+y∗∈S (x) by (C.6) and is Lipschitz-continuous by (C.5).
+C.3 Proof of Theorem 4
+Convergence of ω. Given any x∈C , by the 1/µ-quadratic-growth of g(x,·) and [Drusvyatskiy
+and Lewis, 2018, Corrolary 3.6], there exists some constant ¯µ such that the proximal-error-bound
+inequality holds. Thus under the either condition of Proposition 3, there exists ¯µ > 0 such that
+1/ ¯µ-proximal-error-bound condition holds for g(x,·). This along with the Lipschitz-smoothness
+of g(x,·) implies the proximal PL condition by [Karimi et al., 2016, Appendix G].
+31
+
+We state the proximal PL condition below. Deﬁning
+D(ω; x) :=− 2
+β min
+ω′∈X
+{⟨∇ωg(x, ω), ω′− ω⟩ + 1
+2β‖ω′− ω‖2} (C.7)
+there exists some constant ˜µ > 0 such that
+˜µD(ω; x)≥ (g(x, ω)− v(x)),∀ω∈U and x∈C . (C.8)
+We omit index k since the proof holds for any k. By the Lipschitz gradient of g(x,·), we have
+g(x, ωt+1)≤ g(x, ωt) +⟨∇yg(x, ωt), ωt+1− ωt⟩ + Lg
+2‖ωt+1− ωt‖2
+= g(x, ωt)− β
+2D(ωt; x) (C.9)
+where in the last equality we have used Lemma 7 that
+ωt+1 = arg min
+ω∈U
+⟨∇yg(x, ωt), ω− ωt⟩ + 1
+2β‖ω− ωt‖2.
+Using (C.8) in (C.9) yields
+g(x, ωt+1)− v(x)≤ (1− β
+2 ˜µ )(g(x, ωt)− v(x)).
+Repeatedly applying the last inequality for t = 1, ...,T yields
+g(x, ωT+1)− v(x)≤ (1− β
+2 ˜µ )T(g(x, ω1)− v(x)).
+This along with the 1/ µ-quadratic-growth property of g(x,·) yields
+d2
+S(x)(ωT+1)≤ µ(1− β
+2 ˜µ )T(g(x, ω1)− v(x))≤ µ(1− β
+2 ˜µ )TCg,∀x∈C (C.10)
+where Cg = maxx∈C,y∈U (g(x, y)− v(x)) is a constant.
+Convergence of (x, y). The proof is similar to that of Theorem 3. We write the only step that
+is different here. In deriving (B.9), instead we have
+‖∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk)‖2≤ γ2L2
+gd2
+S(xk)( ˆyk)≤ γ2L2
+gµCg(1− β
+2 ˜µ )Tk by (C.10)
+≤
+L2
+gµCg
+4α2k2 (C.11)
+where the last inequality requires Tk≥− 2 logcβ
+(2αγk) with cβ = 1− β
+2 ˜µ.
+Then (B.10) is replaced with
+‖∇Fγ(zk)− ˆ∇Fγ(zk; ˆyk)‖2≤ 1
+4α‖zk+1− zk‖2 +
+L2
+gµCg
+4αk2 . (C.12)
+Result i) in this theorem then follows from the rest of the proof of i) in Theorem 3. Result ii) in
+this theorem follows similarly from the proof of ii) in Theorem 3 under Proposition 3.
+32

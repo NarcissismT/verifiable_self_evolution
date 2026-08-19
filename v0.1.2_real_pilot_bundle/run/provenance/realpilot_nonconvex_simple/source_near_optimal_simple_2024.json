@@ -1,0 +1,9 @@
+{
+  "api_url": "https://export.arxiv.org/api/query?id_list=2409.08948v1",
+  "arxiv_id": "2409.08948",
+  "declared_available_at_utc": "2024-09-13T16:07:48Z",
+  "published": "2024-09-13T16:07:48Z",
+  "timestamp_matches_declaration": true,
+  "title": "A Near-Optimal Algorithm for Convex Simple Bilevel Optimization under Weak Assumptions",
+  "version": "v1"
+}

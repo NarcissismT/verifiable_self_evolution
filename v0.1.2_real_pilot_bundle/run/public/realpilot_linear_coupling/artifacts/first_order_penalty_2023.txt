@@ -1,0 +1,2741 @@
+arXiv:2301.01716v1  [math.OC]  4 Jan 2023
+First-order penalty methods for bilevel optimization
+Zhaosong Lu ∗ Sanyou Mei ∗
+January 4, 2023
+Abstract
+In this paper we study a class of unconstrained and constrain ed bilevel optimization problems in
+which the lower-level part is a convex optimization problem , while the upper-level part is possibly
+a nonconvex optimization problem. In particular, we propos e penalty methods for solving them,
+whose subproblems turn out to be a structured minimax proble m and are suitably solved by a ﬁrst-
+order method developed in this paper. Under some suitable as sumptions, an operation complexity
+of O(ε− 4 log ε− 1) and O(ε− 7 log ε− 1), measured by their fundamental operations, is establishe d for
+the proposed penalty methods for ﬁnding an ε-KKT solution of the unconstrained and constrained
+bilevel optimization problems, respectively. To the best o f our knowledge, the methodology and
+results in this paper are new.
+Keywords: bilevel optimization, minimax optimization, penalty methods, ﬁrst-or der methods, opera-
+tion complexity
+Mathematics Subject Classiﬁcation: 90C26, 90C30, 90C47, 90C99, 65K05
+1 Introduction
+Bilevel optimization is a two-level hierarchical optimization in which par tial or full decision variables in
+the upper level are also involved in the lower level. Generically, it can be written in the following form:
+min
+x,y
+f (x, y)
+s.t. g(x, y)≤ 0, y ∈ Argmin
+z
+{ ˜f (x, z)|˜g(x, z)≤ 0}.1 (1)
+Bilevel optimization has found a variety of important applications, inc luding adversarial training [36,
+37, 46], continual learning [32], hyperparameter tuning [3, 17], imag e reconstruction [9], meta-learning
+[4, 23, 42], neural architecture search [15, 30], reinforcement lea rning [20, 27], and Stackelberg games [48].
+More applications about it can be found in [2, 8, 10, 11, 12, 44] and t he references therein. Theoretical
+properties including optimality conditions of (1) have been extensive ly studied in the literature (e.g., see
+[12, 13, 34, 47, 50]).
+Numerous methods have been developed for solving some special ca ses of (1). For example, constraint-
+based methods [19, 43], deterministic gradient-based methods [16, 17, 21, 35, 41, 42], and stochastic
+gradient-based methods [6, 18, 20, 24, 26] were proposed for so lving (1) with g≡ 0, ˜g≡ 0, f , ˜f being
+smooth, and ˜f being strongly convex with respect to y. Besides, when all the functions involved in
+(1) are smooth and ˜f , ˜g are convex with respect to y, gradient-type methods were proposed by solving
+the mathematical program with equilibrium constraints (MPEC) resu lting from replacing the lower-level
+optimization problem of (1) by its ﬁrst-order optimality conditions (e .g., see [1, 33, 40]). Recently,
+diﬀerence-of-convex (DC) algorithms were developed in [51] for so lving (1) with g≡ 0, f being a DC
+function, and ˜f , ˜g being convex functions. In addition, a double penalty method [22] w as proposed for
+(1), which solves a sequence of bilevel optimization problems of the f orm
+min
+x,y
+f (x, y) + ρkΨ( x, y)
+s.t. y∈ Argmin
+z
+˜f (x, z) + ρk ˜Ψ( x, z), (2)
+∗ Department of Industrial and Systems Engineering, Univers ity of Minnesota, USA (email: zhaosong@umn.edu,
+mei00035@umn.edu). This work was partially supported by NSF Award IIS-221149 1.
+1For ease of reading, throughout this paper the tilde symbol i s particularly used for the functions related to the lower-l evel
+optimization problem. Besides, “Argmin” denotes the set of optimal solutions of the associated problem.
+1
+
+where{ρk} is a sequence of penalty parameters, and Ψ and ˜Ψ are a penalty function associated with the
+sets{(x, y)|g(x, y)≤ 0} and{(x, z)|˜g(x, z)≤ 0}, respectively. Though problem (2) appears to be simpler
+than (1), there is no method available for ﬁnding an approximate solu tion of (2) in general. Conse-
+quently, the double penalty method [22] is typically not implementable. More discussion on algorithmic
+development for bilevel optimization can be found in [2, 8, 12, 31, 45, 47]) and the references therein.
+It has long been known that the notorious challenge of bilevel optimiz ation (1) mainly comes from the
+lower level part, which requires that the variable y be a solution of another optimization problem. Due
+to this, for the sake of simplicity, we only consider a subclass of bileve l optimization with the constraint
+g(x, y)≤ 0 being excluded, namely,
+min
+x,y
+f (x, y)
+s.t. y∈ Argmin
+z
+{ ˜f (x, z)|˜g(x, z)≤ 0}. (3)
+Nevertheless, the results in this paper can be possibly extended to problem (1).
+The main goal of this paper is to develop a ﬁrst-order penalty metho d for solving problem (3). Our
+key observations toward this development are: (i) problem (3) can be approximately solved as a penalty
+problem (see (49)); (ii) such a penalty problem is equivalent to a stru ctured minimax problem (see
+(50)), which can be suitably solved by a ﬁrst-order method propos ed in Section 2. As a result, these
+observations lead to development of a novel ﬁrst-order penalty m ethod for solving (3) (see Sections 3
+and 4), which enjoys the following appealing features.
+• It uses only the ﬁrst-order information of the problem. Speciﬁcally , its fundamental operations
+consist only of evaluations of the gradient of ˜ g and the smooth component of f and ˜f and also
+the proximal operator of the nonsmooth component of f and ˜f . Thus, it is suitable for solving
+large-scale problems (see Sections 3 and 4).
+• It has theoretical guarantees on operation complexity, which is me asured by the aforementioned
+fundamental operations, for ﬁnding an ε-KKT solution of (3). In particular, when ˜ g ≡ 0, it
+enjoys an operation complexity of O(ε−4 log ε−1). Otherwise, it enjoys an operation complexity of
+O(ε−7 log ε−1) (see Theorems 4 and 6).
+• It is applicable to a broader class of problems than existing methods. For example, it can be
+applied to (3) with f , ˜f being nonsmooth and ˜f , ˜g being nonconvex with respect to x, which is
+however not suitable for existing methods.
+To the best of our knowledge, the methodology and results in this pa per are new.
+The rest of this paper is organized as follows. In Subsection 1.1 we int roduce some notation and
+terminology. In Section 2 we propose a ﬁrst-order method for solv ing a nonconvex-concave minimax
+problem and study its complexity. In Sections 3 and 4, we propose ﬁr st-order penalty methods for
+unconstrained and constrained bilevel optimization and study their complexity, respectively. In Section
+5 we present the proofs of the main results. Finally, we make some co ncluding remarks in Section 6.
+1.1 Notation and terminology
+The following notation will be used throughout this paper. Let Rn denote the Euclidean space of
+dimension n and Rn
++ denote the nonnegative orthant in Rn. The standard inner product and Euclidean
+norm are denoted by ⟨·,·⟩ and‖·‖ , respectively. For any v∈ Rn, let v+ denote the nonnegative part of
+v, that is, ( v+)i = max{vi, 0} for all i. For any two vectors u and v, ( u; v) denotes the vector resulting
+from stacking v under u. Given a point x and a closed set S in Rn, let dist( x, S) = min x′∈S‖x′− x‖ and
+IS denote the indicator function associated with S.
+A function or mapping φ is said to be Lφ-Lipschitz continuous on a set S if‖φ(x)−φ(x′)‖≤ Lφ‖x−x′‖
+for all x, x′∈ S. In addition, it is said to be L∇φ-smooth on S if‖∇φ(x)−∇ φ(x′)‖≤ L∇φ‖x− x′‖ for
+all x, x′∈ S. For a closed convex function p : Rn→ R∪{∞} ,2 the proximal operator associated with p
+is denoted by prox p, that is,
+proxp(x) = arg min
+x′∈Rn
+{ 1
+2‖x′− x‖2 + p(x′)
+}
+∀x∈ Rn. (4)
+2For convenience, ∞ stands for + ∞ .
+2
+
+Given that evaluation of prox γp(x) is often as cheap as prox p(x), we count the evaluation of prox γp(x)
+as one evaluation of proximal operator of p for any γ > 0 and x∈ Rn.
+For a lower semicontinuous function φ : Rn→ R∪{∞}, its domain is the set dom φ :={x|φ(x) <∞}.
+The upper subderivative of φ at x∈ dom φ in a direction d∈ Rn is deﬁned by
+φ′(x; d) = lim sup
+x′ φ
+→x, t↓0
+inf
+d′→d
+φ(x′ + td′)− φ(x′)
+t ,
+where t↓ 0 means both t > 0 and t→ 0, and x′ φ
+→ x means both x′→ x and φ(x′)→ φ(x). The
+subdiﬀerential of φ at x∈ dom φ is the set
+∂φ(x) ={s∈ Rn⏐
+⏐sT d≤ φ′(x; d) ∀d∈ Rn}.
+We use ∂xi φ(x) to denote the subdiﬀerential with respect to xi. In addition, for an upper semicontinuous
+function φ, its subdiﬀerential is deﬁned as ∂φ =−∂(−φ). If φ is locally Lipschitz continuous, the above
+deﬁnition of subdiﬀerential coincides with the Clarke subdiﬀerential. Besides, if φ is convex, it coincides
+with the ordinary subdiﬀerential for convex functions. Also, if φ is continuously diﬀerentiable at x , we
+simply have ∂φ(x) = {∇φ(x)}, where ∇φ(x) is the gradient of φ at x. In addition, it is not hard to
+verify that ∂(φ1 + φ2)(x) =∇φ1(x) + ∂φ2(x) if φ1 is continuously diﬀerentiable at x and φ2 is lower or
+upper semicontinuous at x. See [7, 49] for more details.
+Finally, we introduce two types of approximate solutions for a gener al minimax problem
+Ψ ∗ = min
+x
+max
+y
+Ψ( x, y), (5)
+where Ψ(·, y) : Rn→ R∪{∞} is a lower semicontinuous function, Ψ( x,·) : Rm→ R∪{−∞} is an upper
+semicontinuous function, and Ψ ∗ is ﬁnite.
+Deﬁnition 1. A point (xǫ, yǫ) is called an ǫ-optimal solution of the minimax problem (5) if
+max
+y
+Ψ( xǫ, y)− Ψ( xǫ, yǫ)≤ ǫ, Ψ( xǫ, yǫ)− Ψ ∗≤ ǫ.
+Deﬁnition 2. A point (x, y) is called a stationary point of the minimax problem (5) if
+0∈ ∂xΨ( x, y), 0∈ ∂yΨ( x, y).
+In addition, for any ǫ > 0, a point (xǫ, yǫ) is called an ǫ-stationary point of the minimax problem (5) if
+dist (0, ∂xΨ( xǫ, yǫ))≤ ǫ, dist (0, ∂yΨ( xǫ, yǫ))≤ ǫ.
+2 A ﬁrst-order method for nonconvex-concave minimax prob-
+lem
+In this section, we propose a ﬁrst-order method for ﬁnding an app roximate stationary point of a
+nonconvex-concave minimax problem, which will be used as a subprob lem solver for the penalty methods
+proposed in Sections 3 and 4. In particular, we consider the minimax p roblem
+H ∗ = min
+x
+max
+y
+{H(x, y) := h(x, y) + p(x)− q(y)} . (6)
+Assume that problem (6) has at least one optimal solution. In additio n, h, p and q satisfy the following
+assumptions.
+Assumption 1. (i) p : Rn→ R∪{∞} and q : Rm→ R∪{∞} are proper convex functions and
+continuous on their domain, and moreover, their domain is co mpact.
+(ii) The proximal operator associated with p and q can be exactly evaluated.
+(iii) h is L∇h-smooth on dom p× dom q, and moreover, h(x,·) is concave for any x∈ dom p.
+3
+
+Recently, an accelerated inexact proximal point smoothing (AIPP- S) scheme was proposed in [28]
+for ﬁnding an approximate stationary point of a class of minimax comp osite nonconvex optimization
+problems, which includes (6) as a special case. When applied to (6), A IPP-S requires the availability of
+the oracle including exact evaluation of ∇xh(x, y) and
+arg min
+x
+{
+p(x) + 1
+2λ‖x− x′‖2
+}
+, arg max
+y
+{
+h(x′, y)− q(y)− 1
+2λ‖y− y′‖2
+}
+(7)
+for any λ > 0, x′∈ Rn and y′∈ Rm. Note that h is typically sophisticated and the exact solution of the
+second problem in (7) usually cannot be found. As a result, AIPP-S is generally not implementable for
+(6), though an oracle complexity of O(ǫ−5/2) was established in [28] for it to ﬁnd an ǫ-stationary point
+of (6).
+In what follows, we ﬁrst propose a modiﬁed optimal ﬁrst-order met hod for solving a strongly-convex-
+strongly-concave minimax problem in Subsection 2.1. Using this metho d as a subproblem solver for an
+inexact proximal point scheme, we then propose a ﬁrst-order met hod for (6) in Subsection 2.2, which
+enjoys an operation complexity of O(ǫ−5/2 log ǫ−1), measured by the amount of evaluations of ∇h and
+proximal operator of p and q, for ﬁnding an ǫ-stationary point of (6).
+2.1 A modiﬁed optimal ﬁrst-order method for strongly-conve x-strongly-concave
+minimax problem
+In this subsection, we consider the strongly-convex-strongly-c oncave minimax problem
+¯H ∗ = min
+x
+max
+y
+{ ¯H(x, y) := ¯h(x, y) + p(x)− q(y)
+}
+, (8)
+where p and q satisfy Assumption 1 and ¯h satisﬁes the following assumption.
+Assumption 2. ¯h(x, y) is σx-strongly-convex-σy-strongly-concave and L∇¯h-smooth on dom p× dom q
+for some σx, σy > 0.
+The goal of this subsection is to propose a modiﬁed optimal ﬁrst-or der method for ﬁnding an approx-
+imate stationary point of problem (8) and study its complexity. Befo re proceeding, we introduce some
+more notation below, most of which is adopted from [29].
+Let ( x∗, y∗) denote the optimal solution of (8), z∗ =−σxx∗, and
+Dp = max{‖u− v‖
+⏐
+⏐u, v∈ dom p}, D q = max{‖u− v‖
+⏐
+⏐u, v∈ dom q}, (9)
+¯Hlow = min
+{ ¯H(x, y)|
+(
+x, y)∈ dom p× dom q}, (10)
+ˆh(x, y) = ¯
+h(x, y)− σx‖x‖2/2 + σy‖y‖2/2, (11)
+G(z, y) = sup
+x
+{⟨x, z⟩− p(x)− ˆh(x, y) + q(y)}, (12)
+P(z, y) = σ−1
+x ‖z‖2/2 + σy‖y‖2/2 +G(z, y), (13)
+ϑk = η−1
+z ‖zk− z∗‖2 + η−1
+y ‖yk− y∗‖2 + 2 ¯α−1(P(zk
+f , yk
+f )−P (z∗, y∗)), (14)
+ak
+x(x, y) =∇xˆh(x, y) + σx(x− σ−1
+x zk
+g )/2, a k
+y(x, y) =−∇yˆh(x, y) + σyy + σx(y− yk
+g )/8,
+where ¯α = min
+{
+1,
+√
+8σy/σx
+}
+, ηz = σx/2, ηy = min{1/(2σy), 4/(¯ασx)}, and yk, yk
+f , yk
+g , zk, zk
+f and zk
+g
+are generated at iteration k of Algorithm 1 below. By Assumptions 1 and 2, one can observe that Dp,
+Dq and ¯Hlow are ﬁnite.
+We are now ready to present a modiﬁed optimal ﬁrst-order method for solving (8) in Algorithm 1. It is
+a slight modiﬁcation of the novel optimal ﬁrst-order method [29, A lgorithm 4] by incorporating a forward-
+backward splitting scheme and also a veriﬁable termination criterion ( see steps 23-25 in Algorithm 1) in
+order to ﬁnd a τ -stationary point of (8) (see Deﬁnition 2) for any prescribed toler ance τ > 0.
+4
+
+Algorithm 1 A modiﬁed optimal ﬁrst-order method for (8)
+Input: τ > 0, ¯z0 = z0
+f ∈− σxdom p,3 ¯y0 = y0
+f ∈ dom q, ( z0, y0) = (¯z0, ¯y0), ¯α = min
+{
+1,
+√
+8σy/σx
+}
+,
+ηz = σx/2, ηy = min{1/(2σy), 4/(¯ασx)}, βt = 2 /(t + 3), ζ =
+(
+2
+√
+5(1 + 8L∇¯h/σx)
+)−1
+, γx = γy =
+8σ−1
+x , and ˆζ = min{σx, σy}/L2
+∇¯h.
+1: for k = 0, 1, 2, . . . do
+2: (zk
+g , yk
+g ) = ¯α(zk, yk) + (1− ¯α)(zk
+f , yk
+f ).
+3: (xk,−1, yk,−1) = (−σ−1
+x zk
+g , yk
+g ).
+4: xk,0 = proxζγxp(xk,−1− ζγxak
+x(xk,−1, yk,−1)).
+5: yk,0 = proxζγyq(yk,−1− ζγyak
+y(xk,−1, yk,−1)).
+6: bk,0
+x = 1
+ζγx
+(xk,−1− ζγxak
+x(xk,−1, yk,−1)− xk,0).
+7: bk,0
+y = 1
+ζγy
+(yk,−1− ζγyak
+y(xk,−1, yk,−1)− yk,0).
+8: t = 0.
+9: while
+γx‖ak
+x(xk,t, yk,t) + bk,t
+x ‖2 + γy‖ak
+y(xk,t, yk,t) + bk,t
+y ‖2 > γ −1
+x ‖xk,t− xk,−1‖2 + γ−1
+y ‖yk,t− yk,−1‖2
+do
+10: xk,t+1/2 = xk,t + βt(xk,0− xk,t)− ζγx(ak
+x(xk,t, yk,t) + bk,t
+x ).
+11: yk,t+1/2 = yk,t + βt(yk,0− yk,t)− ζγy(ak
+y(xk,t, yk,t) + bk,t
+y ).
+12: xk,t+1 = proxζγxp(xk,t + βt(xk,0− xk,t)− ζγxak
+x(xk,t+1/2, yk,t+1/2)).
+13: yk,t+1 = proxζγyq(yk,t + βt(yk,0− yk,t)− ζγyak
+y(xk,t+1/2, yk,t+1/2)).
+14: bk,t+1
+x = 1
+ζγx
+(xk,t + βt(xk,0− xk,t)− ζγxak
+x(xk,t+1/2, yk,t+1/2)− xk,t+1).
+15: bk,t+1
+y = 1
+ζγy
+(yk,t + βt(yk,0− yk,t)− ζγyak
+y(xk,t+1/2, yk,t+1/2)− yk,t+1).
+16: t← t + 1.
+17: end while
+18: (xk+1
+f , yk+1
+f ) = ( xk,t, yk,t).
+19: (zk+1
+f , wk+1
+f ) = (∇xˆh(xk+1
+f , yk+1
+f ) + bk,t
+x ,−∇yˆh(xk+1
+f , yk+1
+f ) + bk,t
+y ).
+20: zk+1 = zk + ηzσ−1
+x (zk+1
+f − zk)− ηz(xk+1
+f + σ−1
+x zk+1
+f ).
+21: yk+1 = yk + ηyσy(yk+1
+f − yk)− ηy(wk+1
+f + σyyk+1
+f ).
+22: xk+1 =−σ−1
+x zk+1.
+23: ˆxk+1 = prox ˆζp(xk+1− ˆζ∇x¯h(xk+1, yk+1)).
+24: ˆyk+1 = prox ˆζq (yk+1 + ˆζ∇y¯
+h(xk+1, yk+1)).
+25: Terminate the algorithm and output (ˆxk+1, ˆyk+1) if
+‖ˆζ−1(xk+1− ˆxk+1, ˆyk+1− yk+1)− (∇¯h(xk+1, yk+1)−∇ ¯h(ˆxk+1, ˆyk+1))‖≤ τ. (15)
+26: end for
+The following theorem presents iteration and operation complexity of Algorithm 1 for ﬁnding a τ -
+stationary point of problem (8), whose proof is deferred to Subse ction 5.1.
+Theorem 1 (Complexity of Algorithm 1). Suppose that Assumptions 1 and 2 hold. Let ¯H ∗, Dp,
+Dq, ¯Hlow, and ϑ0 be deﬁned in (8), (9), (10) and (14), σx, σy and L∇¯h be given in Assumption 2, ¯α,
+ηy, ηz, τ , ˆζ be given in Algorithm 1, and
+¯δ = (2 + ¯α−1)σxD2
+p + max{2σy, ¯ασx/4}D2
+q, (16)
+¯K =
+⌈
+max
+{ 2
+¯α , ¯ασx
+4σy
+}
+log 4 max{ηzσ−2
+x , ηy}ϑ0
+(ˆζ−1 + L∇¯h)−2τ 2
+⌉
++
+, (17)
+¯N =
+⌈
+max
+{
+2,
+√ σx
+2σy
+}
+log 4 max{1/(2σx), min{1/(2σy), 4/(¯ασx)}}
+(¯δ + 2 ¯α−1(¯H ∗− ¯Hlow
+))
+(L2
+∇¯h/ min{σx, σy} + L∇¯h)−2τ 2
+⌉
++
+×
+(⌈
+96
+√
+2
+(
+1 + 8L∇¯hσ−1
+x
+)⌉
++ 2
+)
+. (18)
+Then Algorithm 1 outputs a τ -stationary point of (8) in at most ¯K iterations. Moreover, the total
+3For convenience, − σxdom p stands for the set {− σxu|u ∈ dom p}.
+5
+
+number of evaluations of ∇¯h and proximal operator of p and q performed in Algorithm 1 is no more than
+¯N , respectively.
+Remark 1. It can be observed from Theorem 1 that Algorithm 1 enjoys an op eration complexity of
+O(log τ −1), measured by the amount of evaluations of ∇¯h and proximal operator of p and q, for ﬁnding
+a τ -stationary point of the strongly-convex-strongly-conca ve minimax problem (8).
+2.2 A ﬁrst-order method for problem (6)
+In this subsection, we propose a ﬁrst-order method for ﬁnding an ǫ-stationary point of problem (6) (see
+Deﬁnition 2) for any prescribed tolerance ǫ > 0. In particular, we ﬁrst add a perturbation to the max
+part of (6) for obtaining an approximation of (6), which is given as fo llows:
+min
+x
+max
+y
+{
+h(x, y) + p(x)− q(y)− ǫ
+4Dq
+‖y− ˆy0‖2
+}
+(19)
+for some ˆy0∈ dom q. We then apply an inexact proximal point method [25] to (19), which consists of
+approximately solving a sequence of subproblems
+min
+x
+max
+y
+{Hk(x, y) := hk(x, y) + p(x)− q(y)} , (20)
+where
+hk(x, y) = h(x, y)− ǫ‖y− ˆy0‖2/(4Dq) + L∇h‖x− xk‖2. (21)
+By Assumption 1, one can observe that (i) hk is L∇h-strongly convex in x and ǫ/(2Dq)-strongly concave
+in y on dom p× dom q; (ii) hk is (3 L∇h + ǫ/(2Dq))-smooth on dom p× dom q. Consequently, problem
+(20) is a special case of (8) and we can apply Algorithm 1 to solve (20) . The resulting ﬁrst-order method
+for (6) is presented in Algorithm 2.
+Algorithm 2 A ﬁrst-order method for problem (6)
+Input: ǫ > 0, ǫ0∈ (0, ǫ/2], (ˆx0, ˆy0)∈ dom p× dom q, ( x0, y0) = (ˆx0, ˆy0), and ǫk = ǫ0/(k + 1).
+1: for k = 0, 1, 2, . . . do
+2: Call Algorithm 1 with ¯h← hk, τ ← ǫk, σx← L∇h, σy ← ǫ/(2Dq), L∇¯h← 3L∇h + ǫ/(2Dq),
+¯z0 = z0
+f←− σxxk, ¯y0 = y0
+f← yk, and denote its output by ( xk+1, yk+1), where hk is given in (21).
+3: Terminate the algorithm and output ( xǫ, yǫ) = ( xk+1, yk+1) if
+‖xk+1− xk‖≤ ǫ/(4L∇h). (22)
+4: end for
+Remark 2. It can be observed from step 2 of Algorithm 2 that (xk+1, yk+1) results from applying Algo-
+rithm 1 to the subproblem (20). As will be shown in Lemma 2, (xk+1, yk+1) is an ǫk-stationary point of
+(20).
+We next study complexity of Algorithm 2 for ﬁnding an ǫ-stationary point of problem (6). Before
+proceeding, we deﬁne
+Hlow := min{H(x, y)|(x, y)∈ dom p× dom q} . (23)
+By Assumption 1, one can observe that Hlow is ﬁnite.
+The following theorem presents iteration and operation complexity of Algorithm 2 for ﬁnding an
+ǫ-stationary point of problem (6), whose proof is deferred to Subs ection 5.2.
+Theorem 2 (Complexity of Algorithm 2). Suppose that Assumption 1 holds. Let H ∗, H D p, Dq,
+and Hlow be deﬁned in (6), (9) and (23), L∇h be given in Assumption 1, ǫ, ǫ0 and ˆx0 be given in
+6
+
+Algorithm 2, and
+α = min
+{
+1,
+√
+4ǫ/(DqL∇h)
+}
+, (24)
+δ = (2 + α−1)L∇hD2
+p + max{ǫ/Dq, αL∇h/4} D2
+q , (25)
+K =
+⌈
+16(max
+y
+H(ˆx0, y)− H ∗ + ǫDq/4)L∇hǫ−2 + 32ǫ2
+0(1 + 4D2
+q L2
+∇hǫ−2)ǫ−2− 1
+⌉
++
+, (26)
+N =
+(⌈
+96
+√
+2
+(
+1 + (24L∇h + 4ǫ/Dq) L−1
+∇h
+)⌉
++ 2
+)
+max
+{
+2,
+√
+DqL∇hǫ−1
+}
+×
+(
+(K + 1)
+(
+log
+4 max
+{
+1
+2L∇h
+, min
+{
+Dq
+ǫ , 4
+αL∇h
+}} (
+δ + 2α−1(H ∗− Hlow + ǫDq/4 + L∇hD2
+p)
+)
+[(3L∇h + ǫ/(2Dq))2/ min{L∇h, ǫ/(2Dq)} + 3L∇h + ǫ/(2Dq)]−2 ǫ2
+0
+)
++
++ K + 1 + 2K log(K + 1)
+)
+. (27)
+Then Algorithm 2 terminates and outputs an ǫ-stationary point (xǫ, yǫ) of (6) in at most K + 1 outer
+iterations that satisﬁes
+max
+y
+H(xǫ, y)≤ max
+y
+H(ˆx0, y) + ǫDq/4 + 2ǫ2
+0
+(
+L−1
+∇h + 4D2
+q L∇hǫ−2)
+. (28)
+Moreover, the total number of evaluations of ∇h and proximal operator of p and q performed in Algo-
+rithm 2 is no more than N , respectively.
+Remark 3. Since ǫ0 ∈ (0, ǫ/2], one can observe from Theorem 2 that α =O(ǫ1/2), δ =O(ǫ−1/2),
+K =O(ǫ−2), and N =O(ǫ−5/2 log(ǫ−1
+0 ǫ−1). Consequently, Algorithm 2 enjoys an operation complexity
+ofO(ǫ−5/2 log(ǫ−1
+0 ǫ−1)), measured by the amount of evaluations of ∇h and proximal operator of p and
+q, for ﬁnding an ǫ-stationary point of the nonconvex-concave minimax proble m (6).
+3 Unconstrained bilevel optimization
+In this section, we consider an unconstrained bilevel optimization pr oblem4
+f ∗ = min f (x, y)
+s.t. y∈ Argmin
+z
+˜f (x, z). (29)
+Assume that problem (29) has at least one optimal solution. In addit ion, f and ˜f satisfy the following
+assumptions.
+Assumption 3. (i) f (x, y) = f1(x, y) +f2(x) and ˜f (x, y) = ˜f1(x, y) + ˜f2(y) are continuous onX×Y ,
+where f2 : Rn→ R∪{∞} and ˜f2 : Rm→ R∪{∞} are proper closed convex functions, ˜f1(x,·) is
+convex for any given x∈X , and f1, ˜f1 are respectively L∇f1 - and L∇ ˜f1
+-smooth on X×Y with
+X := dom f2 andY := dom ˜f2.
+(ii) The proximal operator associated with f2 and ˜f2 can be exactly evaluated.
+(iii) The sets X andY (namely, dom f2 and dom ˜f2) are compact.
+For notational convenience, we deﬁne
+Dx := max{‖u− v‖
+⏐
+⏐u, v∈X} , D y := max{‖u− v‖
+⏐
+⏐u, v∈Y} , (30)
+˜fhi := max{ ˜f (x, y)|(x, y)∈X×Y} , ˜flow := min{ ˜f (x, y)|(x, y)∈X×Y} , (31)
+flow := min{f (x, y)|(x, y)∈X×Y} . (32)
+4For convenience, problem (29) is referred to as an unconstra ined bilevel optimization problem since its lower level par t
+does not have an explicit constraint. Strictly speaking, it can be a constrained bilevel optimization problem. For exam ple,
+when part of f and/or ˜f is the indicator function of a closed convex set, (29) is esse ntially a constrained bilevel optimization
+problem.
+7
+
+By Assumption 3, one can observe that Dx, Dy, ˜fhi, ˜flow and flow are ﬁnite.
+The goal of this subsection is to propose penalty methods for solvin g problem for solving (29). To
+this end, we observe that problem (29) can be viewed as
+min
+x,y
+{f (x, y)| ˜f (x, y)≤ min
+z
+˜f (x, z)}. (33)
+Notice that ˜f (x, y)− minz ˜f (x, z)≥ 0 for all x, y. Consequently, a natural penalty problem associated
+with (33) is
+min
+x,y
+f (x, y) + ρ( ˜f (x, y)− min
+z
+˜f (x, z)), (34)
+where ρ > 0 is a penalty parameter. We further observe that (34) is equivalen t to the minimax problem
+min
+x,y
+max
+z
+Pρ(x, y, z), where Pρ(x, y, z) := f (x, y) + ρ( ˜f (x, y)− ˜f (x, z)). (35)
+In view of Assumption 3(i), Pρ can be rewritten as
+Pρ(x, y, z) =
+(
+f1(x, y) + ρ ˜f1(x, y)− ρ ˜f1(x, z)
+)
++
+(
+f2(x) + ρ ˜f2(y)− ρ ˜f2(z)
+)
+. (36)
+By this and Assumption 3, one can observe that Pρ enjoys the following nice properties.
+• Pρ is the sum of smooth function f1(x, y) +ρ ˜f1(x, y)− ρ ˜f1(x, z) with Lipschitz continuous gradient
+and possibly nonsmooth function f2(x)+ρ ˜f2(y)−ρ ˜f2(z) with exactly computable proximal operator.
+• Pρ is nonconvex in ( x, y) but concave in z.
+Thanks to the nice structure of Pρ, an approximate stationary point of the minimax problem (35) can
+be found by Algorithm 2 proposed in Subsection 2.2.
+Based on the above observations, we are now ready to propose pe nalty methods for the unconstrained
+bilevel optimization problem (29) by solving either a sequence of or a s ingle minimax problem in the
+form of (35). In particular, we ﬁrst propose an ideal penalty method for (29) by solving a sequence of
+minimax problems (see Algorithm 3). Then we propose a practical penalty method for (29) by ﬁnding
+an approximate stationary point of a single minimax problem (see Algor ithm 4).
+Algorithm 3 An ideal penalty method for problem (29)
+Input: positive sequences{ρk} and{ǫk} with lim k→∞(ρk, ǫk) = (∞, 0).
+1: for k = 0, 1, 2, . . . do
+2: Find an ǫk-optimal solution ( xk, yk, zk) of problem (35) with ρ = ρk.
+3: end for
+The following theorem states a convergence result of Algorithm 3, w hose proof is deferred to Section
+5.3.
+Theorem 3 (Convergence of Algorithm 3). Suppose that Assumption 3 holds and that {(xk, yk, zk)}
+is generated by Algorithm 3. Then any accumulation point of {(xk, yk)} is an optimal solution of problem
+(29).
+Notice that (35) is a nonconvex-concave minimax problem. It is typically hard to ﬁnd an ǫ-optimal
+solution of (35) for an arbitrary ǫ > 0. Consequently, Algorithm 3 is not implementable in general. We
+next propose a practical penalty method for problem (29) by ﬁnding an approximate stationa ry point of
+a single minimax problem (35) with a suitable choice of ρ.
+Algorithm 4 A practical penalty method for problem (29)
+Input: ε∈ (0, 1/4], ρ = ε−1, ( x0, y0)∈X×Y with ˜f (x0, y0)≤ miny ˜f (x0, y) + ε.
+1: Call Algorithm 2 with ǫ← ε, ǫ0← ε3/2, ˆx0← (x0, y0), ˆy0← y0, and L∇h← L∇f1 + 2ε−1L∇ ˜f1 to
+ﬁnd an ǫ-stationary point ( xǫ, yǫ, zǫ) of problem (35) with ρ = ε−1.
+2: Output: ( xǫ, yǫ).
+8
+
+Remark 4. (i) The initial point (x0, y0) of Algorithm 4 can be found by an additional procedure. Indee d,
+one can ﬁrst choose any x0∈X and then apply accelerated proximal gradient method [38] to the problem
+miny ˜f (x0, y) for ﬁnding y0∈Y such that ˜f (x0, y0)≤ miny ˜f (x0, y) + ε; (ii) As seen from Theorem 2,
+an ǫ-stationary point of (35) can be successfully found in step 1 of Algorithm 4 by applying Algorithm 2
+to (35); (iii) For the sake of simplicity, a single subproblem of the form (35) with static penalty and
+tolerance parameters is solved in Algorithm 4. Nevertheles s, Algorithm 4 can be modiﬁed into a perhaps
+practically more eﬃcient algorithm by solving a sequence of subproblems of the form (35) with dynamic
+penalty and tolerance parameters instead.
+In order to characterize the approximate solution found by Algorit hm 4, we next introduce a termi-
+nology called an ε-KKT solution of problem (29).
+Recall that problem (29) can be viewed as problem (33). In the spirit of classical constrained opti-
+mization, one would naturally be interested in a KKT solution ( x, y) of (33) or equivalently (29), namely,
+(x, y) satisﬁes ˜f (x, y)≤ minz ˜f (x, z) and moreover ( x, y) is a stationary point of the problem
+min
+x′,y′
+f (x′, y′) + ρ
+(˜f (x′, y′)− min
+z′
+˜f (x′, z′)
+)
+(37)
+for some ρ≥ 0. Yet, due to the sophisticated problem structure, characteriz ing a stationary point of (37)
+is generally diﬃcult. On another hand, notice that problem (37) is equ ivalent to the minimax problem
+min
+x′,y′
+max
+z′
+f (x′, y′) + ρ( ˜f (x′, y′)− ˜f (x′, z′)),
+whose stationary point ( x, y, z) according to Deﬁnition 2 satisﬁes
+0∈ ∂f (x, y) + ρ∂ ˜f (x, y)− (ρ∇x ˜f (x, z); 0), 0∈ ρ∂z ˜f (x, z). (38)
+Based on this observation, we are instead interested in a (weak) KK T solution of problem (29) and its
+inexact counterpart that are deﬁned below.
+Deﬁnition 3. The pair (x, y) is said to be a KKT solution of problem (29) if there exists (z, ρ)∈ Rm×R+
+such that (38) and ˜f (x, y)≤ minz′ ˜f (x, z′) hold. In addition, for any ε > 0, (x, y) is said to be an ε-KKT
+solution of problem (29) if there exists (z, ρ)∈ Rm× R+ such that
+dist
+(
+0, ∂f (x, y) + ρ∂ ˜f (x, y)− (ρ∇x ˜f (x, z); 0)
+)
+≤ ε, dist
+(
+0, ρ∂z ˜f (x, z)
+)
+≤ ε,
+˜f (x, y)− min
+z′
+˜f (x, z′)≤ ε.
+We are now ready to present a theorem regarding operation complexity of Algorithm 4, measured by
+the amount of evaluations of ∇f1,∇ ˜f1 and proximal operator of f2 and ˜f2, for ﬁnding an O(ε)-KKT
+solution of (29), whose proof is deferred to Subsection 5.3.
+Theorem 4 (Complexity of Algorithm 4). Suppose that Assumption 3 holds. Let f ∗, f , ˜f , Dx, Dy,
+˜fhi, ˜flow and flow be deﬁned in (29), (30), (31) and (32), L∇f1 and L∇ ˜f1
+be given in Assumption 3, ε,
+ρ, x0, y0 and zǫ be given in Algorithm 4, and
+ˆL = L∇f1 + 2ε−1L∇ ˜f1
+, ˆα = min
+{
+1,
+√
+4ε/(DyˆL)
+}
+, (39)
+ˆδ = (2 + ˆα−1)(D2
+x + D2
+y)ˆL + max
+{
+ε/Dy, ˆαˆL/4
+}
+D2
+y,
+ˆC =
+4 max
+{
+1
+2 ˆL , min
+{
+Dy
+ε , 4
+ˆα ˆL
+}}[
+ˆδ + 2 ˆα−1(f ∗− flow + ε−1( ˜fhi− ˜flow) + εDy/4 +ˆL(D2
+x + D2
+y))
+]
+[
+(3ˆL + ε/(2Dy))2/ min{ˆL, ε/(2Dy)} + 3ˆL + ε/(2Dy)
+] −2
+ε3
+,
+ˆK =
+⌈
+16(1 + f (x0, y0)− flow + εDy/4)ˆLε−2 + 32(1 + 4D2
+yˆL2ε−2)ε− 1
+⌉
++
+,
+ˆN =
+(⌈
+96
+√
+2(1 + (24ˆL + 4ε/Dy)ˆL−1)
+⌉
++ 2
+)
+max
+{
+2,
+√
+DyˆLε−1
+}
+× ((ˆK + 1)(log ˆC)+ + ˆK + 1 + 2ˆK log(ˆK + 1)).
+9
+
+Then Algorithm 4 outputs an approximate solution (xǫ, yǫ) of (29) satisfying
+dist
+(
+0, ∂f (xǫ, yǫ) + ρ∂ ˜f (xǫ, yǫ)− (ρ∇x ˜f (xǫ, zǫ); 0)
+)
+≤ ε, dist
+(
+0, ρ∂ ˜f(xǫ, zǫ)
+)
+≤ ε, (40)
+˜f (xǫ, yǫ)≤ min
+z
+˜f (xǫ, z) + ε
+(
+1 + f (x0, y0)− flow + 2ε3(ˆL−1 + 4D2
+yˆLε−2) + Dyε/4
+)
+, (41)
+after at most ˆN evaluations of ∇f1,∇ ˜f1 and proximal operator of f2 and ˜f2, respectively.
+Remark 5. One can observe from Theorem 4 that ˆL =O(ε−1), ˆα =O(ε), ˆδ =O(ε−2), ˆC =O(ε−11),
+ˆK =O(ε−3), and ˆN =O(ε−4 log ε−1). Consequently, Algorithm 4 enjoys an operation complexity of
+O(ε−4 log ε−1), measured by the amount of evaluations of ∇f1,∇ ˜f1 and proximal operator of f2 and ˜f2,
+for ﬁnding an O(ε)-KKT solution (xǫ, yǫ) of (29) satisfying
+dist
+(
+0, ∂f (xǫ, yǫ) + ρ∂ ˜f (xǫ, yǫ)− (ρ∇x ˜f (xǫ, zǫ); 0)
+)
+≤ ε, dist
+(
+0, ρ∂ ˜f (xǫ, zǫ)
+)
+≤ ε,
+˜f (xǫ, yǫ)− min
+z
+˜f (xǫ, z) =O(ε),
+where zǫ is given in Algorithm 4 and ρ = ε−1.
+4 Constrained bilevel optimization
+In this section, we consider a constrained bilevel optimization proble m5
+f ∗ = min f (x, y)
+s.t. y∈ Argmin
+z
+{ ˜f (x, z)|˜g(x, z)≤ 0}, (42)
+where f and ˜f satisfy Assumption 3. Recall from Assumption 3 that X = dom f2 andY = dom ˜f2. We
+now make some additional assumptions for problem (42).
+Assumption 4. (i) f and ˜f are Lf - and L ˜f -Lipschitz continuous on X×Y , respectively.
+(ii) ˜g : Rn× Rm→ Rl is L∇˜g-smooth and L˜g-Lipschitz continuous on X×Y .
+(iii) ˜gi(x,·) is convex and there exists ˆzx∈Y for each x∈X such that ˜gi(x, ˆzx) < 0 for all i = 1, 2, . . . , l
+and G := min{−˜gi(x, ˆzx)|x∈X , i = 1, . . . , l} > 0.6
+For notational convenience, we deﬁne
+˜f ∗(x) := min
+z
+{ ˜f (x, z)|˜g(x, z)≤ 0}, (43)
+˜f ∗
+hi := sup{ ˜f ∗(x)|x∈X} , (44)
+˜ghi := max{‖˜g(x, y)‖
+⏐
+⏐(x, y)∈X×Y} , (45)
+It then follows from Assumption 4(ii) that
+‖∇˜g(x, y)‖≤ L˜g ∀(x, y)∈X×Y . (46)
+In addition, by Assumptions 3 and 4 and the compactness of X andY, one can observe that ˜ ghi and G
+are ﬁnite. Besides, as will be shown in Lemma 6(ii), ˜f ∗
+hi is ﬁnite.
+The goal of this subsection is to propose penalty methods for solvin g problem (42). To this end, let
+us introduce a penalty function for the lower level optimization problem y∈ Argmin
+z
+{ ˜f (x, z)|˜g(x, z)≤ 0}
+of (42), which is given by
+~Pµ(x, z) = ˜f (x, z) + µ‖[˜g(x, z)]+‖2 (47)
+5For convenience, problem (42) is referred to as a constraine d bilevel optimization problem since its lower level part ha s
+at least one explicit constraint.
+6The latter part of this assumption can be weakened to the one t hat the pointwise Slater’s condition holds for the lower
+level part of (42), that is, there exists ˆ zx ∈ Y such that ˜g(x, ˆzx) < 0 for each x ∈ X . Indeed, if G > 0, Assumption 4(iii)
+clearly holds. Otherwise, one can solve the perturbed count erpart of (42) with ˜ g(x, z) being replaced by ˜ g(x, z) − ǫ for
+some suitable ǫ > 0 instead, which satisﬁes Assumption 4(iii).
+10
+
+for a penalty parameter µ > 0. Observe that problem (42) can be approximately solved as the uncon-
+strained bilevel optimization problem
+f ∗
+µ = min
+x,y
+{
+f (x, y)|y∈ Argmin
+z
+~Pµ(x, z)
+}
+. (48)
+Further, by the study in Section 3, problem (48) can be approximat ely solved as the penalty problem
+min
+x,y
+f (x, y) + ρ
+(
+~Pµ(x, y)− min
+z
+~Pµ(x, z)
+)
+(49)
+for some suitable ρ > 0. One can also observe that problem (49) is equivalent to the minimax problem
+min
+x,y
+max
+z
+Pρ,µ(x, y, z), where Pρ,µ(x, y, z) := f (x, y) + ρ(~Pµ(x, y)− ~Pµ(x, z)). (50)
+In view of (47), (50) and Assumption 3(i), Pρ,µ can be rewritten as
+Pρ,µ(x, y, z) =
+(
+f1(x, y) + ρ ˜f1(x, y) + ρµ‖[˜g(x, y)]+‖2− ρ ˜f1(x, z)− ρµ‖[˜g(x, z)]+‖2)
++
+(
+f2(x) + ρ ˜f2(y)− ρ ˜f2(z)
+)
+. (51)
+By this and Assumptions 3 and 4, one can observe that Pρ,µ enjoys the following nice properties.
+• Pρ,µ is the sum of smooth function f1(x, y)+ρ ˜f1(x, y)+ρµ‖[˜g(x, y)]+‖2−ρ ˜f1(x, z)−ρµ‖[˜g(x, z)]+‖2
+with Lipschitz continuous gradient and possibly nonsmooth function f2(x) + ρ ˜f2(y)− ρ ˜f2(z) with
+exactly computable proximal operator;
+• Pρ,µ is nonconvex in ( x, y) but concave in z.
+Due to the nice structure of Pρ,µ, an approximate stationary point of the minimax problem (50) can be
+found by Algorithm 2 proposed in Subsection 2.2.
+Based on the above observations, we are now ready to propose pe nalty methods for the constrained
+bilevel optimization problem (42) by solving a sequence of or a single min imax problem of the form (50).
+In particular, we ﬁrst propose an ideal penalty method for (42) by solving a sequence of minimax problems
+(see Algorithm 5). Then we propose a practical penalty method for (42) by ﬁnding an approximate
+stationary point of a single minimax problem (see Algorithm 6).
+Algorithm 5 An ideal penalty method for problem (42)
+Input: positive sequences{ρk},{µk} and{ǫk} with lim k→∞(ρk, µk, ǫk) = (∞,∞, 0).
+1: for k = 0, 1, 2, . . . do
+2: Find an ǫk-optimal solution ( xk, yk, zk) of problem (50) with ( ρ, µ) = ( ρk, µk).
+3: end for
+To study convergence of Algorithm 5, we make the following error bo und assumption on the solution
+set of the lower level optimization problem of (42). This type of erro r bounds has been considered in the
+context of set-value mappings in the literature (e.g., see [14]).
+Assumption 5. There exists a non-decreasing function ω : R+→ R+ with limθ↓0 ω(θ) = 0 and ¯θ > 0
+such that dist(z,Sθ(x))≤ ω(θ) for all x∈X , z∈S 0(x) and θ∈ [0, ¯θ], where
+Sθ(x) := Argmin
+z
+{ ˜f (x, z) :‖[˜g(x, z)]+‖≤ θ}.
+We are now ready to state a convergence result of Algorithm 5, who se proof is deferred to Section
+5.4.
+Theorem 5 (Convergence of Algorithm 5). Suppose that Assumptions 3-5 hold and that {(xk, yk, zk)}
+is generated by Algorithm 5. Then any accumulation point of {(xk, yk)} is an optimal solution of problem
+(42).
+Notice that (50) is a nonconvex-concave minimax problem. It is generally hard to ﬁnd an ǫ-optimal
+solution of (50) for an arbitrary ǫ > 0. As a result, Algorithm 5 is generally not implementable . We next
+propose a practical penalty method for problem (42) by ﬁnding an approximate stationa ry point of (50)
+with a suitable choice of ρ and µ.
+11
+
+Algorithm 6 A practical penalty method for problem (42)
+Input: ε∈ (0, 1/4], ρ = ε−1, µ = ε−2, ( x0, y0)∈X×Y with ~Pµ(x0, y0)≤ miny ~Pµ(x0, y) + ε.
+1: Call Algorithm 2 with ǫ← ε, ǫ0← ε5/2, ˆx0← (x0, y0), ˆy0← y0, and L∇h← L∇f1 + 2ρL∇ ˜f1
++
+4ρµ(˜ghiL∇˜g + L2
+˜g) to ﬁnd an ǫ-stationary point ( xǫ, yǫ, zǫ) of problem (50) with ρ = ε−1 and µ = ε−2.
+2: Output: ( xǫ, yǫ).
+Remark 6. (i) The initial point (x0, y0) of Algorithm 6 can be found by the similar procedure as descri bed
+in Remark 4 with ˜f being replaced by ~Pµ; (ii) As seen from Theorem 2, an ǫ-stationary point of (50)
+can be successfully found in step 1 of Algorithm 6 by applying Algorithm 2 to (50); (iii) For the sake of
+simplicity, a single subproblem of the form (50) with static penalty and tolerance parameters is solved in
+Algorithm 6. Nevertheless, Algorithm 6 can be modiﬁed into a perhaps practically more eﬃcient algorithm
+by solving a sequence of subproblems of the form (50) with dynamic penalty and tolerance parameters
+instead.
+In order to characterize the approximate solution found by Algorit hm 6, we next introduce a termi-
+nology called an ε-KKT solution of problem (42).
+By the deﬁnition of ˜f ∗ in (43), problem (42) can be viewed as
+min
+x,y
+{f (x, y)| ˜f (x, y)≤ ˜f ∗(x), ˜g(x, y)≤ 0}. (52)
+Its associated Lagrangian function is given by
+L(x, y, ρ, λ) = f (x, y) + ρ( ˜f (x, y)− ˜f ∗(x)) +⟨λ, ˜g(x, y)⟩. (53)
+In the spirit of classical constrained optimization, one would natura lly be interested in a KKT solution
+(x, y) of (52) or equivalently (42), namely, ( x, y) satisﬁes
+˜f (x, y)≤ ˜f ∗(x), ˜g(x, y)≤ 0, ρ ( ˜f (x, y)− ˜f ∗(x)) = 0 , ⟨λ, ˜g(x, y)⟩ = 0, (54)
+and moreover ( x, y) is a stationary point of the problem
+min
+x′,y′
+L(x′, y′, ρ, λ) (55)
+for some ρ≥ 0 and λ∈ Rl
++. Yet, due to the sophisticated problem structure, characterizin g a stationary
+point of (55) is generally diﬃcult. On another hand, notice from Lemm a 6 and (53) that problem (55)
+is equivalent to the minimax problem
+min
+x′,y′,˜λ′
+max
+z′
+{
+f (x′, y′) + ρ
+(˜f (x′, y′)− ˜f (x′, z′)−⟨ ˜λ′, ˜g(x′, z′)⟩
+)
++⟨λ, ˜g(x′, y′)⟩ + IRl
++
+(˜λ′)
+}
+,
+whose stationary point ( x, y, ˜λ, z) according to Deﬁnition 2 satisﬁes
+0∈ ∂f (x, y) + ρ∂ ˜f (x, y)− ρ(∇x ˜f (x, z) +∇x˜g(x, z)˜λ; 0) +∇˜g(x, y)λ, (56)
+0∈ ρ(∂z ˜f (x, z) +∇z ˜g(x, z)˜λ), (57)
+˜λ∈ Rl
++, ˜g(x, z)≤ 0, ⟨˜λ, ˜g(x, z)⟩ = 0. (58)
+Based on this observation and also the fact that (54) is equivalent t o
+˜f (x, y) = ˜f ∗(x), ˜g(x, y)≤ 0, ⟨λ, ˜g(x, y)⟩ = 0, (59)
+we are instead interested in a (weak) KKT solution of problem (42) an d its inexact counterpart that are
+deﬁned below.
+Deﬁnition 4. The pair (x, y) is said to be a KKT solution of problem (42) if there exists (z, ρ, λ, ˜λ)∈
+Rm× R+× Rl
++× Rl
++ such that (56)-(59) hold. In addition, for any ε > 0, (x, y) is said to be an ε-KKT
+solution of problem (42) if there exists (z, ρ, λ, ˜λ)∈ Rm× R+× Rl
++× Rl
++ such that
+dist
+(
+0, ∂f (x, y) + ρ∂ ˜f (x, y)− ρ(∇x ˜f (x, z) +∇x˜g(x, z)˜λ; 0) +∇˜g(x, y)λ
+)
+≤ ε,
+dist
+(
+0, ρ(∂z ˜f (x, z) +∇z ˜g(x, z)˜λ)
+)
+≤ ε,
+‖[˜g(x, z)]+‖≤ ε, |⟨˜λ, ˜g(x, z)⟩|≤ ε,
+| ˜f (x, y)− ˜f ∗(x)|≤ ε, ‖[˜g(x, y)]+‖≤ ε, |⟨λ, ˜g(x, y)⟩|≤ ε,
+where ˜f ∗ is deﬁned in (43).
+12
+
+We are now ready to present an operation complexity of Algorithm 6, measured by the amount of
+evaluations of∇f1,∇ ˜f1,∇˜g and proximal operator of f2 and ˜f2, for ﬁnding an O(ε)-KKT solution of
+(42), whose proof is deferred to Subsection 5.4.
+Theorem 6 (Complexity of Algorithm 6). Suppose that Assumptions 3 and 4 hold. Let f ∗, f , ˜f ,
+˜g, Dx, Dy, ˜fhi, ˜flow, flow, ˜f ∗, ˜f ∗
+hi, and ˜ghi be deﬁned in (29), (30), (31), (32), (43), (44) and (45),
+L∇f1 , L∇ ˜f1
+, L ˜f , L∇˜g, L˜g and G be given in Assumptions 3 and 4, ε, ρ, µ, x0, y0 and zǫ be given in
+Algorithm 6, and
+˜λ = 2ε−1[˜g(xǫ, zǫ)]+, ˆλ = 2ε−3[˜g(xǫ, yǫ)]+, (60)
+~L = L∇f1 + 2ε−1L∇ ˜f1 + 4ε−3(˜ghiL∇˜g + L2
+˜g), (61)
+˜α = min
+{
+1,
+√
+4ε/(Dy~L)
+}
+, ˜δ = (2 + ˜α−1)(D2
+x + D2
+y)~L + max
+{
+ε/Dy, ˜α~L/4
+}
+D2
+y,
+~C = 4 max{1/(2~L), min{Dyε−1, 4/(˜α~L)}}
+[(3~L + ε/(2Dy))2/ min{~L, ε/(2Dy)} + 3~L + ε/(2Dy)]−2ε5
+×
+(
+˜δ + 2 ˜α−1[f ∗− flow + 2ε−1( ˜fhi− ˜flow) + ε−3˜g2
+hi + εDy/4 +~L(D2
+x + D2
+y)]
+)
+,
+~K =
+⌈
+32(1 + f (x0, y0)− flow + εDy/4)~Lε−2 + 32ε3
+(
+1 + 4D2
+y~L2ε−2
+)
+− 1
+⌉
++
+,
+~N =
+(⌈
+96
+√
+2
+(
+1 + (24~L + 4ε/Dy)~L−1
+)⌉
++ 2
+)
+max
+{
+2,
+√
+Dy~Lε−1
+}
+× [(~K + 1)(log ~C)+ + ~K + 1 + 2~K log(~K + 1)].
+Then Algorithm 6 outputs an approximate solution (xǫ, yǫ) of (42) satisfying
+dist
+(
+∂f (xǫ, yǫ) + ρ∂ ˜f (xǫ, yǫ)− ρ(∇x ˜f (xǫ, zǫ) +∇x˜g(xǫ, zǫ)˜λ; 0) +∇˜g(xǫ, yǫ)ˆλ
+)
+≤ ε, (62)
+dist
+(
+0, ρ(∂z ˜f (xǫ, zǫ) +∇z ˜g(xǫ, zǫ)˜λ)
+)
+≤ ε, (63)
+‖[˜g(xǫ, zǫ)]+‖≤ ε2G−1Dy(ε2 + L ˜f )/2, (64)
+|⟨˜λ, ˜g(xǫ, zǫ)⟩|≤ ε2G−2D2
+y(ρ−1ǫ + L ˜f )2/2, (65)
+| ˜f (xǫ, yǫ)− ˜f ∗(xǫ)|≤ max
+{
+ε
+(
+1 + f (x0, y0)− flow + 2ε5(~L−1 + 4D2
+y~Lε−2) + Dyε/4
+)
+,
+ε2G−2D2
+yL ˜f (ε2 + εLf + L ˜f )/2
+}
+, (66)
+‖[˜g(xǫ, yǫ)]+‖≤ ε2G−1Dy(ε2 + εLf + L ˜f )/2, (67)
+|⟨ˆλ, ˜g(xǫ, yǫ)⟩|≤ εG−2D2
+y(ε2 + εLf + L ˜f )2/2, (68)
+after at most ~N evaluations of ∇f1,∇ ˜f1,∇˜g and proximal operator of f2 and ˜f2, respectively.
+Remark 7. One can observe from Theorem 6 that ~L =O(ε−3), ˜α =O(ε2), ˜δ =O(ε−5), ~C =O(ε−23),
+~K =O(ε−5), and ~N =O(ε−7 log ε−1). Consequently, Algorithm 6 enjoys an operation complexity of
+O(ε−7 log ε−1), measured by the amount of evaluations of ∇f1,∇ ˜f1,∇˜g and proximal operator of f2
+and ˜f2, for ﬁnding an O(ε)-KKT solution (xǫ, yǫ) of (42) satisfying
+dist
+(
+0, ∂f (xǫ, yǫ) + ρ∂ ˜f (xǫ, yǫ)− ρ(∇x ˜f (xǫ, zǫ) +∇x˜g(xǫ, zǫ)˜λ; 0) +∇˜g(xǫ, yǫ)ˆλ
+)
+≤ ε,
+dist
+(
+0, ρ(∂z ˜f (xǫ, zǫ) +∇z ˜g(xǫ, zǫ)˜λ)
+)
+≤ ε,
+‖[˜g(xǫ, zǫ)]+‖ =O(ε2), |⟨˜λ, ˜g(xǫ, zǫ)⟩| =O(ε2),
+| ˜f (xǫ, yǫ)− ˜f ∗(xǫ)| =O(ε), ‖[˜g(xǫ, yǫ)]+‖ =O(ε2), |⟨ˆλ, ˜g(xǫ, yǫ)⟩| =O(ε),
+where ˜f ∗ is deﬁned in (43), ˆλ, ˜λ∈ Rl
++ are deﬁned in (60), zǫ is given in Algorithm 6 and ρ = ε−1.
+5 Proof of the main results
+In this section we provide a proof of our main results presented in Se ctions 2, 3 and 4, which are
+particularly Theorems 1-6.
+13
+
+5.1 Proof of the main results in Subsection 2.1
+In this subsection we prove Theorem 1. Before proceeding, we est ablish a lemma below.
+Lemma 1. Suppose that Assumptions 1 and 2 hold. Let ¯H ∗, ¯Hlow, ϑ0 and ¯δ be deﬁned in (8), (10),
+(14) and (16), and ¯α be given in Algorithm 1. Then we have
+ϑ0≤ ¯δ + 2 ¯α−1(¯H ∗− ¯Hlow
+)
+. (69)
+Proof. By (8), (10), (11) and (12), one has
+G(¯z0, ¯y0)
+(12)
+= sup
+x
+{
+⟨x, ¯z0⟩− p(x)− ˆ
+h(x, ¯y0) + q(¯y0)
+}
+(11)
+= max
+x∈dom p
+{
+⟨x, ¯z0⟩− p(x)− ¯h(x, ¯y0) + σx
+2‖x‖2− σy
+2‖¯y0‖2 + q(¯y0)
+}
+(8)(10)
+≤ max
+x∈dom p
+{
+⟨x, ¯z0⟩ + σx
+2‖x‖2
+}
+− σy
+2‖¯y0‖2− ¯Hlow
+= max
+x∈dom p
+σx
+2‖x + σ−1
+x ¯z0‖2− σ−1
+x
+2 ‖¯z0‖2− σy
+2‖¯y0‖2− ¯Hlow
+≤ σxD2
+p
+2 − σ−1
+x
+2 ‖¯z0‖2− σy
+2‖¯y0‖2− ¯Hlow, (70)
+where the last inequality follows from (9) and the fact that z0∈− σxdom p.
+Recall that ( x∗, y∗) is the optimal solution of (8) and z∗ =−σxx∗. It follows from (8), (11) and (12)
+that
+G(z∗, y∗)
+(12)
+= sup
+x
+{
+⟨x, z∗⟩− p(x)− ˆh(x, y∗) + q(y∗)
+}
+≥⟨ x∗, z∗⟩− p(x∗)− ˆh(x∗, y∗) + q(y∗)
+(11)
+= ⟨x∗, z∗⟩ + σx
+2‖x∗‖2− σy
+2‖y∗‖2− p(x∗)− ¯
+h(x∗, y∗) + q(y∗)
+= − σ−1
+x
+2 ‖z∗‖2− σy
+2‖y∗‖2− ¯H ∗,
+where the last equality follows from (8), the deﬁnition of ( x∗, y∗), and z∗ =−σxx∗. This together with
+(13) and (70) implies that
+P(¯z0, ¯y0)−P (z∗, y∗) = σ−1
+x
+2 ‖¯z0‖2 + σy
+2‖¯y0‖2 +G(¯z0, ¯y0)− σ−1
+x
+2 ‖z∗‖2− σy
+2‖y∗‖2−G (z∗, y∗)
+≤ σxD2
+p/2− ¯Hlow + ¯H ∗.
+Notice from Algorithm 1 that z0 = z0
+f = ¯z0 ∈ −σxdom p and y0 = y0
+f = ¯y0 ∈ dom q. By these,
+z∗ =−σxx∗, (9), (14), and the above inequality, one has
+ϑ0
+(14)
+= η−1
+z ‖¯z0− z∗‖2 + η−1
+y ‖¯y0− y∗‖2 + 2 ¯α−1(P(¯z0, ¯y0)−P (z∗, y∗))
+≤ η−1
+z σ2
+xD2
+p + η−1
+y D2
+q + 2 ¯α−1(
+σxD2
+p/2− ¯Hlow + ¯H ∗)
+= η−1
+z σ2
+xD2
+p + ¯α−1σxD2
+p + η−1
+y D2
+q + 2 ¯α−1(¯H ∗− ¯Hlow
+)
+.
+Hence, the conclusion follows from this, (16), ηz = σx/2 and ηy = min{1/(2σy), 4/(¯ασx)}.
+We are now ready to prove Theorem 1.
+Proof of Theorem 1 . Suppose for contradiction that Algorithm 1 runs for more than ¯K outer itera-
+tions, where ¯K is given in (17). By this and Algorithm 1, one can assert that (15) doe s not hold for
+k = ¯K− 1. On the other hand, by (17) and [29, Theorem 3], one has
+‖(x
+¯K, y
+¯K)− (x∗, y∗)‖≤ (ˆζ−1 + L∇¯h)−1τ /2, (71)
+where ( x∗, y∗) is the optimal solution of problem (8) and ˆζ is an input of Algorithm 1. Notice from
+Algorithm 1 that (ˆx ¯K , ˆy ¯K) results from the forward-backward splitting (FBS) step applied t o the strongly
+monotone inclusion problem 0 ∈ (∇x¯h(x, y),−∇y¯h(x, y)) + (∂p(x), ∂q(y)) at the point ( x ¯K , y ¯K). It then
+14
+
+follows from this, ˆζ = min{σx, σy}/L2
+∇¯h (see Algorithm 1), and the contraction property of FBS [5,
+Corollary 2.5] that ‖(ˆx ¯K, ˆy ¯K)− (x∗, y∗)‖≤‖ (x ¯K, y ¯K)− (x∗, y∗)‖. Using this and (71), we have
+‖ˆζ−1(x
+¯K− ˆx
+¯K , ˆy
+¯K− y
+¯K)− (∇¯h(x
+¯K , y
+¯K)−∇ ¯h(ˆx
+¯K , ˆy
+¯K))‖
+≤ ˆζ−1‖(x
+¯K, y
+¯K)− (ˆx
+¯K , ˆy
+¯K)‖ +‖∇¯h(x
+¯K , y
+¯K)−∇ ¯h(ˆx
+¯K, ˆy
+¯K)‖
+≤ (ˆζ−1 + L∇¯h)‖(x
+¯K , y
+¯K)− (ˆx
+¯K , ˆy
+¯K)‖
+≤ (ˆζ−1 + L∇¯h)(‖(x
+¯K , y
+¯K)− (x∗, y∗)‖ +‖(ˆx
+¯K, ˆy
+¯K)− (x∗, y∗)‖)
+≤ 2(ˆζ−1 + L∇¯h)‖(x
+¯K, y
+¯K)− (x∗, y∗)‖
+(71)
+≤ τ,
+where the second inequality uses the fact that ¯h is L∇¯h-smooth on dom p× dom q. It follows that (15)
+holds for k = ¯K− 1, which contradicts the above assertion. Hence, Algorithm 1 must terminate in at
+most ¯K outer iterations.
+We next show that the output of Algorithm 1 is a τ -stationary point of (8). To this end, suppose
+that Algorithm 1 terminates at some iteration k at which (15) is satisﬁed. Then by (4) and the deﬁnition
+of ˆxk+1 and ˆyk+1 (see steps 23 and 24 of Algorithm 1), one has
+0∈ ˆζ∂p (ˆxk+1) + ˆxk+1− xk+1 + ˆζ∇x¯h(xk+1, yk+1),
+0∈ ˆζ∂q (ˆyk+1) + ˆyk+1− yk+1− ˆζ∇y¯h(xk+1, yk+1),
+which yield
+ˆζ−1(xk+1− ˆxk+1)−∇ x¯h(xk+1, yk+1)∈ ∂p(ˆxk+1), ˆζ−1(yk+1− ˆyk+1) +∇y¯h(xk+1, yk+1)∈ ∂q(ˆyk+1).
+These together with the deﬁnition of ¯H in (8) imply that
+∇x¯h(ˆxk+1, ˆyk+1) + ˆζ−1(xk+1− ˆxk+1)−∇ x¯h(xk+1, yk+1)∈ ∂x ¯H(ˆxk+1, ˆyk+1),
+∇y¯h(ˆxk+1, ˆyk+1)− ˆζ−1(yk+1− ˆyk+1)−∇ y¯h(xk+1, yk+1)∈ ∂y ¯H(ˆxk+1, ˆyk+1).
+Using these and (15), we obtain
+dist(0, ∂x ¯H(ˆxk+1, ˆyk+1))2 + dist(0, ∂y ¯H(ˆxk+1, ˆyk+1))2
+≤‖ ˆζ−1(xk+1− ˆxk+1) +∇x¯
+h(ˆxk+1, ˆyk+1)−∇ x¯h(xk+1, yk+1)‖2
++‖ˆζ−1(ˆyk+1− yk+1) +∇y¯h(ˆxk+1, ˆyk+1)−∇ y¯h(xk+1, yk+1)‖2
+=‖ˆζ−1(xk+1− ˆxk+1, ˆyk+1− yk+1)− (∇¯h(xk+1, yk+1)−∇ ¯h(ˆxk+1, ˆyk+1))‖2 (15)
+≤ τ 2,
+which implies that dist(0 , ∂x ¯H(ˆxk+1, ˆyk+1))≤ τ and dist(0 , ∂y ¯H(ˆxk+1, ˆyk+1))≤ τ . It then follows from
+these and Deﬁnition 2 that the output (ˆ xk+1, ˆyk+1) of Algorithm 1 is a τ -stationary point of (8).
+Finally, we show that the total number of evaluations of ∇¯h and proximal operator of p and q
+performed in Algorithm 1 is no more than ¯N , respectively. Indeed, notice from Algorithm 1 that
+¯α = min
+{
+1,
+√
+8σy/σx
+}
+, which implies that 2 / ¯α = max{2,
+√
+σx/(2σy)} and ¯α≤
+√
+8σy/σx. By these,
+one has
+max
+{ 2
+¯α , ¯ασx
+4σy
+}
+≤ max
+{
+2,
+√ σx
+2σy
+,
+√
+8σy
+σx
+σx
+4σy
+}
+= max
+{
+2,
+√ σx
+2σy
+}
+. (72)
+In addition, by [29, Lemma 4], the number of inner iterations perform ed in each outer iteration of
+Algorithm 1 is at most
+T =
+⌈
+48
+√
+2
+(
+1 + 8L∇¯hσ−1
+x
+)⌉
+− 1.
+Then one can observe that the number of evaluations of ∇¯h and proximal operator of p and q performed
+15
+
+in Algorithm 1 is at most
+(2T + 3) ¯K≤
+(⌈
+96
+√
+2
+(
+1 + 8L∇¯hσ−1
+x
+)⌉
++ 2
+)⌈
+max
+{ 2
+¯α , ¯ασx
+4σy
+}
+log 4 max{ηzσ−2
+x , ηy}ϑ0
+(ˆζ−1 + L∇¯h)−2τ 2
+⌉
++
+(72)
+≤
+(⌈
+96
+√
+2
+(
+1 + 8L∇¯hσ−1
+x
+)⌉
++ 2
+)⌈
+max
+{
+2,
+√ σx
+2σy
+}
+log 4 max{ηzσ−2
+x , ηy}ϑ0
+(ˆζ−1 + L∇¯h)−2τ 2
+⌉
++
+≤
+(⌈
+96
+√
+2
+(
+1 + 8L∇¯hσ−1
+x
+)⌉
++ 2
+)
+×
+⌈
+max
+{
+2,
+√ σx
+2σy
+}
+log 4 max{1/(2σx), min{1/(2σy), 4/(¯ασx)}} ϑ0
+(L2
+∇¯h/ min{σx, σy} + L∇¯h)−2τ 2
+⌉
++
+(69)(18)
+≤ ¯N ,
+where the second last inequality follows from the deﬁnition of ηy, ηz and ˆζ in Algorithm 1. Hence, the
+conclusion holds as desired.
+5.2 Proof of the main results in Subsection 2.2
+In this subsection we prove Theorem 2. Before proceeding, let {(xk, yk)}k∈K denote all the iterates
+generated by Algorithm 2, where K is a subset of consecutive nonnegative integers starting from 0. A lso,
+we deﬁne K− 1 ={k− 1 : k∈ K}. We ﬁrst establish two lemmas and then use them to prove Theorem
+2 subsequently.
+Lemma 2. Suppose that Assumption 1 holds. Let {(xk, yk)}k∈K be generated by Algorithm 2, H ∗, Dp,
+Dq, Hlow, α, δ be deﬁned in (6), (9), (23), (24) and (25), L∇h be given in Assumption 1, ǫ, ǫk be given
+in Algorithm 2, and
+Nk =
+(⌈
+96
+√
+2
+(
+1 + (24L∇h + 4ǫ/Dq) L−1
+∇h
+)⌉
++ 2
+)
+×
+⌈
+max
+{
+2,
+√
+DqL∇h
+ǫ
+}
+× log
+4 max
+{
+1
+2L∇h
+, min
+{
+Dq
+ǫ , 4
+αL∇h
+}} (
+δ + 2α−1(H ∗− Hlow + ǫDq/4 + L∇hD2
+p)
+)
+[(3L∇h + ǫ/(2Dq))2/ min{L∇h, ǫ/(2Dq)} + 3L∇h + ǫ/(2Dq)]−2 ǫ2
+k
+⌉
++
+. (73)
+Then for all 0≤ k∈ K− 1, (xk+1, yk+1) is an ǫk-stationary point of (20). Moreover, the total number of
+evaluations of∇h and proximal operator of p and q performed at iteration k of Algorithm 2 for generating
+(xk+1, yk+1) is no more than Nk, respectively.
+Proof. Let ( x∗, y∗) be an optimal solution of (6). Recall that H, Hk and hk are given in (6), (20) and
+(21), respectively. Then we have
+Hk,∗ := min
+x
+max
+y
+Hk(x, y) = min
+x
+max
+y
+{
+H(x, y)− ǫ
+4Dq
+‖y− ˆy0‖2 + L∇h‖x− xk‖2
+}
+≤ max
+y
+{H(x∗, y) + L∇h‖x∗− xk‖2}
+(6)(9)
+≤ H ∗ + L∇hD2
+p. (74)
+Moreover, by (9) and (23), one has
+Hk,low := min
+(x,y)∈dom p×dom q
+Hk(x, y) = min
+(x,y)∈dom p×dom q
+{
+H(x, y)− ǫ
+4Dq
+‖y− ˆy0‖2 + L∇h‖x− xk‖2
+}
+(23)
+≥ Hlow− max
+y∈dom q
+ǫ
+4Dq
+‖y− ˆy0‖2 (9)
+≥ Hlow− ǫDq/4. (75)
+In addition, by Assumption 1 and the deﬁnition of hk in (21), it is not hard to verify that hk(x, y) is
+L∇h-strongly-convex in x, ǫ/(2Dq)-strongly-concave in y, and (3 L∇h + ǫ/(2Dq))-smooth on its domain.
+Also, recall from Remark 2 that ( xk+1, yk+1) results from applying Algorithm 1 to problem (20). The
+conclusion of this lemma then follows by using (74) and (75) and applyin g Theorem 1 to (20) with τ = ǫk,
+σx = L∇h, σy = ǫ/(2Dq), L∇¯h = 3L∇h + ǫ/(2Dq), ¯α = α, ¯δ = δ, ¯Hlow = Hk,low, and ¯H ∗ = Hk,∗.
+16
+
+Lemma 3. Suppose that Assumption 1 holds. Let {xk}k∈K be generated by Algorithm 2, H, H ∗ and
+Dq be deﬁned in (6) and (9), L∇h be given in Assumption 1, and ǫ, ǫ0 and ˆx0 be given in Algorithm 2.
+Then for all 0≤ K∈ K− 1, we have
+min
+0≤k≤K
+‖xk+1− xk‖≤ maxy H(ˆx0, y)− H ∗ + ǫDq/4
+L∇h(K + 1) + 2ǫ2
+0(1 + 4D2
+q L2
+∇hǫ−2)
+L2
+∇h(K + 1) , (76)
+max
+y
+H(xK+1, y)≤ max
+y
+H(ˆx0, y) + ǫDq/4 + 2ǫ2
+0
+(
+L−1
+∇h + 4D2
+qL∇hǫ−2)
+. (77)
+Proof. For convenience of the proof, let
+H ∗
+ǫ (x) = max
+y
+{
+H(x, y)− ǫ‖y− ˆy0‖2/(4Dq)
+}
+, (78)
+H ∗
+k (x) = max
+y
+Hk(x, y), y k+1
+∗ = arg max
+y
+Hk(xk+1, y). (79)
+One can observe from these, (20) and (21) that
+H ∗
+k (x) = H ∗
+ǫ (x) + L∇h‖x− xk‖2. (80)
+By this and Assumption 1, one can also see that H ∗
+k is L∇h-strongly convex on dom p. In addition,
+recall from Lemma 2 that ( xk+1, yk+1) is an ǫk-stationary point of problem (20) for all 0 ≤ k∈ K− 1.
+It then follows from Deﬁnition 2 that there exist some u∈ ∂xHk(xk+1, yk+1) and v∈ ∂yHk(xk+1, yk+1)
+with‖u‖ ≤ǫk and‖v‖ ≤ǫk. Also, by (79), one has 0 ∈ ∂yHk(xk+1, yk+1
+∗ ), which together with
+v∈ ∂yHk(xk+1, yk+1) and ǫ/(2Dq)-strong concavity of Hk(xk+1,·), implies that ⟨−v, yk+1− yk+1
+∗ ⟩≥
+ǫ‖yk+1− yk+1
+∗ ‖2/(2Dq). This and ‖v‖≤ ǫk yield
+‖yk+1− yk+1
+∗ ‖≤ 2ǫkDq/ǫ. (81)
+In addition, by u∈ ∂xHk(xk+1, yk+1), (20) and (21), one has
+u∈∇ xh(xk+1, yk+1) + ∂p(xk+1) + 2L∇h(xk+1− xk). (82)
+Also, observe from (20), (21) and (79) that
+∂H ∗
+k (xk+1) =∇xh(xk+1, yk+1
+∗ ) + ∂p(xk+1) + 2L∇h(xk+1− xk),
+which together with (82) yields
+u +∇xh(xk+1, yk+1
+∗ )−∇ xh(xk+1, yk+1)∈ ∂H ∗
+k (xk+1).
+By this and L∇h-strong convexity of H ∗
+k , one has
+H ∗
+k (xk)≥ H ∗
+k (xk+1) +⟨u +∇xh(xk+1, yk+1
+∗ )−∇ xh(xk+1, yk+1), xk− xk+1⟩+ L∇h‖xk− xk+1‖2/2. (83)
+Using this, (80), (81), (83), ‖u‖≤ ǫk, and the Lipschitz continuity of ∇h, we obtain
+H ∗
+ǫ (xk)− H ∗
+ǫ (xk+1)
+(80)
+= H ∗
+k (xk)− H ∗
+k (xk+1) + L∇h‖xk− xk+1‖2
+(83)
+≥ ⟨u +∇xh(xk+1, yk+1
+∗ )−∇ xh(xk+1, yk+1), xk− xk+1⟩ + 3L∇h‖xk− xk+1‖2/2
+≥
+(
+−‖ u +∇xh(xk+1, yk+1
+∗ )−∇ xh(xk+1, yk+1)‖‖xk− xk+1‖ + L∇h‖xk− xk+1‖2/2
+)
++ L∇h‖xk− xk+1‖2
+≥− (2L∇h)−1‖u +∇xh(xk+1, yk+1
+∗ )−∇ xh(xk+1, yk+1)‖2 + L∇h‖xk− xk+1‖2
+≥− L−1
+∇h‖u‖2− L−1
+∇h‖∇xh(xk+1, yk+1
+∗ )−∇ xh(xk+1, yk+1)‖2 + L∇h‖xk− xk+1‖2
+≥− L−1
+∇hǫ2
+k− L∇h‖yk+1− yk+1
+∗ ‖2 + L∇h‖xk− xk+1‖2
+(81)
+≥ −(L−1
+∇h + 4D2
+qL∇hǫ−2)ǫ2
+k + L∇h‖xk− xk+1‖2,
+where the second and fourth inequalities follow from Cauchy-Schwa rtz inequality, and the third inequal-
+ity is due to Young’s inequality, and the ﬁfth inequality follows from L∇h-Lipschitz continuity of ∇h.
+Summing up the above inequality for k = 0, 1, . . . , K yields
+L∇h
+K∑
+k=0
+‖xk− xk+1‖2≤ H ∗
+ǫ (x0)− H ∗
+ǫ (xK+1) + (L−1
+∇h + 4D2
+q L∇hǫ−2)
+K∑
+k=0
+ǫ2
+k. (84)
+17
+
+In addition, it follows from (6), (9) and (78) that
+H ∗
+ǫ (xK+1) = max
+y
+{
+H(xK+1, y)− ǫ‖y− ˆy0‖2/(4Dq)
+}
+≥ min
+x
+max
+y
+H(x, y)− ǫDq/4 = H ∗− ǫDq/4,
+H ∗
+ǫ (x0) = max
+y
+{
+H(x0, y)− ǫ‖y− ˆy0‖2/(4Dq)
+}
+≤ max
+y
+H(x0, y). (85)
+These together with (84) yield
+L∇h(K + 1) min
+0≤k≤K
+‖xk+1− xk‖2≤ L∇h
+K∑
+k=0
+‖xk− xk+1‖2
+≤ max
+y
+H(x0, y)− H ∗ + ǫDq/4 + (L−1
+∇h + 4D2
+q L∇hǫ−2)
+K∑
+k=0
+ǫ2
+k,
+which together with x0 = ˆx0, ǫk = ǫ0(k + 1)−1 and∑ K
+k=0(k + 1)−2 < 2 implies that (76) holds.
+Finally, we show that (77) holds. Indeed, it follows from (9), (78), ( 84), (85), ǫk = ǫ0(k + 1)−1, and∑ K
+k=0(k + 1)−2 < 2 that
+max
+y
+H(xK+1, y)
+(9)
+≤ max
+y
+{
+H(xK+1, y)− ǫ‖y− ˆy0‖2/(4Dq)
+}
++ ǫDq/4
+(78)
+= H ∗
+ǫ (xK+1) + ǫDq/4
+(84)
+≤ H ∗
+ǫ (x0) + ǫDq/4 + (L−1
+∇h + 4D2
+q L∇hǫ−2)
+K∑
+k=0
+ǫ2
+k
+(85)
+≤ max
+y
+H(x0, y) + ǫDq/4 + 2ǫ2
+0(L−1
+∇h + 4D2
+q L∇hǫ−2).
+It then follows from this and x0 = ˆx0 that (77) holds.
+We are now ready to prove Theorem 2.
+Proof of Theorem 2 . Suppose for contradiction that Algorithm 2 runs for more than K + 1 outer
+iterations, where K is given in (26). By this and Algorithm 2, one can then assert that (22 ) does not
+hold for all 0 ≤ k≤ K. On the other hand, by (26) and (76), one has
+min
+0≤k≤K
+‖xk+1− xk‖2 (76)
+≤ maxy H(ˆx0, y)− H ∗ + ǫDq/4
+L∇h(K + 1) + 2ǫ2
+0(1 + 4D2
+q L2
+∇hǫ−2)
+L2
+∇h(K + 1)
+(26)
+≤ ǫ2
+16L2
+∇h
+,
+which implies that there exists some 0 ≤ k≤ K such that‖xk+1− xk‖≤ ǫ/(4L∇h), and thus (22) holds
+for such k, which contradicts the above assertion. Hence, Algorithm 2 must t erminate in at most K + 1
+outer iterations.
+Suppose that Algorithm 2 terminates at some iteration 0 ≤ k≤ K, namely, (22) holds for such k. We
+next show that its output ( xǫ, yǫ) = ( xk+1, yk+1) is an ǫ-stationary point of (6) and moreover it satisﬁes
+(28). Indeed, recall from Lemma 2 that ( xk+1, yk+1) is an ǫk-stationary point of (20), namely, it satisﬁes
+dist(0, ∂xHk(xk+1, yk+1))≤ ǫk and dist(0 , ∂yHk(xk+1, yk+1))≤ ǫk. By these, (6), (20) and (21), there
+exists ( u, v) such that
+u∈ ∂xH(xk+1, yk+1) + 2L∇h(xk+1− xk), ‖u‖≤ ǫk,
+v∈ ∂yH(xk+1, yk+1)− ǫ(yk+1− ˆy0)/(2Dq), ‖v‖≤ ǫk.
+It then follows that u−2L∇h(xk+1−xk)∈ ∂xH(xk+1, yk+1) and v+ǫ(yk+1−ˆy0)/(2Dq)∈ ∂yH(xk+1, yk+1).
+These together with (9), (22), and ǫk≤ ǫ0≤ ǫ/2 (see Algorithm 2) imply that
+dist
+(
+0, ∂xH(xk+1, yk+1)
+)
+≤‖ u− 2L∇h(xk+1− xk)‖≤‖ u‖ + 2L∇h‖xk+1− xk‖
+(22)
+≤ ǫk + ǫ/2≤ ǫ,
+dist
+(
+0, ∂yH(xk+1, yk+1)
+)
+≤‖ v + ǫ(yk+1− ˆy0)/(2Dq)‖≤‖ v‖ + ǫ‖yk+1− ˆy0‖/(2Dq)
+(9)
+≤ ǫk + ǫ/2≤ ǫ.
+Hence, the output ( xk+1, yk+1) of Algorithm 2 is an ǫ-stationary point of (6). In addition, (28) holds
+due to Lemma 3.
+18
+
+Recall from Lemma 2 that the number of evaluations of ∇h and proximal operator of p and q
+performed at iteration k of Algorithm 2 is at most Nk, respectively, where Nk is deﬁned in (73). Also,
+one can observe from the above proof and the deﬁnition of K that|K|≤ K + 2. It then follows that the
+total number of evaluations of ∇h and proximal operator of p and q in Algorithm 2 is respectively no
+more than ∑ |K|−2
+k=0 Nk. Consequently, to complete the rest of the proof of Theorem 2, it suﬃces to show
+that∑ |K|−2
+k=0 Nk≤ N , where N is given in (27). Indeed, by (27), (73) and |K|≤ K + 2, one has
+|K|−2∑
+k=0
+Nk
+(73)
+≤
+K∑
+k=0
+(⌈
+96
+√
+2
+(
+1 + (24L∇h + 4ǫ/Dq) L−1
+∇h
+)⌉
++ 2
+)
+×
+⌈
+max
+{
+2,
+√
+DqL∇h
+ǫ
+}
+× log
+4 max
+{
+1
+2L∇h
+, min
+{
+Dq
+ǫ , 4
+αL∇h
+}} (
+δ + 2α−1(H ∗− Hlow + ǫDq/4 + L∇hD2
+p)
+)
+[(3L∇h + ǫ/(2Dq))2/ min{L∇h, ǫ/(2Dq)} + 3L∇h + ǫ/(2Dq)]−2 ǫ2
+k
+⌉
++
+≤
+(⌈
+96
+√
+2
+(
+1 + (24L∇h + 4ǫ/Dq) L−1
+∇h
+)⌉
++ 2
+)
+max
+{
+2,
+√
+DqL∇h
+ǫ
+}
+×
+K∑
+k=0
+
+
+
+log
+4 max
+{
+1
+2L∇h
+, min
+{
+Dq
+ǫ , 4
+αL∇h
+}} (
+δ + 2α−1(H ∗− hlow + ǫDq/4 + L∇hD2
+p)
+)
+[(3L∇h + ǫ/(2Dq))2/ min{L∇h, ǫ/(2Dq)} + 3L∇h + ǫ/(2Dq)]−2 ǫ2
+k
+
+
++
++ 1
+
+
+≤
+(⌈
+96
+√
+2
+(
+1 + (24L∇h + 4ǫ/Dq) L−1
+∇h
+)⌉
++ 2
+)
+max
+{
+2,
+√
+DqL∇h
+ǫ
+}
+×
+(
+(K + 1)
+(
+log
+4 max
+{
+1
+2L∇h
+, min
+{
+Dq
+ǫ , 4
+αL∇h
+}} (
+δ + 2α−1(H ∗− Hlow + ǫDq/4 + L∇hD2
+p)
+)
+[(3L∇h + ǫ/(2Dq))2/ min{L∇h, ǫ/(2Dq)} + 3L∇h + ǫ/(2Dq)]−2 ǫ2
+0
+)
++
++ K + 1 + 2
+K∑
+k=0
+log(k + 1)
+)
+(27)
+≤ N,
+where the last inequality is due to (27) and ∑ K
+k=0 log(k + 1)≤ K log(K + 1). This completes the proof
+of Theorem 2.
+5.3 Proof of the main results in Section 3
+In this subsection we prove Theorems 3 and 4. We ﬁrst establish a lem ma below, which will be used to
+prove Theorem 3 subsequently.
+Lemma 4. Suppose that Assumption 3 holds and (xǫ, yǫ, zǫ) is an ǫ-optimal solution of problem (35) for
+some ǫ > 0. Let f , ˜f , f ∗, flow and ρ be given in (29), (32) and (35), respectively. Then we have
+˜f (xǫ, yǫ)≤ min
+z
+˜f (xǫ, z) + ρ−1(f ∗− flow + 2ǫ), f (xǫ, yǫ)≤ f ∗ + 2ǫ.
+Proof. Since ( xǫ, yǫ, zǫ) is an ǫ-optimal solution of (35), it follows from Deﬁnition 1 that
+max
+z
+Pρ(xǫ, yǫ, z)≤ Pρ(xǫ, yǫ, zǫ) + ǫ, P ρ(xǫ, yǫ, zǫ)≤ min
+x,y
+max
+z
+Pρ(x, y, z) + ǫ.
+Summing up these inequalities yields
+max
+z
+Pρ(xǫ, yǫ, z)≤ min
+x,y
+max
+z
+Pρ(x, y, z) + 2ǫ. (86)
+Let ( x∗, y∗) be an optimal solution of (29). It then follows that f (x∗, y∗) = f ∗ and ˜f (x∗, y∗) =
+minz ˜f (x∗, z). By these and the deﬁnition of Pρ in (35), one has
+max
+z
+Pρ(x∗, y∗, z) = f (x∗, y∗) + ρ( ˜f (x∗, y∗)− min
+z
+˜f (x∗, z)) = f (x∗, y∗) = f ∗,
+which implies that
+min
+x,y
+max
+z
+Pρ(x, y, z)≤ max
+z
+Pρ(x∗, y∗, z) = f ∗. (87)
+19
+
+It then follows from (35), (86) and (87) that
+f (xǫ, yǫ) + ρ( ˜f (xǫ, yǫ)− min
+z
+˜f (xǫ, z))
+(35)
+= max
+z
+Pρ(xǫ, yǫ, z)
+(86)(87)
+≤ f ∗ + 2ǫ,
+which together with ˜f (xǫ, yǫ)− minz ˜f (xǫ, z)≥ 0 implies that
+f (xǫ, yǫ)≤ f ∗ + 2ǫ, ˜f (xǫ, yǫ)≤ min
+z
+˜f (xǫ, z) + ρ−1 (f ∗− f (xǫ, yǫ) + 2ǫ) .
+The conclusion of this lemma directly follows from these and (32).
+We are now ready to prove Theorem 3.
+Proof of Theorem 3 . Let{(xk, yk, zk)} be generated by Algorithm 3 with lim k→∞(ρk, ǫk) = (∞, 0).
+By considering a convergent subsequence if necessary, we assume without loss of generality that lim k→∞(xk, yk) =
+(x∗, y∗). we now show that ( x∗, y∗) is an optimal solution of problem (29). Indeed, since ( xk, yk, zk)
+is an ǫk-optimal solution of (35) with ρ = ρk, it follows from Lemma 4 with ( ρ, ǫ) = ( ρk, ǫk) and
+(xǫ, yǫ) = ( xk, yk) that
+˜f (xk, yk)≤ min
+z
+˜f (xk, z) + ρ−1
+k (f ∗− flow + 2ǫk), f (xk, yk)≤ f ∗ + 2ǫk.
+By the continuity of f and ˜f , lim k→∞(xk, yk) = ( x∗, y∗), lim k→∞(ρk, ǫk) = (∞, 0), and taking limits as
+k→∞ on both sides of the above relations, we obtain that ˜f (x∗, y∗)≤ minz ˜f (x∗, z) and f (x∗, y∗)≤ f ∗,
+which clearly imply that y∗∈ Argminz ˜f (x∗, z) and f (x∗, y∗) = f ∗. Hence, ( x∗, y∗) is an optimal solution
+of (29) as desired.
+We next prove Theorem 4. Before proceeding, we establish a lemma b elow, which will be used to
+prove Theorem 4 subsequently.
+Lemma 5. Suppose that Assumption 3 holds and (xǫ, yǫ, zǫ) is an ǫ-stationary point of (35). Let Dy,
+flow, ˜f , ρ, and Pρ be given in (30), (32) and (35), respectively. Then we have
+dist
+(
+0, ∂f (xǫ, yǫ) + ρ∂ ˜f (xǫ, yǫ)− (ρ∇x ˜f (xǫ, zǫ); 0)
+)
+≤ ǫ, dist
+(
+0, ρ∂ ˜f(xǫ, zǫ)
+)
+≤ ǫ,
+˜f (xǫ, yǫ)≤ min
+z
+˜f (xǫ, z) + ρ−1(max
+z
+Pρ(xǫ, yǫ, z)− flow).
+Proof. Since ( xǫ, yǫ, zǫ) is an ǫ-stationary point of (35), it follows from Deﬁnition 2 that
+dist
+(
+0, ∂x,yPρ(xǫ, yǫ, zǫ)
+)
+≤ ǫ, dist
+(
+0, ∂zPρ(xǫ, yǫ, zǫ)
+)
+≤ ǫ.
+Using these and the deﬁnition of Pρ in (35), we have
+dist
+(
+0, ∂f (xǫ, yǫ) + ρ∂ ˜f (xǫ, yǫ)− (ρ∇x ˜f (xǫ, zǫ); 0)
+)
+≤ ǫ, dist
+(
+0, ρ∂ ˜f (xǫ, zǫ)
+)
+≤ ε.
+In addition, by (35), we have
+f (xǫ, yǫ) + ρ( ˜f (xǫ, yǫ)− min
+z
+˜f (xǫ, z)) = max
+z
+Pρ(xǫ, yǫ, z),
+which along with (32) implies that
+˜f (xǫ, yǫ)− min
+z
+˜f (xǫ, z)≤ ρ−1(max
+z
+Pρ(xǫ, yǫ, z)− flow).
+This completes the proof of this lemma.
+We are now ready to prove Theorem 4.
+Proof of Theorem 4 . Observe from (36) that problem (35) can be viewed as
+min
+x,y
+max
+z
+{Pρ(x, y, z) = h(x, y, z) + p(x, y)− q(z)} ,
+where h(x, y, z) = f1(x, y) + ρ ˜f1(x, y)− ρ ˜f1(x, z), p(x, y) = f2(x) + ρ ˜f2(y), and q(z) = ρ ˜f2(z). Hence,
+problem (35) is in the form of (6) with H = Pρ. By Assumption 3 and ρ = ε−1, one can see that h is
+20
+
+ˆL-smooth on its domain, where ˆL is given in (39). Also, notice from Algorithm 4 that ǫ0 = ε3/2≤ ε/2
+due to ε∈ (0, 1/4]. Consequently, Algorithm 2 can be suitably applied to problem (35) w ith ρ = ε−1 for
+ﬁnding an ǫ-stationary point ( xǫ, yǫ, zǫ) of it.
+In addition, notice from Algorithm 4 that ˜f (x0, y0)≤ miny ˜f (x0, y) +ε. Using this, (35) and ρ = ε−1,
+we obtain
+max
+z
+Pρ(x0, y0, z) = f (x0, y0) + ρ( ˜f (x0, y0)− min
+z
+˜f (x0, z))≤ f (x0, y0) + ρε = f (x0, y0) + 1. (88)
+By this and (28) with H = Pρ, ǫ = ε, ǫ0 = ε3/2, ˆx0 = (x0, y0), Dq = Dy, and L∇h =ˆL, one has
+Pρ(xǫ, yǫ, zǫ)≤ max
+z
+Pρ(x0, y0, z) + εDy/4 + 2ε3(ˆL−1 + 4D2
+yˆLε−2)
+(88)
+≤ 1 + f (x0, y0) + εDy/4 + 2ε3(ˆL−1 + 4D2
+yˆLε−2).
+It then follows from this and Lemma 5 with ǫ = ε and ρ = ε−1 that ( xǫ, yǫ, zǫ) satisﬁes (40) and (41).
+We next show that at most ˆN evaluations of ∇f1,∇ ˜f1, and proximal operator of f2 and ˜f2 are
+respectively performed in Algorithm 4. Indeed, by (31), (32) and ( 35), one has
+min
+x,y
+max
+z
+Pρ(x, y, z)
+(35)
+= min
+x,y
+{f (x, y) + ρ( ˜f (x, y)− min
+z
+˜f (x, z))}≥ min
+(x,y)∈X ×Y
+f (x, y)
+(32)
+= flow, (89)
+min
+(x,y,z)∈X ×Y×Y
+Pρ(x, y, z)
+(35)
+= min
+(x,y,z)∈X ×Y×Y
+{f (x, y) + ρ( ˜f (x, y)− ˜f (x, z))}
+(31)(32)
+≥ flow + ρ( ˜flow− ˜fhi).
+(90)
+For convenience of the rest proof, let
+H = Pρ, H ∗ = min
+x,y
+max
+z
+Pρ(x, y, z), H low = min{Pρ(x, y, z)|(x, y, z)∈X×Y×Y} . (91)
+In view of these, (87), (88), (89), (90), and ρ = ε−1, we obtain that
+max
+z
+H(x0, y0, z)
+(88)
+≤ f (x0, y0) + 1, f low
+(89)
+≤ H ∗ (87)
+≤ f ∗,
+Hlow
+(90)
+≥ flow + ρ( ˜flow− ˜fhi) = flow + ε−1( ˜flow− ˜fhi).
+Using these and Theorem 2 with ǫ = ε, ˆx0 = (x0, y0), Dp =
+√
+D2x + D2y, Dq = Dy, ǫ0 = ε3/2, L∇h =ˆL,
+α = ˆα, δ = ˆδ, and H, H ∗, Hlow given in (91), we can conclude that Algorithm 4 performs at most
+ˆN evaluations of∇f1,∇ ˜f1 and proximal operator of f2 and ˜f2 respectively for ﬁnding an approximate
+solution ( xǫ, yǫ) of problem (29) satisfying (40) and (41).
+5.4 Proof of the main results in Section 4
+In this subsection we prove Theorems 5 and 6. Before proceeding, we deﬁne
+r = G−1Dy(ρ−1ǫ + L ˜f ), B+
+r ={λ∈ Rl
++ :‖λ‖≤ r}, (92)
+where Dy is deﬁned in (30), G is given in Assumption 4(iii), and ǫ and ρ are given in Algorithm 6. In
+addition, one can observe from (43) and (47) that
+min
+z
+~Pµ(x, z)≤ ˜f ∗(x) ∀x∈X , (93)
+which will be frequently used later.
+We next establish several technical lemmas that will be used to prov e Theorem 5 subsequently.
+Lemma 6. Suppose that Assumptions 3 and 4 hold. Let Dy, L ˜f , G, ˜f ∗, ˜f ∗
+hi and B+
+r be given in (30),
+(43), (44), (92) and Assumption 4, respectively. Then the following stateme nts hold.
+(i) ‖λ∗‖≤ G−1L ˜f Dy and λ∗∈ B+
+r for all λ∗∈ Λ ∗(x) and x∈X , where Λ ∗(x) denotes the set of
+optimal Lagrangian multipliers of problem (43) for any x∈X .
+21
+
+(ii) The function ˜f ∗ is Lipschitz continuous on X and ˜f ∗
+hi is ﬁnite.
+(iii) It holds that
+˜f ∗(x) = max
+λ
+min
+z
+˜f (x, z) +⟨λ, ˜g(x, z)⟩− IRl
++
+(λ) ∀x∈X , (94)
+where IRl
++
+(·) is the indicator function associated with Rl
++.
+Proof. (i) Let x∈X and λ∗∈ Λ ∗(x) be arbitrarily chosen, and let z∗∈Y be such that ( z∗, λ∗) is a pair
+of primal-dual optimal solutions of (43). It then follows that
+z∗∈ Argmin
+z
+˜f (x, z) +⟨λ∗, ˜g(x, z)⟩, ⟨λ∗, ˜g(x, z∗)⟩ = 0, ˜g(x, z∗)≤ 0, λ ∗≥ 0.
+The ﬁrst relation above yields
+˜f (x, z∗) +⟨λ∗, ˜g(x, z∗)⟩≤ ˜f (x, ˆzx) +⟨λ∗, ˜g(x, ˆzx)⟩,
+where ˆzx is given in Assumption 4(iii). By this and ⟨λ∗, ˜g(x, z∗)⟩ = 0, one has
+⟨λ∗,−˜g(x, ˆzx)⟩≤ ˜f (x, ˆzx)− ˜f (x, z∗),
+which together with λ∗≥ 0, (30) and Assumption 4 implies that
+G
+l∑
+i=1
+λ∗
+i≤⟨ λ∗,−˜g(x, ˆzx)⟩≤ ˜f (x, ˆzx)− ˜f (x, z∗)≤ L ˜f‖ˆzx− z∗‖≤ L ˜f Dy, (95)
+where the ﬁrst inequality is due to Assumption 4(iii), and the third ineq uality follows from (30) and L ˜f -
+Lipschitz continuity of ˜f (see Assumption 4(i)). By (92), (95) and λ∗≥ 0, we have ‖λ∗‖≤ ∑ l
+i=1 λ∗
+i ≤
+G−1L ˜f Dy and λ∗∈ B+
+r .
+(ii) Recall from Assumptions 3(i) and 4(iii) that ˜f (x,·) and ˜gi(x,·), i = 1 , . . . , l, are convex for any
+given x∈X . Using this, (43) and the ﬁrst statement of this lemma, we observe that
+˜f ∗(x) = min
+z
+max
+λ∈B+
+r
+˜f (x, z) +⟨λ, ˜g(x, z)⟩ ∀ x∈X . (96)
+Notice from Assumption 4 that ˜f and ˜g are Lipschitz continuous on their domain. Then it is not hard to
+observe that max{ ˜f (x, z) +⟨λ, ˜g(x, z)⟩|λ∈ B+
+r} is a Lipschitz continuous function of ( x, z) on its domain.
+By this and (96), one can easily verify that ˜f ∗ is Lipschitz continuous on X . In addition, the ﬁniteness
+of ˜f ∗
+hi follows from (44), the continuity of ˜f ∗, and the compactness of X .
+(iii) One can observe from (43) that for all x∈X ,
+˜f ∗(x) = min
+z
+max
+λ
+˜f (x, z) +⟨λ, ˜g(x, z)⟩− IRl
++
+(λ)≥ max
+λ
+min
+z
+˜f (x, z) +⟨λ, ˜g(x, z)⟩− IRl
++
+(λ)
+where the inequality follows from the weak duality. In addition, it follow s from Assumption 3 that the
+domain of ˜f (x,·) is compact for all x∈X . By this, (96) and the strong duality, one has
+˜f ∗(x) = max
+λ∈B+
+r
+min
+z
+˜f (x, z) +⟨λ, ˜g(x, z)⟩− IRl
++
+(λ) ∀x∈X ,
+which together with the above inequality implies that (94) holds.
+Lemma 7. Suppose that Assumptions 3 and 4 hold and that (xǫ, yǫ, zǫ) is an ǫ-optimal solution of
+problem (50) for some ǫ > 0. Let flow, f , ~Pµ, f ∗
+µ, ρ and µ be given in (32), (42), (47), (48) and (50),
+respectively. Then we have
+~Pµ(xǫ, yǫ)≤ min
+z
+~Pµ(xǫ, z) + ρ−1(f ∗
+µ− flow + 2ǫ), f (xǫ, yǫ)≤ f ∗
+µ + 2ǫ. (97)
+Proof. The proof follows from the same argument as the one for Lemma 4 wit h f ∗ and ˜f being replaced
+by f ∗
+µ and ~Pµ, respectively.
+Lemma 8. Suppose that Assumptions 3-5 hold. Let ˜flow, f ∗, ˜f ∗
+hi, f ∗
+µ be deﬁned in (31), (42), (44) and
+(48), and Lf , ω and ¯θ be given in Assumptions 4 and 5. Suppose that µ≥ ( ˜f ∗
+hi− ˜flow)/¯θ2. Then we have
+f ∗
+µ≤ f ∗ + Lf ω
+(√
+µ−1( ˜f ∗
+hi− ˜flow)
+)
+. (98)
+22
+
+Proof. Let x∈X , y∈ Argminz{ ˜f (x, z)|˜g(x, z)≤ 0} and z∗∈ Argminz ~Pµ(x, z) be arbitrarily chosen.
+One can easily see from (47) and (93) that ˜f (x, z∗) + µ‖[˜g(x, z∗)]+‖2≤ ˜f ∗(x), which together with (31)
+and (44) implies that
+‖[˜g(x, z∗)]+‖2≤ µ−1( ˜f ∗
+hi− ˜flow). (99)
+Since µ≥ ( ˜f ∗
+hi− ˜flow)/¯θ2, it follows from (99) that‖[˜g(x, z∗)]+‖≤ ¯θ. By this relation, y∈ Argmin
+z
+{ ˜f (x, z)|˜g(x, z)≤
+0} and Assumption 5, there exists some ˆ z∗ such that
+‖y− ˆz∗‖≤ ω(‖[˜g(x, z∗)]+‖), ˆz∗∈ Argmin
+z
+{
+˜f (x, z)
+⏐
+⏐‖[˜g(x, z)]+‖≤‖ [˜g(x, z∗)]+‖
+}
+. (100)
+In view of (47), z∗∈ Argminz ~Pµ(x, z) and the second relation in (100), one can observe that ˆ z∗∈
+Argminz ~Pµ(x, z), which along with (48) yields f (x, ˆz∗)≥ f ∗
+µ. Also, using (100) and Lf -Lipschitz conti-
+nuity of f (see Assumption 4), we have
+f (x, y)− f (x, ˆz∗)≥− Lf‖y− ˆz∗‖
+(100)
+≥ −Lf ω(‖[˜g(x, z∗)]+‖).
+Taking minimum over x∈X and y∈ Argminz{ ˜f (x, z)|˜g(x, z)≤ 0} on both sides of this relation, and
+using (42), (99), f (x, ˆz∗)≥ f ∗
+µ and the monotonicity of ω, we can conclude that (98) holds.
+Lemma 9. Suppose that Assumptions 3-5 hold. Let ˜flow, flow, f , ˜f , f ∗, ˜f ∗, ˜f ∗
+hi, ρ and µ be given in
+(31), (32), (42), (43), (44) and (50), and Lf , ω and ¯θ be given in Assumptions 4 and 5, respectively.
+Suppose that µ≥ ( ˜f ∗
+hi− ˜flow)/¯θ2 and (xǫ, yǫ, zǫ) is an ǫ-optimal solution of problem (50) for some ǫ > 0.
+Then we have
+f (xǫ, yǫ)≤ f ∗ + Lf ω
+(√
+µ−1( ˜f ∗
+hi− ˜flow)
+)
++ 2ǫ,
+˜f (xǫ, yǫ)≤ ˜f ∗(xǫ) + ρ−1
+(
+f ∗− flow + Lf ω
+(√
+µ−1( ˜f ∗
+hi− ˜flow)
+)
++ 2ǫ
+)
+,
+‖[˜g(xǫ, yǫ)]+‖2≤ µ−1
+(
+˜f ∗(xǫ)− ˜flow + ρ−1
+(
+f ∗− flow + Lf ω
+(√
+µ−1( ˜f ∗
+hi− ˜flow)
+)
++ 2ǫ
+))
+.
+Proof. By (47), (93), and the ﬁrst relation in (97), one has
+˜f (xǫ, yǫ) + µ‖[˜g(xǫ, yǫ)]+‖2 (47)
+= ~Pµ(xǫ, yǫ)
+(93)(97)
+≤ ˜f ∗(xǫ) + ρ−1(f ∗
+µ− flow + 2ǫ).
+It then follows from this and (31) that
+˜f (xǫ, yǫ)≤ ˜f ∗(xǫ) + ρ−1(f ∗
+µ− flow + 2ǫ), ‖[˜g(xǫ, yǫ)]+‖2≤ µ−1( ˜f ∗(xǫ)− ˜flow + ρ−1(f ∗
+µ− flow + 2ǫ)).
+In addition, recall from (97) that f (xǫ, yǫ)≤ f ∗
+µ + 2ǫ. The conclusion of this lemma then follows from
+these three relations and (98).
+We are now ready to prove Theorem 5.
+Proof of Theorem 5 . Let{(xk, yk, zk)} be generated by Algorithm 5 with lim k→∞(ρk, µk, ǫk) = (∞,∞, 0).
+By considering a convergent subsequence if necessary, we assume without loss of generality that lim k→∞(xk, yk) =
+(x∗, y∗). We now show that ( x∗, y∗) is an optimal solution of problem (42). Indeed, since ( xk, yk, zk) is
+an ǫk-optimal solution of (50) with ( ρ, µ) = ( ρk, µk) and lim k→∞ µk =∞, it follows from Lemma 9 with
+(ρ, µ, ǫ) = ( ρk, µk, ǫk) and ( xǫ, yǫ) = ( xk, yk) that for all suﬃciently large k, one has
+f (xk, yk)≤ f ∗ + Lf ω
+(√
+µ−1
+k ( ˜f ∗
+hi− ˜flow)
+)
++ 2ǫk,
+˜f (xk, yk)≤ ˜f ∗(xk) + ρ−1
+k
+(
+f ∗− flow + Lf ω
+(√
+µ−1
+k ( ˜f ∗
+hi− ˜flow)
+)
++ 2ǫk
+)
+,
+‖
+‖[˜g(xk, yk)]+
+‖
+‖2
+≤ µ−1
+k
+(
+˜f ∗(xk)− ˜flow + ρ−1
+k
+(
+f ∗− flow + Lf ω
+(√
+µ−1
+k ( ˜f ∗
+hi− ˜flow)
+)
++ 2ǫk
+))
+.
+By the continuity of f , ˜f and ˜f ∗ (see Assumption 3(i) and Lemma 6(ii)), lim k→∞(xk, yk) = ( x∗, y∗),
+limk→∞(ρk, µk, ǫk) = (∞,∞, 0), lim θ↓0 ω(θ) = 0, and taking limits as k→∞ on both sides of the above
+relations, we obtain that f (x∗, y∗)≤ f ∗, ˜f (x∗, y∗)≤ ˜f ∗(x∗) and [˜g(x∗, y∗)]+ = 0, which along with
+(42) and (43) imply that f (x∗, y∗) = f ∗ and y∗∈ Argminz{ ˜f (x∗, z)|˜g(x∗, z)≤ 0}. Hence, ( x∗, y∗) is an
+optimal solution of (42) as desired.
+23
+
+We next prove Theorem 6. Before proceeding, we establish severa l technical lemmas below, which
+will be used to prove Theorem 6 subsequently.
+Lemma 10. Suppose that Assumptions 3 and 4 hold and that (xǫ, yǫ, zǫ) is an ǫ-stationary point of
+problem (50) for some ǫ > 0. Let Dy, ˜g, ρ, µ, Lf , L ˜f and G be given in (30), (42), (50) and Assumption
+4, respectively. Then we have
+‖[˜g(xǫ, zǫ)]+‖≤ (2µG)−1Dy(ρ−1ǫ + L ˜f ), (101)
+‖[˜g(xǫ, yǫ)]+‖≤ (2µG)−1Dy(ρ−1ǫ + ρ−1Lf + L ˜f ). (102)
+Proof. We ﬁrst prove (101). Since ( xǫ, yǫ, zǫ) is an ǫ-stationary point of (50), it follows from Deﬁnition
+2 that dist(0 , ∂zPρ,µ(xǫ, yǫ, zǫ))≤ ǫ. Also, by (47) and (50), one has
+Pρ,µ(x, y, z) = f (x, y) + ρ( ˜f (x, y) + µ‖[˜g(x, y)]+‖2)− ρ( ˜f (x, z) + µ‖[˜g(x, z)]+‖2). (103)
+Using these relations, we have
+dist
+(
+0, ∂z ˜f (xǫ, zǫ) + 2µ
+l∑
+i=1
+[˜gi(xǫ, zǫ)]+∇z ˜gi(xǫ, zǫ)
+)
+≤ ρ−1ǫ.
+Hence, there exists s∈ ∂z ˜f (xǫ, zǫ) such that
+‖
+‖
+‖s + 2µ
+l∑
+i=1
+[˜gi(xǫ, zǫ)]+∇z ˜gi(xǫ, zǫ)
+‖
+‖
+‖≤ ρ−1ǫ. (104)
+Let ˆzxǫ and G be given in Assumption 4(iii). It then follows that ˆ zxǫ∈Y and−˜gi(xǫ, ˆzxǫ)≥ G > 0 for
+all i. Notice that [˜gi(xǫ, zǫ)]+˜gi(xǫ, zǫ)≥ 0 for all i and‖zǫ− ˆzxǫ‖≤ Dy due to (30). Using these, (104),
+and the convexity of ˜f (xǫ,·) and ˜gi(xǫ,·) for all i, we have
+˜f (xǫ, zǫ)− ˜f (xǫ, ˆzxǫ) + 2µG
+l∑
+i=1
+[˜gi(xǫ, zǫ)]+≤ ˜f (xǫ, zǫ)− ˜f (xǫ, ˆzxǫ)− 2µ
+l∑
+i=1
+[˜gi(xǫ, zǫ)]+˜gi(xǫ, ˆzxǫ)
+≤ ˜f (xǫ, zǫ)− ˜f (xǫ, ˆzxǫ) + 2µ
+l∑
+i=1
+[˜gi(xǫ, zǫ)]+(˜gi(xǫ, zǫ)− ˜gi(xǫ, ˆzxǫ))
+≤⟨ s, zǫ− ˆzxǫ⟩ + 2µ
+l∑
+i=1
+[˜gi(xǫ, zǫ)]+⟨∇z ˜gi(xǫ, zǫ), zǫ− ˆzxǫ⟩
+=⟨s + 2µ
+l∑
+i=1
+[˜g(xǫ, zǫ)]+∇z ˜gi(xǫ, zǫ), zǫ− ˆzxǫ⟩≤ ρ−1Dyǫ, (105)
+where the ﬁrst inequality is due to −˜gi(xǫ, ˆzxǫ) ≥ G for all i, the second inequality follows from
+[˜gi(xǫ, zǫ)]+˜gi(xǫ, zǫ)≥ 0 for all i, the third inequality is due to s∈ ∂z ˜f (xǫ, zǫ) and the convexity of
+˜f (xǫ,·) and ˜gi(xǫ,·) for all i, and the last inequality follows from (30) and (104). In view of (30), (105),
+and L ˜f -Lipschitz continuity of ˜f (x, y) (see Assumption 4), one has
+‖[˜g(xǫ, zǫ)]+‖≤
+l∑
+i=1
+[˜gi(xǫ, zǫ)]+
+(105)
+≤ (2µG)−1(ρ−1Dyǫ + ˜f (xǫ, ˆzxǫ)− ˜f (xǫ, zǫ))
+≤ (2µG)−1(ρ−1Dyǫ + L ˜f‖ˆzxǫ− zǫ‖)
+(30)
+≤ (2µG)−1Dy(ρ−1ǫ + L ˜f ).
+Hence, (101) holds.
+We next prove (102). Since ( xǫ, yǫ, zǫ) is an ǫ-stationary point of (50), it follows from Deﬁnition 2
+that dist(0 , ∂yPρ,µ(xǫ, yǫ, zǫ))≤ ǫ. This together with (103) implies that
+dist
+(
+0, ∂ yf (xǫ, yǫ) + ρ∂y ˜f (xǫ, yǫ) + 2ρµ∇y ˜g(xǫ, yǫ)[˜g(xǫ, yǫ)]+
+)
+≤ ǫ.
+Hence, there exists s∈ ∂yf (xǫ, yǫ) and ˜s∈ ∂y ˜f (xǫ, yǫ) such that
+‖s + ρ˜s + 2ρµ∇y ˜g(xǫ, yǫ)[˜g(xǫ, yǫ)]+‖≤ ǫ. (106)
+24
+
+Let ¯A(xǫ, yǫ) = {i|˜gi(xǫ, yǫ) > 0, 1≤ i≤ l}, ˆzxǫ and G be given in Assumption 4(iii). It then follows
+that ˆzxǫ∈Y and−˜gi(xǫ, ˆzxǫ)≥ G > 0 for all i. Using these and the convexity of ˜ gi(xǫ,·) for all i, we
+have
+⟨∇y ˜g(xǫ, yǫ)[˜g(xǫ, yǫ)]+, yǫ− ˆzxǫ⟩ =
+∑
+i∈ ¯A(xǫ,yǫ)
+⟨∇y ˜gi(xǫ, yǫ), yǫ− ˆzxǫ⟩[gi(xǫ, yǫ)]+
+≥
+∑
+i∈ ¯A(xǫ,yǫ)
+(˜gi(xǫ, yǫ)− ˜gi(xǫ, ˆzxǫ))[˜gi(xǫ, yǫ)]+
+≥
+∑
+i∈ ¯A(xǫ,yǫ)
+G[˜gi(xǫ, yǫ)]+ = G
+l∑
+i=1
+[˜gi(xǫ, yǫ)]+≥ G‖[˜g(xǫ, yǫ)]+‖ , (107)
+where the ﬁrst inequality follows from the convexity of ˜ g(xǫ,·) and the second inequality is due to
+−˜gi(xǫ, ˆzxǫ)≥ G. It then follows from this, (106) and (107) that
+Dyǫ ≥‖ s + ρ˜s + 2ρµ∇y ˜g(xǫ, yǫ)[˜g(xǫ, yǫ)]+‖·‖ yǫ− ˆzxǫ‖
+≥⟨ s + ρ˜s + 2ρµ∇y ˜g(xǫ, yǫ)[˜g(xǫ, yǫ)]+, yǫ− ˆzxǫ⟩
+=⟨s + ρ˜s, yǫ− ˆzxǫ⟩ + 2ρµ⟨∇y ˜g(xǫ, yǫ)[˜g(xǫ, yǫ)]+, yǫ− ˆzxǫ⟩
+(107)
+≥ −(‖s‖ + ρ‖˜s‖)‖yǫ− ˆzxǫ‖ + 2ρµG‖[˜g(xǫ, yǫ)]+‖
+≥− (Lf + ρL ˜f )Dy + 2ρµG‖[˜g(xǫ, yǫ)]+‖ , (108)
+where the last inequality follows from ‖yǫ− ˆzxǫ‖≤ Dy and the fact that ‖s‖≤ Lf and‖˜s‖≤ L ˜f , which
+are due to (30), s∈ ∂yf (xǫ, yǫ), ˜s∈ ∂y ˜f (xǫ, yǫ) and Assumption 4(i). By (108), one can immediately see
+that (102) holds.
+Lemma 11. Suppose that Assumptions 3 and 4 hold. Let f , ˜f , ˜g, Dy, flow, ˜f ∗ and Pρ,µ be given in (29),
+(30), (32), (43) and (50), Lf , L ˜f and G be given in Assumptions 3 and 4, (xǫ, yǫ, zǫ) be an ǫ-stationary
+point of (50) for some ǫ > 0, and
+˜λ = 2µ[˜g(xǫ, zǫ)]+, ˆλ = 2ρµ[˜g(xǫ, yǫ)]+. (109)
+Then we have
+dist
+(
+∂f (xǫ, yǫ) + ρ∂ ˜f (xǫ, yǫ)− ρ(∇x ˜f (xǫ, zǫ) +∇x˜g(xǫ, zǫ)˜λ; 0) +∇˜g(xǫ, yǫ)ˆλ
+)
+≤ ǫ, (110)
+dist
+(
+0, ρ(∂z ˜f (xǫ, zǫ) +∇z ˜g(xǫ, zǫ)˜λ)
+)
+≤ ǫ, (111)
+‖[˜g(xǫ, zǫ)]+‖≤ (2µG)−1Dy(ρ−1ǫ + L ˜f ), (112)
+|⟨˜λ, ˜g(xǫ, zǫ)⟩|≤ (2µ)−1G−2D2
+y(ρ−1ǫ + L ˜f )2, (113)
+| ˜f (xǫ, yǫ)− ˜f ∗(xǫ)|≤ max
+{
+ρ−1(max
+z
+Pρ,µ(xǫ, yǫ, z)− flow), (2µ)−1G−2D2
+yL ˜f (ρ−1ǫ + ρ−1Lf + L ˜f )
+}
+,
+(114)
+‖[˜g(xǫ, yǫ)]+‖≤ (2µG)−1Dy(ρ−1ǫ + ρ−1Lf + L ˜f ), (115)
+|⟨ˆλ, ˜g(xǫ, yǫ)⟩|≤ (2µ)−1ρG−2D2
+y(ρ−1ǫ + ρ−1Lf + L ˜f )2. (116)
+Proof. Since ( xǫ, yǫ, zǫ) is an ǫ-stationary point of (50), it easily follows from (103), (109) and De ﬁnition
+2 that (110) and (111) hold. Also, it follows from (101) and (102) th at (112) and (115) hold. In addition,
+in view of (109), (112) and (115), one has
+|⟨˜λ, ˜g(xǫ, zǫ)⟩|
+(109)
+= 2 µ‖[˜g(xǫ, zǫ)]+‖2 (112)
+≤ (2µ)−1G−2D2
+y(ρ−1ǫ + L ˜f )2,
+|⟨ˆλ, ˜g(xǫ, yǫ)⟩|
+(109)
+= 2 ρµ‖[˜g(xǫ, yǫ)]‖+‖2 (115)
+≤ (2µ)−1ρG−2D2
+y(ρ−1ǫ + ρ−1Lf + L ˜f )2,
+and hence (113) and (116) hold. Also, observe from the deﬁnition o f Pρ,µ in (50) that
+~Pµ(xǫ, yǫ)− min
+z
+~Pµ(xǫ, z) = ρ−1(max
+z
+Pρ,µ(xǫ, yǫ, z)− f (xǫ, yǫ)).
+25
+
+Using this, (32), (47) and (93), we obtain that
+˜f (xǫ, yǫ) + µ‖[˜g(xǫ, yǫ)]+‖2 (47)
+= ~Pµ(xǫ, yǫ) = min
+z
+~Pµ(xǫ, z) + ρ−1(max
+z
+Pρ,µ(xǫ, yǫ, z)− f (xǫ, yǫ))
+(32)(93)
+≤ ˜f ∗(xǫ) + ρ−1(max
+z
+Pρ,µ(xǫ, yǫ, z)− flow). (117)
+On the other hand, let λ∗∈ Rl
++ be an optimal Lagrangian multiplier of problem (43) with x = xǫ. It
+then follows from Lemma 6(i) that ‖λ∗‖≤ G−1L ˜f Dy. Using these and (115), we have
+˜f ∗(xǫ) = min
+y
+{
+˜f (xǫ, y) +⟨λ∗, ˜g(xǫ, y)⟩
+}
+≤ ˜f (xǫ, yǫ) +⟨λ∗, ˜g(xǫ, yǫ)⟩
+≤ ˜f (xǫ, yǫ) +‖λ∗‖‖[˜g(xǫ, yǫ)]+‖≤ ˜f (xǫ, yǫ) + (2µ)−1G−2D2
+yL ˜f (ρ−1ǫ + ρ−1Lf + L ˜f ).
+By this and (117), one can see that (114) holds.
+We are now ready to prove Theorem 6.
+Proof of Theorem 6 . Observe from (51) that problem (50) can be viewed as
+min
+x,y
+max
+z
+{Pρ,µ(x, y, z) = h(x, y, z) + p(x, y)− q(z)} ,
+where h(x, y, z) = f1(x, y) + ρ ˜f1(x, y) + ρµ‖[˜g(x, y)]+‖2− ρ ˜f1(x, z)− ρµ‖[˜g(x, z)]+‖2, p(x, y) = f2(x) +
+ρ ˜f2(y) and q(z) = ρ ˜f2(z). Hence, problem (50) is in the form of (6) with H = Pρ,µ. By Assumption 3,
+(45), (46), ρ = ε−1 and µ = ε−2, one can see that h is ~L-smooth on its domain, where ~L is given in (61).
+Also, notice from Algorithm 6 that ǫ0 = ε5/2≤ ε/2 = ǫ/2 due to ε∈ (0, 1/4]. Consequently, Algorithm 2
+can be suitably applied to problem (50) with ρ = ε−1 and µ = ε−2 for ﬁnding an ǫ-stationary point
+(xǫ, yǫ, zǫ) of it.
+In addition, notice from Algorithm 6 that ~Pµ(x0, y0)≤ miny ~Pµ(x0, y) + ε. Using this, (50) and
+ρ = ε−1, we obtain
+max
+z
+Pρ,µ(x0, y0, z)
+(50)
+= f (x0, y0) + ρ(~Pµ(x0, y0)− min
+z
+~Pµ(x0, z))≤ f (x0, y0) + ρε = f (x0, y0) + 1. (118)
+By this and (28) with H = Pρ,µ, ǫ = ε, ǫ0 = ε5/2, ˆx0 = (x0, y0), Dq = Dy and L∇h =~L, one has
+Pρ,µ(xǫ, yǫ, zǫ)≤ max
+z
+Pρ,µ(x0, y0, z) + εDy/4 + 2ε5(~L−1 + 4D2
+y~Lε−2)
+(118)
+≤ 1 + f (x0, y0) + εDy/4 + 2ε5(~L−1 + 4D2
+y~Lε−2).
+It then follows from this and Lemma 11 with ǫ = ε, ρ = ε−1 and µ = ε−2 that ( xǫ, yǫ, zǫ) satisﬁes the
+relations (62)-(68).
+We next show that at most ~N evaluations of∇f1,∇ ˜f1,∇˜g and proximal operator of f2 and ˜f2 are
+respectively performed in Algorithm 6. Indeed, by (31), (32), (45 ), (47) and (50), one has
+min
+x,y
+max
+z
+Pρ,µ(x, y, z)
+(50)
+= min
+x,y
+{f (x, y) + ρ(~Pµ(x, y)− min
+z
+~Pµ(x, z))}≥ min
+(x,y)∈X ×Y
+f (x, y)
+(32)
+= flow, (119)
+min{Pρ,µ(x, y, z)|(x, y, z)∈X×Y×Y}
+(50)
+= min{f (x, y) + ρ(~Pµ(x, y)− ~Pµ(x, z))|(x, y, z)∈X×Y×Y}
+(47)
+= min{f (x, y) + ρ( ˜f (x, y) + µ‖[˜g(x, y)]+‖2− ˜f (x, z)− µ‖[˜g(x, z)]+‖2)|(x, y, z)∈X×Y×Y}
+≥ flow + ρ( ˜flow− ˜fhi)− ρµ˜g2
+hi, (120)
+where the last inequality follows from (31), (32) and (45). In additio n, let ( x∗, y∗) be an optimal solution
+of (42). It then follows that f (x∗, y∗) = f ∗ and [˜g(x∗, y∗)]+ = 0. By these, (31), (47) and (50), one has
+min
+x,y
+max
+z
+Pρ,µ(x, y, z)≤ max
+z
+Pρ,µ(x∗, y∗, z)
+(50)
+= f (x∗, y∗) + ρ
+(
+~Pµ(x∗, y∗)− min
+z
+~Pµ(x∗, z)
+)
+(47)
+= f (x∗, y∗) + ρ( ˜f (x∗, y∗) + µ‖[˜g(x∗, y∗)]+‖2− min
+z
+{ ˜f (x∗, z) + µ‖[˜g(x∗, z)]+‖2})
+(31)
+≤ f ∗ + ρ( ˜fhi− ˜flow). (121)
+26
+
+For convenience of the rest proof, let
+H = Pρ,µ, H ∗ = min
+x,y
+max
+z
+Pρ,µ(x, y, z), H low = min{Pρ,µ(x, y, z)|(x, y, z)∈X×Y×Y} . (122)
+In view of these, (118), (119), (120), (121), ρ = ε−1 and µ = ε−2, we obtain that
+max
+z
+H(x0, y0, z)
+(118)
+≤ f (x0, y0) + 1, f low
+(119)
+≤ H ∗ (121)
+≤ f ∗ + ρ( ˜fhi− ˜flow) = f ∗ + ε−1( ˜fhi− ˜flow),
+Hlow
+(120)
+≥ flow + ρ( ˜flow− ˜fhi)− ρµ˜g2
+hi = flow + ε−1( ˜flow− ˜fhi)− ε−3˜g2
+hi.
+Using these and Theorem 2 with ǫ = ε, ˆx0 = (x0, y0), Dp =
+√
+D2x + D2y, Dq = Dy, ǫ0 = ε5/2, L∇h =~L,
+α = ˜α, δ = ˜δ, and H, H ∗, Hlow given in (122), we can conclude that Algorithm 6 performs at most ~N
+evaluations of ∇f1,∇ ˜f1,∇˜g and proximal operator of f2 and ˜f2 for ﬁnding an approximate solution
+(xǫ, yǫ) of problem (42) satisfying (62)-(68).
+6 Concluding remarks
+For the sake of simplicity, ﬁrst-order penalty methods are propos ed only for problem (3) in this paper.
+It would be interesting to extend them to problem (1) by using a stan dard technique (e.g., see [39]) for
+handling the constraint g(x, y)≤ 0. In addition, a single subproblem with static penalty and tolerance
+parameters is solved in our methods (Algorithms 4 and 6), which may b e conservative in practice. To
+make the methods possibly practically more eﬃcient, it would be natur al to modify them by solving
+a sequence of subproblems with dynamic penalty and tolerance para meters instead. These along with
+numerical experiments will be left for the future research.
+References
+[1] G. B. Allende and G. Still. Solving bilevel programs with the KKT-appr oach. Mathematical pro-
+gramming, 138(1):309–332, 2013.
+[2] J. F. Bard. Practical bilevel optimization: algorithms and applicati ons, volume 30. Springer Science
+& Business Media, 2013.
+[3] K. P. Bennett, G. Kunapuli, J. Hu, and J.-S. Pang. Bilevel optimiza tion and machine learning. In
+IEEE World Congress on Computational Intelligence , pages 25–47. Springer, 2008.
+[4] L. Bertinetto, J. F. Henriques, P. Torr, and A. Vedaldi. Meta-le arning with diﬀerentiable closed-form
+solvers. In International Conference on Learning Representations , 2018.
+[5] G. H. Chen and R. T. Rockafellar. Convergence rates in forward –backward splitting. SIAM Journal
+on Optimization , 7(2):421–444, 1997.
+[6] T. Chen, Y. Sun, and W. Yin. A single-timescale stochastic bilevel o ptimization method. arXiv
+preprint arXiv:2102.04671 , 2021.
+[7] F. H. Clarke. Optimization and nonsmooth analysis . SIAM, 1990.
+[8] B. Colson, P. Marcotte, and G. Savard. An overview of bilevel op timization. Annals of operations
+research, 153(1):235–256, 2007.
+[9] C. Crockett, J. A. Fessler, et al. Bilevel methods for image reco nstruction. Foundations and Trends®
+in Signal Processing , 15(2-3):121–289, 2022.
+[10] S. Dempe. Foundations of bilevel programming . Springer Science & Business Media, 2002.
+[11] S. Dempe, V. Kalashnikov, G. A. P´ erez-Vald´ es, and N. Kalash nykova. Bilevel programming prob-
+lems. Energy Systems. Springer, Berlin , 10:978–3, 2015.
+[12] S. Dempe and A. Zemkoho. Bilevel optimization. In Springer optimization and its applications. Vol.
+161. Springer, 2020.
+27
+
+[13] S. Dempe and A. B. Zemkoho. The bilevel programming problem: r eformulations, constraint qual-
+iﬁcations and optimality conditions. Mathematical Programming, 138(1):447–473, 2013.
+[14] A. L. Dontchev and R. T. Rockafellar. Implicit functions and solution mappings , volume 543.
+Springer, 2009.
+[15] M. Feurer and F. Hutter. Hyperparameter optimization. In Automated machine learning , pages
+3–33. Springer, Cham, 2019.
+[16] L. Franceschi, M. Donini, P. Frasconi, and M. Pontil. Forward an d reverse gradient-based hy-
+perparameter optimization. In International Conference on Machine Learning , pages 1165–1173,
+2017.
+[17] L. Franceschi, P. Frasconi, S. Salzo, R. Grazzi, and M. Pontil. B ilevel programming for hyperpa-
+rameter optimization and meta-learning. In International Conference on Machine Learning , pages
+1568–1577, 2018.
+[18] Z. Guo and T. Yang. Randomized stochastic variance-reduced methods for stochastic bilevel opti-
+mization. arXiv e-prints , pages arXiv–2105, 2021.
+[19] P. Hansen, B. Jaumard, and G. Savard. New branch-and-bou nd rules for linear bilevel programming.
+SIAM Journal on scientiﬁc and Statistical Computing , 13(5):1194–1217, 1992.
+[20] M. Hong, H.-T. Wai, Z. Wang, and Z. Yang. A two-timescale frame work for bilevel optimization:
+Complexity analysis and application to actor-critic. arXiv preprint arXiv:2007.05170 , 2020.
+[21] X. Hu, N. Xiao, X. Liu, and K.-C. Toh. An improved unconstrained approach for bilevel optimiza-
+tion. arXiv preprint arXiv:2208.00732 , 2022.
+[22] Y. Ishizuka and E. Aiyoshi. Double penalty method for bilevel opt imization problems. Annals of
+Operations Research, 34(1):73–88, 1992.
+[23] K. Ji, J. D. Lee, Y. Liang, and H. V. Poor. Convergence of meta -learning with task-speciﬁc adapta-
+tion over partial parameters. Advances in Neural Information Processing Systems , 33:11490–11500,
+2020.
+[24] K. Ji, J. Yang, and Y. Liang. Bilevel optimization: Nonasymptotic analysis and faster algorithms.
+arXiv preprint arXiv:2010.07962 , 2020.
+[25] A. Kaplan and R. Tichatschke. Proximal point methods and nonc onvex optimization. Journal of
+global Optimization, 13(4):389–406, 1998.
+[26] P. Khanduri, S. Zeng, M. Hong, H.-T. Wai, Z. Wang, and Z. Yang. A near-optimal algorithm for
+stochastic bilevel optimization via double-momentum. Advances in Neural Information Processing
+Systems, 34, 2021.
+[27] V. Konda and J. Tsitsiklis. Actor-critic algorithms. Advances in neural information processing
+systems, 12, 1999.
+[28] W. Kong and R. D. Monteiro. An accelerated inexact proximal po int method for solving nonconvex-
+concave min-max problems. SIAM Journal on Optimization , 31(4):2558–2585, 2021.
+[29] D. Kovalev and A. Gasnikov. The ﬁrst optimal algorithm for smoo th and strongly-convex-strongly-
+concave minimax optimization. arXiv preprint arXiv:2205.05653 , 2022.
+[30] H. Liu, K. Simonyan, and Y. Yang. Darts: Diﬀerentiable architec ture search. In International
+Conference on Learning Representations , 2018.
+[31] R. Liu, J. Gao, J. Zhang, D. Meng, and Z. Lin. Investigating bi-le vel optimization for learning and
+vision from a uniﬁed perspective: A survey and beyond. IEEE Transactions on Pattern Analysis
+and Machine Intelligence , 2021.
+[32] D. Lopez-Paz and M. Ranzato. Gradient episodic memory for co ntinual learning. Advances in neural
+information processing systems , 30, 2017.
+28
+
+[33] Z.-Q. Luo, J.-S. Pang, and D. Ralph. Mathematical programs with equilibrium constraints . Cam-
+bridge University Press, 1996.
+[34] X. Ma, W. Yao, J. J. Ye, and J. Zhang. Combined approach with s econd-order optimality conditions
+for bilevel programming problems. arXiv preprint arXiv:2108.00179 , 2021.
+[35] D. Maclaurin, D. Duvenaud, and R. Adams. Gradient-based hyp erparameter optimization through
+reversible learning. In International conference on machine learning , pages 2113–2122, 2015.
+[36] A. Madry, A. Makelov, L. Schmidt, D. Tsipras, and A. Vladu. Tow ards deep learning models
+resistant to adversarial attacks. In International Conference on Learning Representations , 2018.
+[37] J. A. Mirrlees. The theory of moral hazard and unobservable b ehaviour: Part I. The Review of
+Economic Studies , 66(1):3–21, 1999.
+[38] Y. Nesterov. Gradient methods for minimizing composite functio ns. Mathematical programming,
+140(1):125–161, 2013.
+[39] J. Nocedal and S. J. Wright. Numerical optimization . Springer, 1999.
+[40] J. Outrata, M. Kocvara, and J. Zowe. Nonsmooth approach to optimization problems with equilibr ium
+constraints: theory, applications and numerical results , volume 28. Springer Science & Business
+Media, 2013.
+[41] F. Pedregosa. Hyperparameter optimization with approximate gradient. In International conference
+on machine learning , pages 737–746, 2016.
+[42] A. Rajeswaran, C. Finn, S. M. Kakade, and S. Levine. Meta-lea rning with implicit gradients.
+Advances in neural information processing systems , 32, 2019.
+[43] C. Shi, J. Lu, and G. Zhang. An extended Kuhn–Tucker approa ch for linear bilevel programming.
+Applied Mathematics and Computation , 162(1):51–63, 2005.
+[44] K. Shimizu, Y. Ishizuka, and J. F. Bard. Nondiﬀerentiable and two-level mathematical programming .
+Springer Science & Business Media, 2012.
+[45] A. Sinha, P. Malo, and K. Deb. A review on bilevel optimization: fro m classical to evolutionary
+approaches and applications. IEEE Transactions on Evolutionary Computation , 22(2):276–295,
+2017.
+[46] C. Szegedy, W. Zaremba, I. Sutskever, J. Bruna, D. Erhan, I. Goodfellow, and R. Fergus. Intriguing
+properties of neural networks. arXiv preprint arXiv:1312.6199 , 2013.
+[47] L. N. Vicente and P. H. Calamai. Bilevel and multilevel programming : A bibliography review.
+Journal of Global optimization , 5(3):291–306, 1994.
+[48] H. Von Stackelberg. Market structure and equilibrium . Springer Science & Business Media, 2010.
+[49] D. Ward and J. M. Borwein. Nonsmooth calculus in ﬁnite dimensions . SIAM Journal on control
+and optimization , 25(5):1312–1340, 1987.
+[50] J. J. Ye. Constraint qualiﬁcations and optimality conditions in bilev el optimization. In Bilevel
+Optimization, pages 227–251. Springer, 2020.
+[51] J. J. Ye, X. Yuan, S. Zeng, and J. Zhang. Diﬀerence of convex algorithms for bilevel programs with
+applications in hyperparameter selection. Mathematical Programming, pages 1–34, 2022.
+29

@@ -1,0 +1,9 @@
+{
+  "api_url": "https://export.arxiv.org/api/query?id_list=2309.01753v1",
+  "arxiv_id": "2309.01753",
+  "declared_available_at_utc": "2023-09-04T18:25:43Z",
+  "published": "2023-09-04T18:25:43Z",
+  "timestamp_matches_declaration": true,
+  "title": "On Penalty Methods for Nonconvex Bilevel Optimization and First-Order Stochastic Approximation",
+  "version": "v1"
+}

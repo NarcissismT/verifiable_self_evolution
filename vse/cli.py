@@ -102,6 +102,7 @@ def _parser() -> argparse.ArgumentParser:
     producer.add_argument("--trust-key", type=Path, required=True)
     producer.add_argument("--runtime-mode", choices=("docker", "local_test"), default="docker")
     producer.add_argument("--output", type=Path, required=True)
+    producer.add_argument("--artifact-path", type=Path, required=True)
     producer.add_argument("command_args", nargs=argparse.REMAINDER)
     export = commands.add_parser("export-sft")
     export.add_argument("--library", type=Path, required=True)
@@ -351,6 +352,7 @@ def main(argv: list[str] | None = None) -> int:
             container_digest=args.container_digest,
             trust_key=args.trust_key.read_bytes(),
             output_path=args.output,
+            artifact_path=args.artifact_path,
             runtime_mode=args.runtime_mode,
         )
         print(json.dumps(asdict(receipt), indent=2, sort_keys=True))

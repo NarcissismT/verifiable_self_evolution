@@ -1,0 +1,2932 @@
+A Primal-Dual-Assisted Penalty Approach to Bilevel
+Optimization with Coupled Constraints
+Liuyuan Jiang†, Quan Xiao†, Victor M. Tenorio⋆, Fernando Real-Rojas⋆
+Antonio Marques⋆, Tianyi Chen†
+†Rensselaer Polytechnic Institute, Troy, NY , United States
+⋆King Juan Carlos University, Madrid, Spain
+{jiangl7, xiaoq5, chent18 }@rpi.edu
+{victor.tenorio, antonio.garcia.marques}@urjc.es; f.real.2018@alumnos.urjc.es
+Abstract
+Interest in bilevel optimization has grown in recent years, partially due to its appli-
+cations to tackle challenging machine-learning problems. Several exciting recent
+works have been centered around developing efficient gradient-based algorithms
+that can solve bilevel optimization problems with provable guarantees. However,
+the existing literature mainly focuses on bilevel problems either without constraints,
+or featuring only simple constraints that do not couple variables across the upper
+and lower levels, excluding a range of complex applications. Our paper studies this
+challenging but less explored scenario and develops a (fully) first-order algorithm,
+which we term BLOCC, to tackle BiLevel Optimization problems with Coupled
+Constraints. We establish rigorous convergence theory for the proposed algorithm
+and demonstrate its effectiveness on two well-known real-world applications -
+hyperparameter selection in support vector machine (SVM) and infrastructure
+planning in transportation networks using the real data from the city of Seville.
+1 Introduction
+Bilevel optimization (BLO) approaches are pertinent in various machine learning problems, including
+hyperparameter optimization [ 48, 24], meta-learning [ 22], and reinforcement learning [ 65, 62].
+Moreover, the ability to handle BLO with constraints is particularly important, as these constraints
+appear in applications such as pricing [16], transportation [49, 1], and kernelized SVM [30]. Although
+there is extensive research on BLO problems without constraints or with uncoupled constraints
+[31, 12, 14, 38, 41, 61], solutions for BLO problems with coupled constraints (CCs) remain limited;
+see details in Table 1. However, it is of particular interest to investigate BLO with lower-level CCs.
+Taking infrastructure planning in a transportation network as an example, the lower-level problem
+seeks to optimize the total utility given a network configuration (determined by an upper-level
+variable), and the upper-level problem is to optimize the network configuration itself.
+Motivated by this, we consider the coupled-constrained BLO problem in the following form
+min
+x∈X
+f (x,y∗
+g (x)) (1a)
+s.t. y∗
+g (x) := arg min
+y∈Y(x)
+g(x,y ) with Y(x) :={y∈Y :gc(x,y )≤ 0} (1b)
+The work was supported by NSF project 2134168, NSF CAREER project 2047177, Cisco Research Award,
+Amazon Research Award, and the IBM-Rensselaer Future of Computing Research Collaboration.
+Preprint. Under review.
+arXiv:2406.10148v1  [math.OC]  14 Jun 2024
+
+wheref : Rdx× Rdy→ R andg : Rdx× Rdy→ R are respectively the upper-level and lower-level
+objectives,gc(x,y ) : Rdx× Rdy→ Rdc defines the lower-level CCs, andX⊆ Rdx,Y⊆ Rdy are
+the domain ofx andy that are easy to project, such as the Euclidean ball.
+The difficulty of solving (1) lies in the coupling between the upper and lower-level problems. To
+develop efficient methods, previous literature started from the unconstrained BLO problem and solved
+it by implicit gradient descent (IGD) method [27, 31, 34, 12, 13, 39, 60, 42, 64] and penalty-based
+methods [44, 43, 60, 40, 41], to name a few. To solve BLO with CCs, AiPOD [ 68] and GAM
+[69] have investigated the IGD method under different constraint settings. However, AiPOD only
+considered equality constraints, and GAM lacked finite-time convergence guarantees. Leveraging a
+penalty reformulation, [72] developed a Hessian-free method with finite-time convergence. However,
+a key algorithm step in [72] is a joint projection of the current iterate (x,y ) onto the constraint set.
+This projection, which needs to be carried out at every iteration, can be challenging when the number
+of variables (dx,dy) or constraints (dc) is large or whengc(x,y ) is not jointly convex.
+To this end, this paper aims to address the following question
+Can we develop an efficient algorithm that bypasses joint projections ongc(x,y ) and quickly solves
+the BLO problem with coupled inequality constraints in (1)?
+We address this question affirmatively, focusing on the setting where the lower-level objective,g(x,y ),
+is strongly convex iny, and the constraintsgc(x,y ) are convex iny. To avoid implementing a joint
+projection, we put forth a novel single-level primal-dual-assisted penalty reformulation that decouples
+x andy. Specifically, withµ∈ Rdc denoting the Lagrange multiplier of (1b), we propose solving
+min
+x∈X
+Fγ(x) := max
+µ∈Rdx
++
+min
+y∈Y
+f (x,y ) +γ(g(x,y )−v(x))| {z }
+penalty term
++⟨µ,gc(x,y )⟩| {z }
+Lagrangian term
+(2a)
+where v(x) := min
+y∈Y(x)
+g(x,y ) (2b)
+where the penalty term with the constantγ controls the distance betweeny andy∗
+g (x) by penalizing
+the distance between the lower-level objectiveg(x,y ) and its value functionv(x), and the Lagrangian
+term penalizes the constraint violation ofgc(x,y ).
+However, recognizing the max-min subproblems involved in(2a), it becomes computationally costly
+to evaluate the penalty functionFγ(x) and its gradient. To this end, we pose the following question
+Can we develop efficient algorithms to solve the max-min subproblem and evaluate∇Fγ(x)?
+We answer this question by proving that this reformulation exhibits several favorable properties,
+including smoothness. These properties are critical for designing gradient-based algorithms and
+characterizing their performance. However, the presence of the CCs renders the calculation of the
+gradient∇Fγ(x) more challenging than for its unconstrained counterpart [61]. Building upon this,
+we design a primal-dual gradient method with rigorous convergence guarantees for the BLO with
+general inequality CCs, and provide an improved result for the case ofgc being affine iny.
+1.1 Main contributions
+In a nutshell, our main contributions are outlined below.
+C1) In Section 2, leveraging the Lagrangian duality theorem, we introduce the functionFγ(x)
+in (2a) as a penalty-based reformulation of (1), establish the continuity and smoothness of
+Fγ(x), and develop a novel way to compute its gradient.
+C2) In Section 3, we develop BLOCC, a fully first-order algorithm to tackle BLO problems
+with CCs. Withϵ being the target error in terms of the generalized gradient norm square of
+Fγ(x), we establish that the iteration complexity under the generic constraint gc(x,y ) in
+(1b) is ˜O(ϵ−2.5), which reduces to ˜O(ϵ−1.5) when the constraintgc(x,y ) is affine iny.
+C3) In Section 4, we apply the proposed BLOCC algorithm to two real-world applications: SVM
+model training and planning of a transportation network. By comparison with LV-HBA [72]
+and GAM [69], we demonstrate the algorithm’s effectiveness.
+2
+
+LL constraint First Order Complexity
+BLOCC gc(x,y )≤ 0 convex iny and LICQ holds; ✓ ˜O(ϵ−2.5);
+Special case:gc(x,y ) affine iny ˜O(ϵ−1.5)
+LV-HBA gc(x,y )≤ 0 convex inx×y ✓ O(ϵ−3)
+GAM gc(x,y )≤ 0 convex inx×y and LICQ holds ✘ ✘
+BVFSM gc(x,y )≤ 0 satisfying other requirements ✓ ✘
+AiPOD gc(x,y ) = Ay−b(x) = 0 ✘ O(ϵ−1.5)
+Table 1: Comparison of our work with LV-HBA [ 72], BVFSM [ 45], AiPOD [ 68], and Gradient
+Approximation method (GAM) [69]. LL convergence is on metric the squared distance ofyt to its
+optimal solution, and UL convergence is on squared (generalized) gradient norm.
+1.2 Related works
+BLO has a long history, dating back to the seminal work of [8]. It has inspired a rich body of literature,
+e.g., [73, 66, 15, 63]. The recent focus on BLO is centered on developing efficient gradient-based
+approaches with provable finite-time guarantees.
+Methods for BLO without constraints. A cluster of BLO gradient-based approaches gravitates
+around the implicit gradient descent (IGD) method [ 54], where the key idea is to approximate
+the hypergradient by the implicit function theorem. The finite-time convergence of IGD was first
+established in [ 27] for unconstrained strongly-convex lower-level problems. Subsequent works
+[31, 34, 12, 13, 39, 60, 42, 64, 70, 35] improved the convergence rates under various settings.
+Another cluster of works is based on iterative differentiation (ITD) [48, 23, 52, 59], which estimates
+the hypergradient by differentiating the entire iterative algorithm used to solve the lower-level
+problem with respect to the upper-level variables. The finite-time guarantee was first established in
+[28, 46, 33, 6]. Penalty-based methods have also emerged as a promising approach for BLO. Dated
+back to [74], this line of works [ 44, 50, 43, 40, 61, 25, 47] reformulated the original BLO as the
+single-level problems with various penalty terms and leveraged first-order methods to solve them.
+Figure 1: Calculation of ∇v(x).
+The blue line is v(x), the red
+dashed line is calculated by the
+formulation given in [ 61, 40],
+while the yellow line is derived
+by our BLOCC. It can be seen
+that∇v(x) without the Lagrange
+multiplier is in the opposite direc-
+tion of the true gradient.
+BLO with constraints. While substantial progress has been
+made for unconstrained BLO, the analysis for constrained BLO
+is more limited. Upper-level constraints of the formx∈X were
+considered in [31, 12, 14]. For the lower-level uncoupled con-
+straint, SIGD [38] considered the uncoupled constraintAy≤b
+and achieved asymptotic convergence, [41, 61] employed penalty
+reformulation and considered both upper and lower uncoupled
+constraints. However, the literature on BLO with CCs is scarce.
+BVFSM [45] conducted a penalty-based method to avoid the
+calculation of the Hessian, as IGD methods do. However, only
+asymptotic convergence was achieved. GAM [69] investigated
+the IGD method under inequality constraints while failing to pro-
+vide finite-time convergence results as well. AiPOD [ 68] also
+applied IGD and successfully achieved finite-time convergence,
+but it only considered equality constraints. LV-HBA [ 72] con-
+sidered inequality constraints and constructed a penalty-based
+reformulation. However, it employed a joint projection of (x,y )
+onto{X×Y :gc(x,y )≤ 0} which is computationally inefficient
+when there are many constraints or whengc(x,y ) is not jointly
+convex. After our initial submission, we found a concurrent work [ 71] posted on ArXiv, which
+used Lagrange duality theory differently from ours, applying it to construct a new smoothed penalty
+term. However, it does not quantify the relationship between the relaxation of this penalty and the
+relaxation of lower-level optimality, and it does not guarantee lower-level feasibility. We summarized
+prior works on BLO with lower-level CCs in Table 1.
+2 Primal-dual Penalty-based Reformulation
+In this section, our goal is to construct a primal-dual-assisted penalty reformulation for our BLOCC
+problem. The technical challenge comes from finding a suitable penalty function for BLO with CCs.
+3
+
+2.1 The challenges in BLO with coupled constraints
+Here, we will elaborate on the two technical challenges of BLO with CCs.
+The first challenge associated with the presence of CCs is that the closed-form expression of the
+gradient∇v(x) without CCs, which is∇xg(x,y∗
+g (x)) provided in [61, 41, 40, 43], is not applicable.
+For example, wheng(x,y ) = (y− 2x)2 andgc(x,y ) = 3x−y, the optimal lower-level solution is
+y∗
+g (x) = 3x and thus,v(x) = x2 with∇v(x) = 2x. However,∇xg(x,y∗
+g (x)) =−4x̸=∇v(x).
+The closed form gradient for BLO with CCs should be (8), which considers a Lagrange term that
+is going to be illustrated later in this paper. In Figure 1, we present the gradient∇v(x) without the
+Lagrange multiplier in [61, 41, 40, 43] and ours with the Lagrange term. In this example, the gradient
+without the Lagrange term leads to the opposite direction to the true gradient.
+The second challenge associated with the presence of CCs is the difficulty of performing the joint
+projection. If we directly extend the penalty reformulation in [61, 40], we could treat the coupling
+constraint setY(x) as a joint constraint{(x,y ) : gc(x,y )≤ 0}, and employ a joint projection of
+(x,y ) to ensure the feasibility. However, this can be computationally inefficient when either the
+number of variables or constraints is high. Moreover, whengc(x,y ) is complex, the projection may
+not have a closed form and may not even be well-defined ifgc(x,y ) is not jointly convex.
+2.2 The Lagrangian duality-based penalty reformulation
+Before proceeding, we summarize the assumptions as follows.
+Assumption 1 (Lipschitz Continuity). Assume thatf,∇f,∇g,gc and∇gc, and are respectively
+lf,0,lf,1,lg,1,lgc,0, andlgc,1-Lipschitz jointly over (x,y ), andg islgx,0-Lipschitz inx.
+Assumption 2 (Convexity iny). For any givenx∈X ,g(x,y ) andgc(x,y ) areαg-strongly convex
+and convex iny, respectively.
+Assumption 3 (Domain Feasibility). DomainX⊂ Rdx andY⊂ Rdy are non-empty, closed, and
+convex. For any givenx∈X ,Y(x) :={y∈Y :gc(x,y )≤ 0} is non-empty.
+Assumption 4 (Constraint Qualification). For any givenx∈X ,gc satisfies the Linear Independence
+Constraint Qualification (LICQ) condition iny.
+The Lipschitz continuity in Assumption 1 and the strong convexity ofg overy in Assumption 2 are
+conventional [27, 31, 40, 68, 35, 13]. Moreover, we only require gc(x,y ) to be convex iny rather
+than: i) jointly convex in (x,y ) as in [72], or ii) linear as in [38, 68]. Assumption 3 pertains to the
+convexity and closeness of the domain, which is also conventional, and Assumption 4 is a standard
+constraint qualification condition.
+To build a penalty reformulation for BLO with lower-level CCs, the first challenge is to find a penalty
+that regulates∥y−y∗
+g (x)∥. In the following lemma, we show thatg(x,y )−v(x) is a good choice.
+Lemma 1. Suppose that Assumptions 2-4 hold andv(x) is defined as in (2b). Then, it holds that
+c1) g(x,y )−v(x)≥ αg
+2∥y−y∗
+g (x)∥2, for all y∈Y (x); and
+c2) g(x,y ) = v(x) if and only ify =y∗
+g (x), for all y∈Y (x).
+The technical challenge of proving this lemma lies in showing the quadratic growth property as in c1)
+of Lemma 1. For BLO without the CCs, this naturally holds as the lower-level objectiveg(x,y ) is
+strongly convex iny. For BLO with CCs, one needs to use the Lagrangian duality theorem. The full
+proof of Lemma 1 is given in Appendix B.1, where the key challenge is to show the invariance of the
+modulus of strong convexity in the Lagrangian reformulated lower-level objective.
+Withγ denoting a penalty constant, we consider the following penalty reformulation:
+min
+(x,y)∈{X×Y :gc(x,y)≤0}
+f (x,y ) +γ(g(x,y )−v(x)) (3)
+where the penalty term confines the squared Euclidean distance from y toy∗
+g (x). Furthermore, to
+avoid projecting (x,y ) onto the{X×Y :gc(x,y )≤ 0}, we propose the primal-dual-assisted penalty
+reformulation, which was defined in (2). The approximate equivalence of the reformulation (2) to the
+original BLO problem (1) is established in the following theorem.
+4
+
+Theorem 1 (Equivalence). Suppose that f is Lipschitz in y and∇f islf,1-Lipschitz in (x,y ) in
+Assumption 1 hold, and Assumptions 2-4 hold. Then, solving theϵ-approximation problem of (1):
+min
+(x,y)∈{X×Y :gc(x,y)≤0}
+f (x,y ) s.t. ∥y−y∗
+g (x)∥2≤ϵ, (4)
+is equivalent to solve the primal-dual penalty reformulation in (2) withγ =O(ϵ−0.5) andγ >lf,1
+αg
+.
+The detailed proof is provided in Appendix B.2. By settingγ =O(ϵ−0.5), we effectively state the
+equivalence between the penalty reformulation in (3) and the approximated original problem (4). We
+can then decouple the joint minimization on (x,y ) to a min-min problem onx andgc constrained
+y. For the inner minimization problem iny, we chooseγ in a way thatγαg−lf,1 > 0 holds. This
+ensures the objective in (2a) being strongly convex iny, aslf,1-smoothness ensures a lower bound
+for negative curvature off (x,y ). Furthermore, the convexity of gc(x,y ) iny validates the strong
+duality theorem in [58, 32], thereby enabling the max-min primal-dual reformulation in (2).
+2.3 Smoothness of the penalty reformulation
+To evaluateFγ(x) defined in (2a), we can find the solution to the inner max-min problem:
+(µ∗
+F (x),y∗
+F (x)) := arg max
+µ∈Rdx
++
+min
+y∈Y
+f (x,y ) +γ(g(x,y )−v(x)) +⟨µ,gc(x,y )⟩| {z }
+=:LF (µ,y;x)
+. (5)
+The uniqueness of y∗
+F (x) andµ∗
+F (x) is guaranteed under Assumptions 2 and 4 (see Lemma 5 in
+Appendix A). Therefore,Fγ(x) in (2a) can be evaluated using the unique optimal solutions by
+Fγ(x) = LF (µ∗
+F (x),y∗
+F (x);x). (6)
+Similarly, we can evaluatev(x) = Lg(µ∗
+g(x),y∗
+g (x);x), where
+(µ∗
+g(x),y∗
+g (x)) := arg max
+µ∈Rdx
++
+min
+y∈Y
+g(x,y ) +⟨µ,gc(x,y )⟩| {z }
+=:Lg(µ,y;x)
+. (7)
+The penalty reformulation Fγ(x) can hardly be convex, as −v(x) may be concave, even when
+g(x,y ) = g(y) andgc(x,y ) = A⊤y−x; see Lemma 4.24 in [58]. Instead, in the subsequent lemma,
+we not only show thatv(x) is differentiable, but also provide a closed-form expression of∇v(x).
+Lemma 2 (Danskin-like theorem forv(x)). Suppose that Assumptions 1–4 hold, and letBg <∞ be
+a constant such that∥µ∗
+g(x)∥<B g for allx∈X . Then, it holds that
+1.y∗
+g (x) andµ∗
+g(x) defined in (7) areLg-Lipschitz for some finite constantLg≥ 0.
+2.v(x) defined in (2b) islv,1-smooth wherelv,1≤ (lg,1 +Bglgc,1)(1 +Lg) +lgc,0Lg and
+∇v(x) =∇xg(x,y∗
+g (x)) +⟨µ∗
+g(x),∇xgc(x,y∗
+g (x))⟩. (8)
+The assumption of the existence of the upper bound for the Lagrange multiplier is mild; see e.g., [32,
+Theorem 1.6] and [72]. Finding∇v(x) is crucial for the design of a gradient-based method to solve
+minx∈XFγ(x). Leveraging Lemma 2, the gradient∇Fγ(x) can be obtained by the next lemma.
+Lemma 3 (Danskin-like theorem forFγ(x)). Suppose that the conditions in Lemma 2 hold. Moreover,
+assume thatγ >lf,1
+αg
+, and there existBF<∞ such that∥µ∗
+F (x)∥<BF,∀x∈X . Then, it holds that
+1.y∗
+F (x) andµ∗
+F (x) defined in (5) areLF -Lipschitz for some constantLF≥ 0.
+2.Fγ(x) islF,1-smooth withlF,1≤ (lf,1 +γlg,1 +BFlgc,1)(1 +LF ) +γlv,1 +lfc,0LF , and
+∇Fγ(x) =∇xf (x,y∗
+F (x)) +γ (∇xg(x,y∗
+F (x))−∇v(x)) +⟨µ∗
+F (x),∇xgc(x,y∗
+F (x))⟩. (9)
+The proof of Lemmas 2 and 3 is provided in Appendix C. Similar to [61], the Danskin-like theorems
+in Lemmas 2 and 3 rely on the Lipschitzness of the solutions in (5) and (7). Different from BLO
+without CCs [61], the results here also hinge on the Lagrange multipliersµ∗
+g(x) andµ∗
+F (x).
+5
+
+3 Main Results
+We will first introduce an algorithm tailored for BiLevel Optimization problems with inequality
+Coupled Constraints, and present its convergence analysis. In Section 3.2, we will propose a
+primal-dual solver for the inner max-min problems and characterize the overall convergence.
+3.1 BLOCC algorithm
+As Fγ(x) features differentiability and smoothness, we can apply a projected gradient descent
+(PGD)-based method to solve minx∈XFγ(x). At iterationt, update
+xt+1 = ProjX (xt−ηgF,t) (10)
+whereη is the step size andgF,t is an estimate of∇Fγ(xt).
+In the previous section, we have obtained the closed-form expressions of∇v(x) in (8) and∇Fγ(x) in
+(9). Evaluating the closed-form expression requires finding (y∗
+g (xt),µ∗
+g(xt)) and (y∗
+F (xt),µ∗
+F (xt)),
+the solutions to the max-min problemLg(µ,y ;x) in (7) andLF (µ,y ;x) in (5) respectively.
+Givenxt∈X , we can use some minmax optimization solvers with Tg iterations on (7) andTF
+iterations on (5) to find anϵg-solution (yTg
+g,t,µTg
+g,t) and anϵF -solution (yTF
+F,t,µTF
+F,t) satisfying
+∥(yTg
+g,t,µTg
+g,t)− (y∗
+g (xt),µ∗
+g(xt))∥2 =O(ϵg); ∥(yTF
+F,t,µTF
+F,t)− (y∗
+F (xt),µ∗
+F (xt))∥2 =O(ϵF ) (11)
+for target estimation accuracy ϵg,ϵF > 0. Such an effective minmax optimization solver will be
+introduced in the following Section 3.2. In this way,∇v(xt) in (9) can be estimated as
+gv,t =∇xg(xt,yTg
+g,t) +⟨µTg
+g,t,∇xgc(xt,yTg
+g,t)⟩. (12)
+Leveraginggv,t, the gradient∇Fγ(x) can be estimated via (8) as
+gF,t =∇xf (xt,yTF
+F,t) +γ
+
+∇xg(xt,yTF
+F,t)−gv,t
+
++⟨µTF
+F ,∇xgc(x,yTF
+F,t)⟩. (13)
+We summarize the methods for finding minFγ(x) as in Algorithm 1. In the following, we present
+the convergence result of it allowing estimation errorϵg,ϵF > 0 from the MaxMin Solver.
+Theorem 2. Suppose that the assumptions in Lemma 3 hold. Run Algorithm 1 with TF andTg
+sufficiently large such that (yTg
+g,t,µTg
+g,t) and (yTF
+F,t,µTF
+F,t) are respectivelyO(ϵg) andO(ϵF )-optimal in
+squared distance as in (11). Setη≤ 1
+lF,1
+with somelF,1 defined in Lemma 3. It then holds that
+1
+T
+T−1X
+t=0
+∥Gη(xt)∥2 := 1
+Tη 2
+T−1X
+t=0
+∥(xt+1−xt)∥2 =O(γT−1 +γ2ϵF +γ2ϵg). (14)
+Using the projected gradient Gη = η−1(xt+1−xt) as the convergence metric for constrained
+optimization problems is standard [26]. The proof of this theorem is available in Appendix D.1. The
+termO(γ2ϵF +γ2ϵg) arises from estimation errors using the MaxMin Solver. In the next section,
+we develop a particular MaxMin Solver for Algorithm 1.
+3.2 MaxMin Solver for the BLO with inequality CCs
+In this section, we specify the MaxMin solver in Algorithm 1. By viewing Lg(µ,y ;x) in (7) and
+LF (µ,y ;x) in (5) asL(µ,y ) for fixed givenx∈X , we consider the following max-min problem
+max
+µ∈Rdc
++
+min
+y∈Y
+L(µ,y ) (15)
+which is concave (linear) inµ and strongly convex iny.
+We can evaluate the dual function ofL(µ,y ) defined below by findingy∗
+µ(µ).
+D(µ) := min
+y∈Y
+L(µ,y ) = L(µ,y∗
+µ(µ)) where y∗
+µ(µ) := arg min
+y∈Y
+L(µ,y ). (16)
+6
+
+Algorithm 1 Our main algorithm BLOCC
+1: inputs: initial pointsx0,yg,0,µg,0,yF,0,
+µF,0; step sizeη,ηg,ηF ; countersTg,TF .
+2: fort = 0, 1,...,T do
+3: (yTg
+g,t,µTg
+g,t) = MaxMin(Tg,T g
+y ).
+4: (yTF
+F,t,µTF
+F,t) = MaxMin(TF,T F
+y ).
+5: updatext+1 via (10) withgF,t in (13).
+6: end for
+7: outputs: (xT,yTF
+F,T )
+Algorithm 2 Subroutine on MaxMin(T,Ty)
+1: inputs: initial values µ−1 = µ0 ∈ Rdc
++ ,
+y0 ∈ Y, step sizes η1,η 2 > 0, counters
+T,Ty. Blue part is the version with acceler-
+ation; Red part is without acceleration.
+2: fort = 0,...,T − 1 do
+3: updateµt+ 1
+2
+via (17) or µt+ 1
+2
+=µt
+4: forty = 0,...,T y− 1 do
+5: updateyt,ty+1 via (18) ▷ setyt,0 =yt
+6: end for
+7: updateµt+1 via (19) ▷ setyt+1 =yt,Ty
+8: end for
+9: outputs: (yT,µT )
+According to Danskin’s theorem, we have∇D(µ) =∇µL(µ,y∗
+µ(µ)). Taking eitherLg(µ,y ;x) or
+LF (µ,y ;x) asL(µ,y ) for givenx∈X ,D(µ) defined as (16) exhibits favorable properties namely
+smoothness and concavity, with details illustrated in Lemma 10 in Appendix D.2. We can, therefore,
+apply accelerated gradient methods designed for smooth and convex functions such as [51, 4].
+At each iterationt, we first perform a momentum-based update step to updateµt+ 1
+2
+as
+µt+ 1
+2
+=µt + t− 1
+t + 2 (µt−µt−1). (17)
+To evaluate∇D(µt+ 1
+2
+) =∇µL(µt+ 1
+2
+,y∗
+µ(µt+ 1
+2
+), with an arbitrary small target accuracyϵ> 0, we
+can runTy =O(ln
+ 
+ϵ−1
+) PGD steps onL(µt+ 1
+2
+,y ) iny via
+yt,ty+1 = ProjY
+
+yt,ty−η1∇yL(µt+ 1
+2
+,yt,ty )
+
+. (18)
+Defining the output afterTy iterations asyt+1, since strongly convexity ofL(µ,·) ensures that PGD
+converges linearly [9, Theorem 3.10], it implies that∥yt+1−y∗
+µ(µt+ 1
+2
+)∥ =O(ϵ). We can conduct
+µt+1 = Proj Rdc
++
+(µt+ 1
+2
++η2∇µL(µt+ 1
+2
+,yt+1)). (19)
+We summarize this oracle in Algorithm 2 based on an accelerated method [51]. When we skip the
+momentum update, i.e. settingµt+ 1
+2
+=µt, it is a simple PGD method onD(µ).
+However, for a convex function−D(µ), the standard results only provide convergence of the function
+value, i.e. maxµ∈Rdc
++
+D(µ)−D(µt)
+t→∞
+−→ 0. To establish the convergence of∥µTg
+g,t−µ∗
+g(xt)∥ and
+∥µTF
+F,t−µ∗
+F (xt)∥, we define the dual functions associated with inner problems (7) and (5) as
+Dg(µ) = min
+y∈Y
+Lg(µ,y ;x) and DF (µ) = min
+y∈Y
+LF (µ,y ;x) (20)
+and make the following curvature assumption near the optimum.
+Assumption 5. There existδg,δF > 0 andCδg,CδF > 0 such that
+⟨−∇Dg(µ) +∇Dg(µ∗
+g(x)),µ−µ∗
+g(x)⟩≥Cδg∥µ−µ∗
+g(x)∥2, ∀µ∈B (µ∗
+g(x);δg), (21a)
+⟨−∇DF (µ) +∇DF (µ∗
+F (x)),µ−µ∗
+F (x)⟩≥CδF∥µ−µ∗
+F (x)∥2, ∀µ∈B (µ∗
+F (x);δF ). (21b)
+It is worth noting that⟨−∇Dg(µ) +∇Dg(µ∗
+g(x)),µ−µ∗
+g(x)⟩≥ 0 holds for allµ due to concavity
+and in a neighborhood of the optimal, the equality only happens at the optimal due to the uniqueness
+ofµ∗
+g(x). The same argument applies toDF due to the concavity of the dual functions. Therefore,
+Assumption 5 essentially asserts a positive lower bound on the curvature of the left-hand side term,
+which is mild as it only applies to the neighborhood of the optimaµ∗
+g(x) andµ∗
+F (x). It is also weaker
+than the local strong concavity or global restricted secant inequality (RSI) conditions.
+By choosing Algorithm 2 with acceleration as the MaxMin solver, we provide the convergence
+analysis of Algorithm 1 next, the proof of which can be found in Appendix D.2.
+7
+
+Theorem 3. Suppose that Assumptions 1–5 and the conditions in Theorem 2 hold. Let γ >lf,1
+αg
+,
+ϵg≤
+Cδg
+2 δg andϵF ≤
+CδF
+2 δF . If we choose the inner loop Tg =O(ϵ−0.5
+g ),TF =O(ϵ−0.5
+F ), and
+Tg
+y =O(log
+ 
+ϵ−1
+g
+
+),T F
+y =O(log
+ 
+ϵ−1
+F
+
+), then the iterates generated by Algorithm 1 satisfy
+∥µTg
+t,g−µ∗
+g(xt)∥2 =O(ϵg) and ∥yTg
+t,g−y∗
+g (xt)∥2 =O(ϵg)
+∥µTF
+t,F−µ∗
+F (xt)∥2 =O(ϵF ) and ∥yTF
+t,F−y∗
+F (xt)∥2 =O(ϵF ).
+For solving an ϵ-approximation problem of BLO defined in (4), we solve minx∈XFγ(x) with
+γ =O(ϵ−0.5) according to Theorem 1. In this way, to achieve 1
+T
+PT−1
+t=0 ∥Gη(xt)∥2≤ ϵ where
+1
+T
+PT−1
+t=0 ∥Gη(xt)∥2 =O(γT−1 +γ2ϵF +γ2ϵg) by (14), we needϵg,ϵF =O(ϵ2), i.e. complexity
+˜O(ϵ−1) for the MaxMin solver in Algorithm 2, and T =O(ϵ−1.5) for the number of iteration in
+BLOCC (Algorithm 1). Therefore, the overall complexity is ˜O(ϵ−2.5), where ˜O omits the log terms.
+3.3 Special case of the MaxMin Solver: gc(x,y ) being affine iny andY = Rdy
+In this section, we investigate a special case of BLO with CCs where Assumption 5 automatically
+holds. Specifically, we focus on the case wheregc is affine iny andY = Rdy, i.e.
+gc(x,y ) = gc
+1(x)⊤y−gc
+2(x). (22)
+In this case, fixingx, takingLg(µ,y ;x) in (7) andLF (µ,y ;x) asL(µ,y ), (16) gives
+Dg(µ) = min
+y∈Rdy
+−⟨gc
+2(x),µ⟩ +⟨y,gc
+1(x)µ⟩ +g(x,y ) and (23a)
+DF (µ) = min
+y∈Rdy
+−⟨gc
+2(x),µ⟩ +⟨y,gc
+1(x)µ⟩ +f (x,y ) +γ(g(x,y )−v(x)). (23b)
+Whengc
+1(x) is of full column rank, bothDg(µ) andDF (µ) are strongly concave according to Lemma
+13 in Appendix so that Assumption 5 holds globally. Moreover, when applying PGD on −Dg(µ)
+and−DF (µ), strongly convexity guarantees linear convergence (Theorem 3.10 in [9]). Therefore,
+even without acceleration, Algorithm 2 withTy sufficiently large performs PGD on−D(µ) and it
+converges linearly up to inner loop accuracy. Moreover, PGD onL(µ,y ) iny also converges linearly.
+This motivates us to implement a single-loop version (Ty = 1) of Algorithm 2.
+When both y andµ are unconstrained, the analysis has been established in [ 19]. However, as µ
+is constrained to Rdc
++ in the Lagrangian formulation for inequality constraints, the convergence
+analysis in [ 19] is not applicable, and the extension is nontrivial due to the non-differentiability
+of the projection. We address this technical challenge by treating Rdc
++ as an inequality constraint
+and reformulating it as an unconstrained problem using Lagrange duality theory. This approach
+demonstrates that a single-loopTy = 1 update in Algorithm 2, without acceleration, achieves linear
+convergence for the max-min problem (15). The detailed proof is provided in Appendix D.3.
+Thus, by selecting the single-loop version ( Ty = 1 ) of Algorithm 2 without acceleration as the
+MaxMin solver in Algorithm 1, we establish the following theorem.
+Theorem 4 (Inner linear convergence). Consider BLO withY = Rdy andgc(x,y ) defined in (22).
+Suppose Assumptions 1–4 and the conditions in Theorem 2 hold. Suppose for anyx∈X , there exist
+constantssmin andsmax such that 0 < smin≤ σmin(gc
+1(x))≤ σmax(gc
+1(x))≤ smax <∞. Let
+γ >lf,1
+αg
+. If we choose the inner loop Tg =O(log
+ 
+ϵ−1
+g
+
+),TF =O(log
+ 
+ϵ−1
+F
+
+), andTg
+y =TF
+y = 1
+with proper constant stepsizes, then the iterates generated by Algorithm 1 satisfy
+∥µTg
+t,g−µ∗
+g(xt)∥2 =O(ϵg) and ∥yTg
+t,g−y∗
+g (xt)∥2 =O(ϵg)
+∥µTF
+t,F−µ∗
+F (xt)∥2 =O(ϵF ) and ∥yTF
+t,F−y∗
+F (xt)∥2 =O(ϵF ).
+The proof is available in Appendix D.3. Similar to the previous analysis, we chooseγ =O(ϵ−0.5) to
+solve the equivalent (2a) toϵ-approximation problem of BLO (4). To achieve 1
+T
+PT−1
+t=0 ∥Gη(xt)∥2≤
+ϵ, the number of iteration in BLOCCT =O(ϵ−1.5) by (14). As the inner MaxMin solver has linear
+convergence, the overall complexity is ˜O(ϵ−1.5) where ˜O omits the log terms. We summarized the
+overall complexity of our BLOCC algorithm in different settings in Table 1.
+8
+
+4 Numerical Experiments
+This section reports the results of numerical experiments for three different problems: a toy example
+used to validate our method, an SVM training application, and a network design problem in both
+synthetic and real-world transportation scenarios. In the last two experiments, we compare the
+proposed algorithm with two baselines, LV-HBA [ 72] and GAM [ 69]. The code is available at
+https://github.com/Liuyuan999/Penalty Based Lagrangian Bilevel.
+4.1 Toy example
+y
+0
+1
+2
+3
+x
+0
+1
+2
+3
+f(x,y)
+2
+4
+6
+8
+f(x, y)|y = x
+(xT, yTg
+g, T, f(xT, yTg
+g, T))
+Figure 2: 3-D plot of the upper-
+level objective f (x,y ) of the toy
+example, with the linef (x,y )|y=x
+shown in dashed red and the con-
+vergence points marked as red dots.
+Consider the BLO problem with an inequality coupled con-
+straintY(x) :={y∈Y :y−x≤ 0}, given by
+min
+x∈[0,3]
+f (x,y∗
+g (x)) = e−y∗
+g(x)+2
+2 + cos(6x) + 1
+2 log
+ 
+(4x− 2)2 + 1
+
+with y∗
+g (x)∈ arg min
+y∈Y(x)
+g(x,y ) = (y− 2x)2. (24)
+Problem (24) satisfies all assumptions for Theorem 2 and
+Theorem 4. The lower-level problem is strongly convex and
+y∗
+g (x) = x. Therefore, the BLO problem with inequality con-
+straint in (24) reduces to minx∈[0,3]f (x,y )|y=x. In Figure 2,
+we plot the dashed line as the intersected line of the surface
+f (x,y ) and the plane f (x,y∗
+g (x)), and the red points as the
+converged points by running BLOCC with γ = 5 and with
+200 different initialization values. It can be seen that BLOCC
+consistently finds the local minima, verifying the effectiveness.
+4.2 Hyperparameter optimization for SVM
+Methods diabetes fourclass
+BLOCC 0.767± 0.039 0.761± 0.014
+(Ours) (1.729± 0.529) (1.922± 0.108)
+LV-HBA 0.765± 0.039 0.748± 0.060
+(2.899± 1.378) (2.404± 0.795)
+GAM 0.721± 0.047 0.715± 0.056
+(8.752± 4.736) (13.481± 0.970)
+Table 2: Numerical results on the training outcome of our
+BLOCC with LV-HBA [72] and GAM [ 69]. The first row
+represents accuracy± standard deviation, and the second
+row between brackets represents the running time until the
+upper-level objective’s update is smaller than 1e−5.
+We test the performance of our algo-
+rithm BLOCC with γ = 10 when
+training a linear SVM model on the di-
+abetes [20] and fourclass datasets [29].
+The model is trained via the BLO for-
+mulation (1) with inequality CCs; see
+the details in Appendix E. We com-
+pared performance with two baselines,
+LV-HBA [72] and GAM [69].
+Table 2 shows that the model trained
+by our BLOCC algorithm outper-
+forms that of GAM [69] significantly
+and is of a similar level as that of
+LV-HBA [72]. Looking into the test
+accuracy in Figure 3, our algorithm
+achieves more than 0.76 accuracy in
+the first 2 iterations, which is significantly better than the other ones. For the upper-level objective, in
+the first few iterations, the loss decreases significantly under all algorithms, in which our BLOCC
+achieves the lowest results. Moreover, in the right plot of Figure 3, the lower-level optimum for
+LV-HBA was not attained until the very end. This indicates that the decrease of upper loss between
+0-40 iterations in the middle figure may be due to the suboptimality of lower-level variables. For our
+BLOCC and GAM, the lower-level minimum is attained as lower-level objectiveg≥ 0 in this case.
+4.3 Transportation network design problem
+BLO is particularly relevant in transportation, where network planning must consider different time
+horizons and actors. Those problems have a large number of CCs, challenging the use of traditional
+BLO techniques. As a result, our final experiment considers a network design problem, where we act
+as an operator (whose utility is modeled as the upper-level objective) that considers the passengers’
+9
+
+0 25 50 75
+Iteration Count
+0.60
+0.65
+0.70
+0.75
+0.80Accuracy
+Test Accuracy
+BLOCC
+LV-HBA
+GAM
+0 25 50 75
+Iteration Count
+1.5
+2.0
+2.5
+3.0Loss
+Validation Loss (Upper Level)
+BLOCC
+LV-HBA
+GAM
+0 25 50 75
+Iteration Count
+0
+2
+4Loss
+Lower Level Objective
+BLOCC
+LV-HBA
+GAM
+Figure 3: Test accuracy (left), upper lossf (x,y ) (middle), and lower lossg(x,y ) (right) for the SVM
+on the diabetes dataset. The experiments are executed for 50 different random train-validation-test
+splits, with the bold line representing the mean, and the shaded regions being the standard deviation.
+NN = 3, NV = 48 NN = 9, NV = 2,262 NN = 26, NV = 49,216
+NC = 24, NZ = 126 NC = 678, NZ = 6,222 NC = 13,336, NZ = 129,256
+Methods Runtime (s) UL utility Runtime (s) UL utility Runtime (s) UL utility
+LV-HBA 3.51e2 1.53 / / / /
+BLOCC (Ours)-γ = 2 2.02e1 1.07 7.27e2 8.09 6.82e4 98.40
+BLOCC (Ours)-γ = 3 2.00e1 1.69 8.50e2 10.37 6.42e4 111.39
+BLOCC (Ours)-γ = 4 2.01e1 1.71 8.68e2 11.04 6.70e4 138.78
+Table 3: Results of the transportation experiment, both in terms of running time (Runtime) and
+convergenced upper-level objective value (UL utility, larger there better), with stepsizeη = 1.6e−4.
+We use ”/” for algorithms that cannot converge within 24 hours of execution. NN (Number of Nodes)
+is the number of stations in the network. Analogously, NV (Number of Variables), NC (Number of
+Constraints), and NNZ (Number of non-zero elements) are the number of optimization variables,
+constraints, and non-zero elements of the constraints matrix, respectively.
+behavior, modeled in the lower level. We considered three networks: two synthetic networks of 3
+and 9 nodes, respectively, and a real-world network of 26 nodes in the city of Seville, Spain. Further
+details about the formulation and the experiment can be found in Appendix F.
+In this experiment, we only compare our BLOCC with LV-HBA, as GAM involves calculating the
+inverse of the Hessian, which is not tractable in this setting. Table 3 summarizes the experiment
+results. We can see that LV-HBA failed to work efficiently, especially for large networks. This is
+mainly because the increased constraints render the projection step impracticable. Our BLOCC, in
+contrast, is much faster, and it successfully converges even with large real-world networks.
+5 Conclusions and Future Work
+This paper proposed a novel primal-dual-assisted penalty reformulation for BLO problems with
+coupled lower-level constraints, and developed a new first-order method BLOCC to solve the resultant
+problem. The non-asymptotic convergence rate of our algorithm is ˜O(ϵ−2.5), tightening to ˜O(ϵ−1.5)
+when the lower-level constraints are affine iny without any other constraints. Our method achieves
+the best-known convergence rate and is projection-free, making it more favorable for large-scale, high-
+dimensional, constrained BLO problems. Experiments on SVM model training and transportation
+network planning showcased the effectiveness of our algorithm.
+References
+[1] Seyed Mehdi Alizadeh, Patrice Marcotte, and Gilles Savard. Two-stage stochastic bilevel
+programming over a transportation network. Transportation Research Part B: Methodological,
+58:92–105, 2013.
+[2] Aram V Arutyunov, Evgeniy R Avakov, and Alexey F Izmailov. Directional regularity and
+metric regularity. SIAM Journal on Optimization, 18(3):810–833, 2007.
+[3] Dominique Az´e and Jean-Paul Penot. Uniformly convex and uniformly smooth convex functions.
+In Annales de la Facult´e des sciences de Toulouse: Math´ematiques, 1995.
+10
+
+[4] Amir Beck and Marc Teboulle. A fast iterative shrinkage-thresholding algorithm for linear
+inverse problems. SIAM journal on imaging sciences, 2(1):183–202, 2009.
+[5] Moshe E Ben-Akiva and Steven R Lerman. Discrete choice analysis: theory and application to
+travel demand, volume 9. MIT press, 1985.
+[6] J. Bolte, E. Pauwels, and S. Vaiter. Automatic differentiation of nonsmooth iterative algorithms.
+In Advances in Neural Information Processing Systems, 2022.
+[7] J Fr´ed´eric Bonnans and Alexander Shapiro. Perturbation analysis of optimization problems.
+Springer Science & Business Media, 2013.
+[8] Jerome Bracken and James T McGill. Mathematical programs with optimization problems in
+the constraints. Operations Research, 21(1):37–44, 1973.
+[9] S´ebastien Bubeck. Convex Optimization: Algorithms and Complexity. Foundations and Trends®
+in Machine Learning, 2015.
+[10] Luis Cadarso and Angel Marin. Combining robustness and recovery in rapid transit network
+design. Transportmetrica A: Transport Science, 12:1–26, 11 2015.
+[11] Ennio Cascetta. Transportation systems analysis: models and applications, volume 29. Springer
+Science & Business Media, 2009.
+[12] Tianyi Chen, Yuejiao Sun, Quan Xiao, and Wotao Yin. A single-timescale method for stochastic
+bilevel optimization. In International Conference on Artificial Intelligence and Statistics, virtual,
+2022.
+[13] Tianyi Chen, Yuejiao Sun, and Wotao Yin. Closing the gap: Tighter analysis of alternating
+stochastic gradient methods for bilevel problems. InAdvances in Neural Information Processing
+Systems, Virtual, 2021.
+[14] Ziyi Chen, Bhavya Kailkhura, and Yi Zhou. A fast and convergent proximal algorithm for
+regularized nonconvex and nonsmooth bi-level optimization. arXiv preprint arXiv:2203.16615,
+2022.
+[15] Benoˆıt Colson, Patrice Marcotte, and Gilles Savard. An overview of bilevel optimization.
+Annals of operations research, 153(1):235–256, 2007.
+[16] Jean-Philippe Cˆot´e, Patrice Marcotte, and Gilles Savard. A bilevel modelling approach to pricing
+and fare optimisation in the airline industry. Journal of Revenue and Pricing Management ,
+2:23–36, 2003.
+[17] Olivier Devolder, Franc ¸ois Glineur, and Yurii Nesterov. First-order methods of smooth convex
+optimization with inexact oracle. Mathematical Programming, 146:37–75, 2014.
+[18] Asen L Dontchev and R Tyrrell Rockafellar. Implicit functions and solution mappings, volume
+543. Springer, 2009.
+[19] Simon S Du and Wei Hu. Linear convergence of the primal-dual gradient method for convex-
+concave saddle point problems without strong convexity. In The 22nd International Conference
+on Artificial Intelligence and Statistics, pages 196–205, 2019.
+[20] Dheeru Dua and Casey Graff. Uci machine learning repository, 2017. Accessed: 2024-05-21.
+[21] Laureano Escudero and Susana Mu˜noz. An approach for solving a modification of the extended
+rapid transit network design problem. Top, 17:320–334, 12 2009.
+[22] Chelsea Finn, Pieter Abbeel, and Sergey Levine. Model-agnostic meta-learning for fast adapta-
+tion of deep networks. In International Conference on Machine Learning, pages 1126–1135,
+Sydney, Australia, 2017.
+[23] Luca Franceschi, Michele Donini, Paolo Frasconi, and Massimiliano Pontil. Forward and
+reverse gradient-based hyperparameter optimization. In International Conference on Machine
+Learning, pages 1165–1173, 2017.
+11
+
+[24] Luca Franceschi, Paolo Frasconi, Saverio Salzo, Riccardo Grazzi, and Massimiliano Pontil.
+Bilevel programming for hyperparameter optimization and meta-learning. In International
+Conference on Machine Learning, Stockholm, Sweden, 2018.
+[25] Lucy L Gao, Jane Ye, Haian Yin, Shangzhi Zeng, and Jin Zhang. Value function based
+difference-of-convex algorithm for bilevel hyperparameter selection problems. In International
+Conference on Machine Learning, pages 7164–7182, Baltimore, MD, 2022.
+[26] Saeed Ghadimi, Guanghui Lan, and Hongchao Zhang. Mini-batch stochastic approxima-
+tion methods for nonconvex stochastic composite optimization. Mathematical Programming,
+155(1):267–305, 2016.
+[27] Saeed Ghadimi and Mengdi Wang. Approximation methods for bilevel programming. arXiv
+preprint arXiv:1802.02246, 2018.
+[28] Riccardo Grazzi, Luca Franceschi, Massimiliano Pontil, and Saverio Salzo. On the iteration
+complexity of hypergradient computation. In International Conference on Machine Learning,
+pages 3748–3758, virtual, 2020.
+[29] Tin Kam Ho and Eugene M Kleinberg. Building projectable classifiers of arbitrary complexity.
+In Proceedings of 13th International Conference on Pattern Recognition , volume 2, pages
+880–885, 1996.
+[30] Thomas Hofmann, Bernhard Sch¨olkopf, and Alexander J Smola. Kernel methods in machine
+learning. 2008.
+[31] Mingyi Hong, Hoi-To Wai, Zhaoran Wang, and Zhuoran Yang. A two-timescale framework
+for bilevel optimization: Complexity analysis and application to actor-critic. SIAM Journal on
+Optimization, 33(1), 2023.
+[32] Kazufumi Ito and Karl Kunisch. Lagrange Multiplier Approach to Variational Problems and
+Applications, volume 15 of Advances in Design and Control. Not specified in the provided
+information, 2008. Includes bibliographical references and index.
+[33] Kaiyi Ji, Mingrui Liu, Yingbin Liang, and Lei Ying. Will bilevel optimizers benefit from loops.
+arXiv preprint arXiv:2205.14224, 2022.
+[34] Kaiyi Ji, Junjie Yang, and Yingbin Liang. Provably faster algorithms for bilevel optimization
+and applications to meta-learning. In Advances in Neural Information Processing Systems ,
+2020.
+[35] Kaiyi Ji, Junjie Yang, and Yingbin Liang. Bilevel optimization: Convergence analysis and
+enhanced design. In International Conference on Machine Learning, virtual, 2021.
+[36] Sham Kakade, Shai Shalev-Shwartz, Ambuj Tewari, et al. On the duality of strong convexity and
+strong smoothness: Learning applications and matrix regularization. Unpublished Manuscript,
+http://ttic. uchicago. edu/shai/papers/KakadeShalevTewari09. pdf, 2(1):35, 2009.
+[37] Hamed Karimi, Julie Nutini, and Mark Schmidt. Linear convergence of gradient and proximal-
+gradient methods under the polyak-łojasiewicz condition. In Machine Learning and Knowledge
+Discovery in Databases: European Conference, ECML PKDD 2016, Riva del Garda, Italy,
+September 19-23, 2016, Proceedings, Part I 16, pages 795–811, 2016.
+[38] Prashant Khanduri, Ioannis Tsaknakis, Yihua Zhang, Jia Liu, Sijia Liu, Jiawei Zhang, and
+Mingyi Hong. Linearly constrained bilevel optimization: A smoothed implicit gradient approach.
+In International Conference on Machine Learning, pages 16291–16325, 2023.
+[39] Prashant Khanduri, Siliang Zeng, Mingyi Hong, Hoi-To Wai, Zhaoran Wang, and Zhuoran
+Yang. A near-optimal algorithm for stochastic bilevel optimization via double-momentum. In
+Advances in Neural Information Processing Systems, Virtual, 2021.
+[40] Jeongyeol Kwon, Dohyun Kwon, Stephen Wright, and Robert D Nowak. A fully first-order
+method for stochastic bilevel optimization. In International Conference on Machine Learning,
+pages 18083–18113, 2023.
+12
+
+[41] Jeongyeol Kwon, Dohyun Kwon, Steve Wright, and Robert Nowak. On penalty methods
+for nonconvex bilevel optimization and first-order stochastic approximation. In International
+Conference on Learning Representations, Vienna, Austria, 2024.
+[42] Junyi Li, Bin Gu, and Heng Huang. A fully single loop algorithm for bilevel optimization
+without hessian inverse. In Association for the Advancement of Artificial Intelligence, pages
+7426–7434, virtual, 2022.
+[43] Bo Liu, Mao Ye, Stephen Wright, Peter Stone, and Qiang Liu. Bome! bilevel optimization
+made easy: A simple first-order approach. Advances in neural information processing systems,
+35:17248–17262, 2022.
+[44] Risheng Liu, Xuan Liu, Xiaoming Yuan, Shangzhi Zeng, and Jin Zhang. A value-function-based
+interior-point method for non-convex bi-level optimization. In International conference on
+machine learning, pages 6882–6892, 2021.
+[45] Risheng Liu, Xuan Liu, Shangzhi Zeng, Jin Zhang, and Yixuan Zhang. Value-function-based
+sequential minimization for bi-level optimization. IEEE Transactions on Pattern Analysis and
+Machine Intelligence, 2023.
+[46] Risheng Liu, Yaohua Liu, Shangzhi Zeng, and Jin Zhang. Towards gradient-based bilevel
+optimization with non-convex followers and beyond. In Advances in Neural Information
+Processing Systems, volume 34, pages 8662–8675, 2021.
+[47] Songtao Lu. Slm: A smoothed first-order lagrangian method for structured constrained noncon-
+vex optimization. Advances in Neural Information Processing Systems, 36, 2023.
+[48] Dougal Maclaurin, David Duvenaud, and Ryan Adams. Gradient-based hyperparameter opti-
+mization through reversible learning. In International Conference on Machine Learning, pages
+2113–2122, Lille, France, 2015.
+[49] Patrice Marcotte. Network design problem with congestion effects: A case of bilevel program-
+ming. Mathematical programming, 34(2):142–162, 1986.
+[50] Akshay Mehra and Jihun Hamm. Penalty method for inversion-free deep bilevel optimization.
+In Asian conference on machine learning, pages 347–362, 2021.
+[51] Yu Nesterov. Smooth minimization of non-smooth functions. Mathematical programming,
+103:127–152, 2005.
+[52] Alex Nichol, Joshua Achiam, and John Schulman. On first-order meta-learning algorithms.
+arXiv preprint arXiv:1803.02999, 2018.
+[53] Norbert Oppenheim. Equilibrium trip distribution/assignment with variable destination costs.
+Transportation Research Part B: Methodological, 27(3):207–217, 1993.
+[54] Fabian Pedregosa. Hyperparameter optimization with approximate gradient. In International
+conference on machine learning, pages 737–746, 2016.
+[55] Fernando Real-Rojas. Dise ˜no de redes de transporte: integrando la competencia modal con
+t´ecnicas de optimizaci´on convexa, BSc Thesis, King Juan Carlos University. June 2024.
+[56] Fernando Real-Rojas, Victor M Tenorio, and Antonio G Marques. A sparse nonlinear approach
+for designing hub-and-spoke air transportation networks. In Asilomar Conference on Signals,
+Systems, and Computers, Pacific Grove, CA, 2024.
+[57] R. Tyrrell Rockafellar. Convex Analysis. Princeton University Press, Princeton, NJ, USA,
+1970s.
+[58] Andrzej Ruszczy ´nski. Nonlinear Optimization. Princeton University Press, 2006.
+[59] Amirreza Shaban, Ching-An Cheng, Nathan Hatch, and Byron Boots. Truncated back-
+propagation for bilevel optimization. In The 22nd International Conference on Artificial
+Intelligence and Statistics, pages 1723–1732, 2019.
+13
+
+[60] Han Shen and Tianyi Chen. A single-timescale analysis for stochastic approximation with
+multiple coupled sequences. Advances in Neural Information Processing Systems, 35:17415–
+17429, 2022.
+[61] Han Shen, Quan Xiao, and Tianyi Chen. On penalty-based bilevel gradient descent method. In
+International Conference on Machine Learning, Honolulu, HI, 2023.
+[62] Han Shen, Zhuoran Yang, and Tianyi Chen. Principled penalty-based methods for bilevel
+reinforcement learning and RLHF. In International Conference on Machine Learning, Vienna,
+Austria, 2024.
+[63] Ankur Sinha, Pekka Malo, and Kalyanmoy Deb. A review on bilevel optimization: from
+classical to evolutionary approaches and applications. IEEE Transactions on Evolutionary
+Computation, 22(2):276–295, 2017.
+[64] Daouda Sow, Kaiyi Ji, and Yingbin Liang. On the convergence theory for hessian-free bilevel
+algorithms. volume 35, pages 4136–4149, 2022.
+[65] Bradly Stadie, Lunjun Zhang, and Jimmy Ba. Learning intrinsic rewards as a bi-level optimiza-
+tion problem. In Conference on Uncertainty in Artificial Intelligence, virtual, 2020.
+[66] Luis N Vicente and Paul H Calamai. Bilevel and multilevel programming: A bibliography
+review. Journal of Global optimization, 5(3):291–306, 1994.
+[67] Gerd Wachsmuth. On licq and the uniqueness of lagrange multipliers. Operations Research
+Letters, 41(1):78–80, 2013.
+[68] Quan Xiao, Han Shen, Wotao Yin, and Tianyi Chen. Alternating implicit projected sgd and its
+efficient variants for equality-constrained bilevel optimization. In International Conference on
+Artificial Intelligence and Statistics, 2023.
+[69] Siyuan Xu and Minghui Zhu. Efficient gradient approximation method for constrained bilevel
+optimization. In Proceedings of the AAAI Conference on Artificial Intelligence, 2023.
+[70] Haikuo Yang, Luo Luo, Chris Junchi Li, Michael Jordan, and Maryam Fazel. Accelerating
+inexact hypergradient descent for bilevel optimization. In OPT 2023: Optimization for Machine
+Learning, 2023.
+[71] Wei Yao, Haian Yin, Shangzhi Zeng, and Jin Zhang. Overcoming lower-level constraints
+in bilevel optimization: A novel approach with regularized gap functions. arXiv preprint
+arXiv:2406.01992, 2024.
+[72] Wei Yao, Chengming Yu, Shangzhi Zeng, and Jin Zhang. Constrained bi-level optimization:
+Proximal lagrangian value function approach and hessian-free algorithm. arXiv preprint
+arXiv:2401.16164, 2024.
+[73] Jane J Ye and Daoli Zhu. Optimality conditions for bilevel programming problems.Optimization,
+33(1):9–27, 1995.
+[74] Jane J Ye, Daoli Zhu, and Qiji Jim Zhu. Exact penalization and necessary optimality conditions
+for generalized bilevel programming problems. SIAM Journal on optimization, 7(2):481–507,
+1997.
+14
+
+Supplementary Material for “A Primal-Dual-Assisted Penalty Approach to
+Bilevel Optimization with Coupled Constraints”
+Table of Contents
+A Preliminaries 15
+B Analysis of the Penalty-Based Lagrangian Reformulation 16
+B.1 Proof of Lemma 1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+B.2 Proof of Theorem 1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+C Analysis of the Differentiability of Value Functions 17
+C.1 Proof of Lemma 2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+C.2 Proof of Lemma 3 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+D Convergence Analysis of the Main Result 19
+D.1 Proof of Theorem 2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+D.2 Proof of Theorem 3 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+D.3 Proof of Theorem 4 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+E Applications to Hyperparameter Optimization for SVM 28
+E.1 Problem formulation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+E.2 Experiment details . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+F Applications to Transportation Network Planning 29
+F.1 Problem formulation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+F.2 Numerical results for the 3-node network . . . . . . . . . . . . . . . . . . . . . 32
+F.3 Numerical results for the 9-node network . . . . . . . . . . . . . . . . . . . . . 33
+F.4 Numerical results for the Seville network . . . . . . . . . . . . . . . . . . . . . 34
+A Preliminaries
+This section will provide some preliminaries for our subsequent analysis.
+Definition 5. For a convex functionh : Rdq→ R whose domain isQ⊆ Rdq, the Legendre conjugate
+ofh∗ :Q∗→ R is defined as:
+h∗(q) := sup
+q′∈Q
+{⟨q′,q⟩− h(q′)} =− inf
+q′∈Q
+{−⟨q′,q⟩ +h(q′)},
+∀q∈Q∗ :={q∈ Rdq : sup
+q′∈Q
+{⟨q′,q⟩− h(q′)}<∞}.
+Remark 1. Whenh is strongly convex in Rdq, it is lower bounded and thereforeQ∗ = Rdy.
+Lemma 4. Supposeh : Rdy→ R islh,1-smooth andαh-strongly convex and its domainQ⊆ Rdq is
+convex, closed and non-empty.
+1. IfQ = Rdq, the gradient mappings∇h and∇h∗ are inverse of each other ([ 57]); and
+h∗ : Rdq→ R is 1
+αh
+-smooth and 1
+lh,1
+-strongly convex (Proposition 2.6 [3]).
+2. IfQ⊂ Rdq,h∗ is 1
+αh
+-smooth ([36]) and and convex (Theorem 4.43 [32]).
+Lemma 5. SupposeQ⊆ Rdq is convex, closed and non-empty,h : Rdq→ R is strongly convex on
+Q,hc : Rdq→ Rdc is convex onQ anddc is finite, and{q∈Q :hc(q)≤ 0} is non-empty.
+1. The problem minq∈{q∈Q:hc(q)≤0}h(q) has a unique feasible solution.
+15
+
+2. When linear independence constraint qualification (LICQ) condition holds forhc(q), the
+Lagrange multiplier for the problem minq∈{q∈Q:hc(q)≤0}h(q), i.e. solution to the problem
+maxµ∈Rdc
++
+minq∈Qh(q) +⟨µ,hc(q)⟩ is unique [67].
+Lemma 6 (Lemma 3.1 in [9]). SupposeQ⊆ Rdq is convex, closed, and nonempty. For anyq1∈ Rdq
+and anyq2∈Q , it follows that
+⟨ProjQ(q1)−q2, ProjQ(q1)−q1⟩≤ 0. (25)
+In this way, takeq1 =q3−ηg for anyq3∈Q , and denoteqη,g
+3 = ProjQ(q3−ηg) as a projected
+gradient update in directiong with step sizeη, we have,
+⟨g,qη,g
+3 −q2⟩≤− 1
+η⟨qη,g
+3 −q2,qη,g
+3 −q3⟩, ∀q2,q 3∈Q. (26)
+Lemma 7 (Theorem 3.10 [9]). Suppose a differentiable functionh islh,1-smooth andαh2-strongly
+convex. Consider the constrained problem minq∈Qh(q) whereQ is non-empty, closed and convex.
+Projected Gradient Descent withη≤ 1
+lh,1
+converges linearly to the uniqueq∗ = arg minq∈Qh(q):
+∥ ProjQ(q−η∇h(q))−q∗∥≤ (1−αη)1/2∥q−q∗∥≤ (1−αη/2)∥q−q∗∥, ∀q∈Q. (27)
+B Analysis of the Penalty-Based Lagrangian Reformulation
+B.1 Proof of Lemma 1
+According to Lemma 5, for any fixedx, there exists a uniqueµ∗
+g(x). Therefore, according to Lagrange
+duality theorem, for any fixedx, the primal problem
+min
+y∈Y
+g(x,y ) s.t. gc(x,y )≤ 0 ⇔ min
+y∈Y
+g(x,y ) +⟨µ∗
+g(x),gc(x,y )⟩.
+Asg(x,y ) isαg-strongly convex iny andgc(x,y ) is convex iny, we knowg(x,y )+⟨µ∗
+g(x),gc(x,y )⟩
+isαg-strongly convex in y, where the modulus αg is independent of x. Therefore, according to
+Theorem 2 in [37], the quadratic growth in statement 1 can be concluded.
+Asg(x,y ) is strongly convex iny, andY(x) is a non-empty, closed and convex set under assumption
+3, there exists a unique solution y∗
+g (x) such thatg(x,y∗
+g (x)) = v(x) by Lemma 5. In this way, if
+y̸=y∗
+g (x) andy∈Y (x), we haveg(x,y )>v (x). This completes the proof of statement 2.
+B.2 Proof of Theorem 1
+We know from Lemma 1 thatg(x,y )−v(x)≥ αg
+2∥y−y∗
+g (x)∥2 andg(x,y ) = v(x) if and only if
+y = y∗
+g (x). This is squared-distance bound follows Definition 1 in [ 61]. Under Lipschitzness of
+f (x,y ) with respect toy, finding the solutions to theϵ-approximate problem in (4) is equivalent to
+finding the solutions to its penalty reformulation
+min
+(x,y)∈{X×Y :gc(x,y)≤0}
+f (x,y ) +γ(g(x,y )−v(x)) (28)
+withγ =O(ϵ−0.5) following Theorems 1 and 2 in [61].
+Moreover, jointly finding solution for (x,y ) in (28) is in equivalence to finding solutions in
+min
+x∈X
+min
+y∈Y(x)
+f (x,y ) +γ(g(x,y )−v(x)). (29)
+The proof of this equivalence is as follows. Suppose (x0,y 0)∈{X×Y : gc(x,y )≤ 0} being a
+solution to (28). Suppose for anyx∈X ,y∗
+F (x)∈ arg miny∈Y(x)f (x,y ) +γ(g(x,y )−v(x)). We
+know that for anyx∈X ,y∈Y (x), it follows that
+f (x0,y 0) +γ(g(x0,y 0)−v(x0))≤f (x,y∗
+F (x)) +γ(g(x,y∗
+F (x))−v(x))
+≤f (x,y ) +γ(g(x,y )−v(x)).
+This means any solution to (28) is a solution to (29). On the other hand, supposex0∈X ,y∗
+F (x0)∈
+Y(x0) is a solution to (29). We know that for any (x,y )∈{X×Y :gc(x,y )≤ 0},
+f (x0,y∗
+F (x0)) +γ(g(x0,y∗
+F (x0))−v(x0))≤f (x,y∗
+F (x)) +γ(g(x,y∗
+F (x))−v(x))
+16
+
+≤f (x,y ) +γ(g(x,y )−v(x)).
+This means any solution to (29) is a solution to (28).
+Besides, we knowf (x,y ) islf,1-smooth,g(x,y ) isαg-strongly convex iny. By the definitions of
+strongly convexity and smoothness, we know for fixedx, for anyy1,y 2∈Y ,
+f (x,y 1) +γ(g(x,y 1)−v(x))−f (x,y 2) +γ(g(x,y 2)−v(x))
+=f (x,y 1)−f (x,y 2) +γ(g(x,y 1)−g(x,y 2))
+≥⟨∇yf (x,y 2),y 1−y2⟩− lf,1
+2 ∥y1−y2∥2 +γ⟨∇yg(x,y 2),y 1−y2⟩ +γαg
+2∥y1−y2∥2
+=⟨∇yf (x,y 2) +γ∇yg(x,y 2),y 1−y2⟩ + γαg−lf,1
+2 ∥y1−y2∥2. (30)
+This proves thatf (x,y )+γ(g(x,y )−v(x)) is (γαg−lf,1)-strongly convex iny. Moreover, according
+to Assumption 2, the constraintgc(x,y ) is convex iny, and miny∈Y(x)f (x,y ) +γ(g(x,y )−v(x))
+is equivalent to its equivalent Lagrangian Dual Form[58]
+max
+µ∈Rdc
++
+min
+y∈Y
+f (x,y ) +γ(g(x,y )−v(x)) +⟨µ,gc(x,y )⟩. (31)
+Therefore, (28) can be recovered to (2a) and this completes the proof.
+C Analysis of the Differentiability of Value Functions
+Lemma 8 (Theorem 2.16 in [32]). Supposeh(x,y ) is strongly convex iny∈Y and is Lipschitz with
+respect tox∈X ,hc(x,y ) is convex iny and is Lipschitz with respect tox, and bothY and{y∈Y :
+hc(x,y )≤ 0} are non-empty, closed, and convex. For the problem miny∈{y∈Y:hc(x,y)≤0}h(x,y ),
+the unique solutiony∗
+h(x) and unique Lagrange multiplierµ∗
+h(x), defined as
+(y∗
+h(x),µ∗
+h(x)) := arg max
+µ∈Rdx
++
+min
+y∈Y
+h(x,y ) +⟨µ,hc(x,y )⟩, (32)
+is Lipschitz inx. In other words, there existLh≥ 0 that, for allx1,x 2∈X ,
+∥(y∗
+h(x1);µ∗
+h(x1))− (y∗
+h(x2);µ∗
+h(x2))∥≤ Lh∥x1−x2∥.
+Before proving Lemmas 2 and 3, we would like to introduce a more general form.
+Lemma 9. SupposeY and{y∈Y :hc(x,y )≤ 0} are both non-empty, closed and convex,h(x,y )
+is jointly smooth in (x,y ) and is strongly convex iny,hc(x,y ) is convex iny, and bothh(x,y ) and
+hc(x,y ) are Lipschitz with respect tox. Then we have
+vh(x) = min
+y∈Y
+h(x,y ) s.t. hc(x,y )≤ 0
+is differentiable with its gradient as
+∇vh(x) =∇xh(x,y∗
+h(x)) +⟨µ∗
+h(x),hc(x,y∗
+h(x))⟩, (33)
+where (y∗
+h(x),µ∗
+h(x)) defined in (32) are unique.
+Proof. We prove this using Theorem 4.24 in [7].
+i) As h(x,y ) being strongly convex in y, Condition 1 in Theorem 4.24 in [ 7] is satisfied and the
+solution sets are of singleton value (y∗
+h(x),µ∗
+h(x)) according to Lemma 5.
+ii) Moreover, the smoothness ofh(x,y ) guarantees Robinson’s constraint qualification [2], which
+implies the directional regularity condition (Definition 4.8 in [7]) for any directiond (Theorem 4.9.
+(ii) in [7]). This guarantees Condition 2 in Theorem 4.24 in [7] can be satisfied for all directionsd.
+iii) Additionally, under the Lipschitzness ofh(x,y ) andhc(x,y ) with respect tox,y∗
+h(x),µ∗
+h(x) are
+Lipschitz according to Lemma 8. This implies condition 3 in Theorem 4.24 in [7] holds.
+In this way, all conditions in Theorem 4.24 in [7] hold and it gives the gradient as in (33) for unique
+(y∗
+h(x),µ∗
+h(x)). This completes the proof.
+17
+
+C.1 Proof of Lemma 2
+Proof. The problem miny∈Yg(x,y ) s.t.gc(x,y ) ≤ 0 fits in the setting of Lemma 9 by taking
+h(x,y ) = g(x,y ) andhc(x,y ) = gc(x,y ). Therefore the derivative (8) can be obtained accordingly.
+Moreover, for anyx1,x 2∈X ,
+∥∇v(x1)−∇v(x2)∥
+=∥∇xg(x1,y∗
+g (x1)) +⟨µ∗
+g(x1),∇xgc(x1,y∗
+g (x1))⟩−∇ xg(x2,y∗
+g (x2))
+−⟨µ∗
+g(x2),∇xgc(x2,y∗
+g (x2))⟩∥
+(a)
+≤∥∇xg(x1,y∗
+g (x1))−∇xg(x2,y∗
+g (x2))∥
++∥⟨µ∗
+g(x1),∇xgc(x1,y∗
+g (x1))⟩−⟨ µ∗
+g(x1),∇xgc(x2,y∗
+g (x2))⟩∥
++∥⟨µ∗
+g(x1),∇xgc(x2,y∗
+g (x2))⟩−⟨ µ∗
+g(x2),∇xgc(x2,y∗
+g (x2))⟩∥
+(b)
+≤ (lg,1 +Bglgc,1)(∥x1−x2∥ +∥y∗
+g (x1)−y∗
+g (x2)∥) +lgc,0∥µ∗
+g(x1)−µ∗
+g(x2)∥
+(c)
+≤ ((lg,1 +Bglgc,1)(1 +Lg) +lgc,0Lg)∥x1−x2∥,
+where (a) follows triangle inequality; (b) leverage on the Lipschitzness of∇g,gc and∇gc inx, and
+the upper bound for∥µ∗
+g(x)∥; and (c) uses the Lipschitzness ofy∗
+g (x) andµ∗
+g(x) from Lemma 8. As
+the bound is loose due to the use of triangle inequality, we can conclude that v(x) islv,1-smooth
+wherelv,1≤ ((1 +Bg)(1 +Lg)lgc,1 +lgc,0Lg).
+C.2 Proof of Lemma 3
+By assumption,f (x,y ) islf,1-smooth andg(x,y ) isαg-strongly convex iny. We knowf (x,y ) +
+γ(g(x,y )−v(x)) is (γαg−lf,1)-strongly convex whenγ >lf,1
+αg
+as discussed in (30). Moreover,
+constraintgc(x,y ) is convex iny by Assumption 2. In this way, the problem
+min
+y∈Y
+f (x,y ) +γ(g(x,y )−v(x)) s.t.gc(x,y )≤ 0
+features strong convexity according to Chapter 4 in [58] and it equals to
+Fγ(x) = max
+µ∈Rdc
++
+min
+y∈Y
+f (x,y ) +γ(g(x,y )−v(x)) +⟨µ,gc(x,y )⟩.
+Considering the smoothness of v(x) as presented in Lemma 2, all assumptions in Lemma 9 are
+satisfied. Therefore the derivative (9) can be obtained. In addition, for anyx1,x 2∈X ,
+∥∇F (x1)−∇F (x2)∥
+=∥∇xf (x1,y∗
+F (x1)) +γ (∇xg(x1,y∗
+F (x1))−∇v(x1)) +⟨µ∗
+F (x1),∇xgc(x1,y∗
+F (x1))⟩
+−∇xf (x2,y∗
+F (x2))−γ (∇xg(x2,y∗
+F (x2))−∇v(x2))−⟨µ∗
+F (x2),∇xgc(x2,y∗
+F (x2))⟩∥
+(a)
+≤∥∇xf (x1,y∗
+F (x1))−∇xf (x2,y∗
+F (x2))∥ +γ∥∇xg(x1,y∗
+F (x1))−∇xg(x2,y∗
+F (x2))∥
++γ∥∇v(x1)−∇v(x2)∥ +∥⟨µ∗
+F (x1),∇xgc(x1,y∗
+F (x1))⟩−⟨ µ∗
+F (x1),∇xgc(x2,y∗
+F (x2))⟩∥
++∥⟨µ∗
+F (x1),∇xgc(x2,y∗
+F (x2))⟩−⟨ µ∗
+F (x2),∇xgc(x2,y∗
+F (x2))⟩∥
+(b)
+≤ (lf,1 +γlg,1 +BFlgc,1)(∥x1−x2∥ +∥y∗
+F (x1)−y∗
+F (x2)∥) +γlv,1∥x1−x2∥
++lgc,0∥µ∗
+F (x1)−µ∗
+F (x2)∥
+(c)
+≤ ((lf,1 +γlg,1 +BFlgc,1)(1 +LF ) +γlv,1 +lfc,0LF )∥x1−x2∥,
+where (a) follows triangle inequality; (b) leverage on the Lipschitzness of∇f,∇g,gc and∇gc inx,
+and the upper bound for∥µ∗
+F (x)∥; and (c) uses the Lipschitzness ofy∗
+F (x) andµ∗
+F (x) from Lemma
+8. As the bound is loose due to the use of triangle equality, we can conclude thatF (x) islF,1-smooth
+wherelF,1≤ (lf,1 +γlg,1 +BFlgc,1)(1 +LF ) +γlv,1 +lfc,0LF .
+18
+
+D Convergence Analysis of the Main Result
+D.1 Proof of Theorem 2
+Define the bias termb(xt) of the gradient∇Fγ(xt) as
+b(xt) :=∇Fγ(xt)−gF,t
+=
+
+∇xf (xt,y∗
+F (xt)) +γ
+ 
+∇xg(x,y∗
+F (xt))−
+ 
+∇xg(xt,y∗
+g (xt)) +
+
+µ∗
+g(xt),∇xgc(xt,y∗
+g (xt))
+
++⟨µ∗
+F (xt),∇xgc(xt,y∗
+F (xt))⟩
+
+−
+
+∇xf (xt,yTF
+F,t) +γ
+
+∇xg(xt,yTF
+F,t)−
+
+∇xg(xt,yTg
+g,t) +
+D
+µTg
+g,t,∇xgc(xt,yTg
+g,t)
+E
++⟨µTF
+F ,∇xgc(xt,yTF
+F,t)⟩
+
+.
+In this way, we have
+∥b(xt)∥
+(a)
+≤∥∇xf (xt,yTF
+F,t)−∇xf (xt,y∗
+F (xt))∥
++γ
+
+∥∇xg(xt,yTF
+F,t)−∇xg(xt,y∗
+F (xt))∥ +∥∇xg(xt,yTg
+g,t)−∇xg(xt,y∗
+g (xt))∥
++
+
+
+
+
+µ∗
+g(xt),∇xgc(xt,y∗
+g (xt))
+
+−
+D
+µ∗
+g(xt),∇xgc(xt,yTg
+g,t)
+E
+
+
++
+
+
+
+D
+µ∗
+g(xt),∇xgc(xt,yTg
+g,t)
+E
+−
+D
+µTg
+g,t,∇xgc(xt,yTg
+g,t)
+E
+
+
+
++∥⟨µTF
+F ,∇xgc(xt,yTF
+F,t)⟩−⟨ µ∗
+F (xt),∇xgc(xt,yTF
+F,t)⟩∥
++∥⟨µ∗
+F (xt),∇xgc(xt,yTF
+F,t)⟩−⟨ µ∗
+F (xt),∇xgc(xt,y∗
+F (xt))⟩∥
+(b)
+≤lf,1∥yTF
+F,t−y∗
+F (xt)∥ +γ
+
+lg,1∥yTF
+F,t−y∗
+F (xt)∥ +lg,1∥yTg
+g,t−y∗
+g (xt)∥
++lgc,0∥µTg
+g,t−µ∗
+g(xt)∥ +Bglgc,1∥yTg
+g,t−y∗
+g (xt)∥
+
++lgc,0∥µTF
+F,t−µ∗
+F (xt)∥ +BFlgc,1∥yTF
+F,t−y∗
+F (xt)∥
+(c)
+= (lf,1 +γlg,1 +BFlgc,0)∥yTF
+F,t−y∗
+F (xt)∥ +lgc,0∥µTF
+F,t−µ∗
+F (xt)∥
++γ
+
+(lg,1 +Bglgc,1)∥yTg
+g,t−y∗
+g (xt)∥ +lgc,0∥µTg
+g,t−µ∗
+g(xt)∥
+
+,
+where (a) uses triangle inequality, (b) relies on the Lipschitzness of ∇f,∇g, gc, and ∇gc in
+x, the upper bounds for ∥µ∗
+F (x)∥ and∥µ∗
+g(x)∥, and Cauchy-Schwartz inequality, and (c) is by
+rearrangement.
+Furthermore, according to Young’s inequality, it follows that
+∥b(xt)∥2≤2
+
+(lf,1 +γlg,1 +BFlgc,0)∥yTF
+F,t−y∗
+F,t∥ +lgc,0∥µTF
+F,t−µ∗
+F,t∥
+2
++ 2γ2
+
+(lg,1 +Bglgc,1)∥yTg
+g,t−y∗
+g (xt)∥ +lgc,0∥µTg
+g,t−µ∗
+g(xt)∥
+2
+=O(γ2ϵF +γ2ϵg).
+According to Lemma 3,Fγ(x) islF,1-smooth inX . In this way, by the smoothness, we have
+F (xt+1)≤F (xt) +⟨∇F (xt),xt+1−xt⟩ + lF,1
+2 ∥xt+1−xt∥2
+≤F (xt) +⟨gF,t,xt+1−xt⟩ + 1
+2η∥xt+1−xt∥2 +⟨b(xt),xt+1−xt⟩, (34)
+19
+
+where the second inequality is byη≤ 1
+lF,1
+and∇F (xt) = gFt +b(xt).
+The projection guarantees thatxt+1 andxt are inX . Following Lemma 6, we know that
+⟨gF,t,xt+1−xt⟩≤− 1
+η∥xt+1−xt∥2.
+Plugging this back to (34), it follows
+F (xt+1)≤F (xt)− 1
+2η∥xt+1−xt∥2 +⟨b(xt),xt+1−xt⟩
+≤F (xt)− 1
+2η∥xt+1−xt∥2 +η∥b(xt)∥2 + 1
+4η∥xt+1−xt∥2
+=F (xt)− 1
+4η∥xt+1−xt∥2 +η∥b(xt)∥2,
+where the second inequality is from Young’s inequality. Telescoping therefore gives
+1
+T
+T−1X
+t=0
+∥Gη(xt)∥2≤ 4
+ηT (F (x0)−F (xT )) + 4
+T
+T−1X
+t=0
+∥b(xt)∥2
+=O(η−1T−1) +O(γ2ϵF +γ2ϵg)
+=O(γT−1 +γ2ϵF +γ2ϵg)
+where last equality comes from η =O(γ−1) asη≤ 1
+lF,1
+andlF,1≤ (lf,1 +γlg,1 +BFlgc,1)(1 +
+LF ) +γlv,1 +lfc,0LF =O(γ). This completes the proof.
+D.2 Proof of Theorem 3
+To restate, we are viewing Lg(µ,y ;x) in (7) and LF (µ,y ;x) in (5) respectively as L(µ,y ) and
+considering the following max-min problem
+max
+µ∈Rdc
++
+min
+y∈Y
+L(µ,y ).
+In (16), we defined the minimization part as
+D(µ) := min
+y∈Y
+L(µ,y ) = L(µ,y∗
+µ(µ)) where y∗
+µ(µ) := arg min
+y∈Y
+L(µ,y ).
+To evaluateD(µ) forLg(µ,y ;x) in (7) andLF (µ,y ;x) in (5) asL(µ,y ), we define the following
+mappings for fixedx∈X :
+y∗
+µ,g(µ) := arg min
+y∈Y
+Lg(µ,y ;x), (35)
+y∗
+µ,F (µ) := arg min
+y∈Y
+LF (µ,y ;x). (36)
+In this way, for Lg(µ,y ;x) in (7) andLF (µ,y ;x) in (5) respectively asL(µ,y ),D(µ) defined in
+(16) equals toDg(µ) andDF (µ) respectively, where
+Dg(µ) = min
+y∈Y
+Lg(µ,y ;x) = Lg(µ,y∗
+µ,g(µ);x), (37)
+DF (µ) = min
+y∈Y
+LF (µ,y ;x) = LF (µ,y∗
+µ,F (µ);x). (38)
+In the following lemma, we show thatD(µ) exhibits concavity and smoothness, which are favorable
+properties for conducting gradient-based algorithm.
+Lemma 10 (Smoothness and Concavity ofD(µ)). Suppose all the assumptions in Theorem 3 hold.
+For fixedx∈X , the following holds
+1. y∗
+µ,g(µ) in (35) andy∗
+µ,F (µ) in (36) are respectively 1
+αg
+and 1
+γαg−lf,1
+-Lipschitz toµ.
+2. Dg(µ) in (37) is concave and lgc,0
+αg
+-smooth, andDF (µ) in (38) is concave and lgc,0
+γαg−lf,1
+-
+smooth.
+20
+
+Proof. To restate,
+Lg(µ,y ;x) =g(x,y ) +⟨µ,gc(x,y )⟩,
+LF (µ,y ;x) =f (x,y ) +γ(g(x,y )−v(x)) +⟨µ,gc(x,y )⟩.
+Under Assumption 1 and 2, for fixedx and givenµ,Lg(µ,y ;x) isαg-strongly convex and (lg,1 +
+∥µ∥lgc,1)-smooth iny, andLF (µ,y ;x) is (γαg−lf,1)-strongly convex and (lf,1 +γlg,1 +∥µ∥lgc,1)-
+smooth in y. Therefore, we know y∗
+µ,g(µ) in (35) and y∗
+µ,F (µ) in (36) are respectively 1
+αg
+and
+1
+γαg−lf,1
+-Lipschitz to µ by directly quoting Theorem F.10 in [ 18] or Theorem 4.47 in [ 32]. This
+proves the first part of the Lemma.
+For the second part, the concavity ofDg(µ) andDF (µ) can be directly obtained by Lemma 2.58 in
+[58] asLg(µ,y ;x) andLg(µ,y ;x) are both convex iny.
+Moreover, following Theorem 4.24 in [7], we have
+∇Dg(µ) =∇µLg(µ,y∗
+µ,g(µ)) = gc(x,y∗
+µ,g(µ)),
+∇DF (µ) =∇µLF (µ,y∗
+µ,F (µ)) = gc(x,y∗
+µ,F (µ)).
+Asgc(x,y ) islgc,0-Lipschitz by Assumption 1, for anyµ1,µ 2∈ Rdc
++ :
+∥∇Dg(µ1)−∇Dg(µ2)∥ =∥gc(x,y∗
+µ,g(µ1))−gc(x,y∗
+µ,g(µ2))∥
+≤lgc,0∥y∗
+µ,g(µ1)−y∗
+µ,g(µ2)∥≤ lgc,0
+αg
+∥µ1−µ2∥, (39)
+and similarly,
+∥∇DF (µ1)−∇DF (µ2)∥ =∥gc(x,y∗
+µ,F (µ1))−gc(x,y∗
+µ,F (µ2))∥
+≤lgc,0∥y∗
+µ,F (µ1)−y∗
+µ,F (µ2)∥≤ lgc,0
+γαg−lf,1
+∥µ1−µ2∥. (40)
+We can conclude thatDg(µ) andDF (µ) are respectively lgc,0
+αg
+and lgc,0
+γαg−lf,1
+-smooth.
+In Algorithm 2, we are implementing an accelerated projected gradient descent on−D(µ) where
+the gradient bias is controlled byTy. Following [17], the following lemma presents the convergence
+analysis of the accelerated method on smooth and convex functions.
+Lemma 11 (Section 5 and 6 in [ 17]). SupposeD(µ) is concave and lD,1-smooth. Consider the
+constrained problem maxµ∈Rdc
++
+D(µ). At iterationt = 0,...,T − 1, perform accelerated projected
+gradient update with step sizeη≤ 1
+lD,1
+and initial valueµ0 =µ−1:
+µt+ 1
+2
+=µt + t− 1
+t + 2 (µt−µt−1) (41a)
+µt+1 = ProjRdc
++
+(µt+ 1
+2
++ηgt+ 1
+2
+) (41b)
+wheregt+ 1
+2
+is anϵ1.5-approximate to∇D(µt+ 1
+2
+) satisfying∥gt+ 1
+2
+−∇D(µt+ 1
+2
+)∥ =O(ϵ1.5), for a
+given accuracyϵ> 0. DenoteD∗ = maxµ∈Rdc
++
+D(µ), performingT =O(ϵ−0.5) iterations leads to
+D∗−D(µT ) =O(ϵ).
+In this way, we are ready to proceed to the proof of Theorem 3.
+proof of Theorem 3. Algorithm 2 solves (7) and (5) by takingLg(µ,y ;x) andLF (µ,y ;x) respec-
+tively asL(µ,y ) and run respectively iterationsT equalsTg andTF
+We begin our proof with analysis on(7). The accelerated version of Algorithm 2 solves this by taking
+Lg(µ,y ;x) in (7) with fixedx∈X asL(µ,y ).
+21
+
+Fixingµt+ 1
+2
+, steps 4-6 areTy-step projected gradient descent iny. AsLg(µ,y ;x) is (lg,1 +lgc,1)-
+smooth andαg-strongly convex iny, taking the inner loop step sizeη1 asηg,1≤ 1
+lg,1+lgc,1
+ensures
+linear convergence according to Lemma 7. ChoosingTy =O(ln
+ 
+(ϵ1.5)−1
+) =O(ln
+ 
+ϵ−1
+g
+
+) leads to
+∥yt+1−y∗
+µ,g(µt+ 1
+2
+)∥ =O(ϵ1.5
+g )
+for target accuracyϵg > 0 wherey∗
+µ,g(µ) is defined in (35).
+In step 7, we update µ with a projected gradient descent step which takes ∇µL(µt+ 1
+2
+,yt+1) =
+gc(x,yt+1) as an estimate of∇Dg(µt+ 1
+2
+) = gc(x,y∗
+µ,g). The estimation bias is bounded by
+∥∇µL(µt+ 1
+2
+,yt+1)−∇Dg(µt+ 1
+2
+)∥ =∥gc(x,yt+1)−gc(x,y∗
+µ,g(µt+ 1
+2
+))∥
+≤lgc,0∥yt+1−y∗
+µ,g(µt+ 1
+2
+)∥ =O(ϵ1.5
+g ).
+By Lemma 11, we can conclude the complexity is ˜O(ϵ−0.5
+g ) for conducting the accelerated version
+of Algorithm 2 onLg(µ,y ;x) in (7) asL(µ,y ) to achieve
+Dg(µ∗
+g(x))−Dg(µTg ) =O(ϵg). (42)
+Similarly, the complexity of the accelerated version of Algorithm 2 for (5) is ˜O(ϵ−0.5
+F ) , i.e.,
+DF (µ∗
+F (x))−DF (µTF ) =O(ϵF ). (43)
+In the following, we are going to show that (42) and (43) and respectively sufficient to bound
+∥µTg−µ∗
+g(x)∥ and∥µTF−µ∗
+F (x)∥ considering Assumption 5 is satisfied.
+AsDg(µ) andDF (µ) are both concave inµ andµ∈ Rdc
++ is equivalent toµ≥ 0, the problems
+max
+µ∈Rdc
++
+Dg(µ) and max
+µ∈Rdc
++
+DF (µ)
+are respectively equivalent to the unconstrained problems
+max
+µ∈Rdc
+˜Dg(µ) := Dg(µ) +λ⊤
+gµ and max
+µ∈Rdc
+˜DF (µ) := DF (µ) +λ⊤
+Fµ
+with the Lagrange multipliersλg,λF being non-negative and finite in all dimension, i.e.0≤λg <∞,
+0≤ λF <∞ according to Lagrange duality Theorem. Moreover, it is well known (Chapter 4 in
+[58]) that the Largrangian terms respectively equal zero when the problems attain the optimals. i.e.
+λ⊤
+gµ∗
+g(x) = 0 and λ⊤
+Fµ∗
+F (x) = 0. (44)
+Moreoever, the first-order stationary condition requires∇ ˜Dg(µ∗
+g(x)) =∇Dg(µ∗
+g(x)) +λg = 0 and
+∇ ˜DF (µ∗
+F (x)) =∇DF (µ∗
+F (x)) +λF = 0 and therefore
+∇Dg(µ∗
+g(x)) =−λg and ∇DF (µ∗
+F (x)) =−λF. (45)
+In this way, for allµ∈B (µ∗
+g(x);δg)∩ Rdc
++ .
+Dg(µ∗
+g(x))−Dg(µ) =
+Z 1
+τ=0
+⟨∇Dg(µ +τ (µ∗
+g(x)−µ)),µ∗
+g(x)−µ⟩dτ
+=
+Z 1
+τ=0
+1
+τ⟨∇Dg(µ∗
+g(x))−Dg(µ +τ (µ∗
+g(x)−µ)),τ (µ−µ∗
+g(x))⟩dτ
+−⟨∇Dg(µ∗
+g(x)),µ−µ∗
+g(x)⟩
+(a)
+≥
+Z 1
+0
+Cδg∥µ−µ∗
+g(x)∥2τdτ−⟨∇Dg(µ∗
+g(x)),µ−µ∗
+g(x)⟩
+(b)
+=Cδg
+2 ∥µ−µ∗
+g(x)∥2 +⟨λg,µ−µ∗
+g(x)⟩
+22
+
+(c)
+≥Cδg
+2 ∥µ−µ∗
+g(x)∥2,
+where (a) uses (21a) in Assumption 5 and the fact that theµ,µ∗
+g(x)∈B (µ∗
+g(x);δg)∩ Rdc
++ implies
+µ +τ (µ∗
+g(x)−µ)∈B (µ∗
+g(x);δg)∩ Rdc
++ ; (b) solves the integral and usesλg =−∇Dg(µ∗
+g(x)) in
+(45); and (c) follows from the fact that⟨λ,µ∗
+g(x)⟩ = 0 in (44) andµ,λg≥ 0.
+Analogously, for allµ∈B (µ∗
+F (x);δF )∩ Rdc
++ , it follows that
+DF (µ∗
+F (x))−DF (µ)≥CδF
+2 ∥µ−µ∗
+F (x)∥2.
+In this way, for arbitraryϵg <
+Cδg
+2 δg, the complexity of Algorithm 2 to solve (7) is ˜O(ϵ−0.5
+F ), i.e.,
+∥µTg−µ∗
+g(x)∥2 =O(ϵg),
+and∥yTg−y∗
+g (x)∥2≤∥yTg−y∗
+g (µTg ;x)∥2 +∥µTg−µ∗
+g(x)∥2
+≤(1/αg + 1)∥µTg−µ∗
+g(x)∥2 =O(ϵg).
+At each iterationt in Algorithm 1,x =xt, and the output (yTg,µTg ) is chosen as (yTg
+g,t,µTg
+g,t).
+Similarly, to solve (5), for arbitraryϵg <
+Cδg
+2 δg, applying Algorithm 2 with complexity ˜O(ϵ−0.5
+F ) to
+achieve (43) can achieve
+∥µTF−µ∗
+F (x)∥2 =O(ϵF ),
+and∥yTF−y∗
+F (x)∥2≤∥yTF−y∗
+F (µTF ;x)∥2 +∥µTF−µ∗
+F (x)∥2
+≤(1/αF + 1)∥µTF−µ∗
+F (x)∥2 =O(ϵF ).
+At each iterationt in Algorithm 1,x =xt, and the output (yTF,µTF ) is chosen as (yTF
+F,t,µTF
+F,t).
+This completes the proof.
+D.3 Proof of Theorem 4
+In this section, we consider
+gc(x,y ) = gc
+1(x)⊤y−gc
+2(x) (46)
+being affine iny, andY = Rdy.
+Therefore, for a fixedx, taking eitherLg(µ,y ;x) in (7) orLF (µ,y ;x) in (5) asL(µ,y ) fits into a
+special case of strongly-convex-concave saddle point problemsin the following form:
+max
+µ∈Rdc
++
+min
+y∈Rdy
+L(µ,y ) =−h1(µ) +y⊤Aµ +h2(y) (47)
+where h1(µ) is smooth and linear (concave) in µ and h2(y) is smooth and strongly convex in
+y. Specifically, for Lg(µ,y ;x) asL(µ,y ),h1(µ) = ⟨gc
+2(x),µ⟩ is 0-smooth and linear (concave),
+A =gc
+1(x), andh2(y) = g(x,y ) islg,1-smooth andαg-strongly convex.
+In this context, performing PGD on L(µ,y ) on y is equivalent to a gradient descent step since
+Y = Rdy. The following lemma summarizes the error of∥yt−y∗
+µ(µt)∥ wherey∗
+µ(µ) is defined in
+(16) and the update ofµt+1 andyt+1 is the non-accelerated version of Algorithm 2 withTy = 1.
+Lemma 12 (Update of∥yt−∇h∗
+2(−Aµt)∥). Consider the problem (47) whereA is of full column
+rank andh2(y) isαh2-strongly convex andlf,1-smooth.y∗
+µ(µ) defined in (16) satisfies
+y∗
+µ(µ) =∇h∗
+2(−Aµ) (48)
+whereh∗
+2(y) is the conjugate function ofh2(y) by Definition 5. At iterationt,µt,yt are known, and
+conductyt+1 =yt−η1∇yL(µt,yt), a gradient descent step forL(µt,y ) iny. This gives
+∥yt+1−∇h∗
+2(−Aµt)∥≤ (1−η1αh2/2)∥yt−∇h∗
+2(−Aµt)∥ (49)
+whenη1≤ 1
+lh2,1
+. Additionally, given anotherµt+1, we know
+∥yt+1−∇h∗
+2(−Aµt+1)∥≤ (1−η1αh2/2)∥yt−∇h∗
+2(−Aµt)∥ + σmax(A)
+αh2
+∥µt+1−µt∥. (50)
+23
+
+Proof. Recall the definition y∗
+µ(µ) = arg min yL(µ,y ) following (16). The first-order stationary
+optimality condition requires that for any givenµ, it holds
+∇yL(µ,y∗
+µ) = Aµ +∇h2(y∗
+µ) = 0 ⇔ ∇h2(y∗
+µ) =−Aµ.
+As the mapping∇h2 and∇h∗
+2 are the inverse of each other according to Lemma 4, for anyµ:
+y∗
+µ =∇h∗
+2(−Aµ).
+At iterationt, conducting a gradient descent step onL(µt,y ) givesyt+1 =yt−η1∇yL(µt,yt). As
+L(µt,y ) isαh2-strongly convex andlh2,1-smooth iny, following Lemma 7, takeη1≤ 1
+lh2,1
+, we have
+∥yt+1−∇h∗
+2(−Aµt)∥≤ (1−η1αh2/2)∥yt−∇h∗
+2(−Aµt)∥.
+Following triangle inequality, we also have
+∥yt+1−∇h∗
+2(−Aµt+1)∥
+≤∥yt+1−∇h∗
+2(−Aµt)∥ +∥∇h∗
+2(−Aµt)−∇h∗
+2(−Aµt+1)∥
+≤(1−η1αh2/2)∥yt−∇h∗
+2(−Aµt)∥ + σmax(A)
+αh2
+∥µt+1−µt∥ (51)
+where the second term comes from the smoothness of the conjugate function (see Lemma 4).
+In (50), the update behavior of∥yt−∇h∗
+2(−Aµt)∥ depends on∥µt+1−µt∥. Therefore, we are
+interested in the the update behavior of∥µt+1−µt∥ whereµt+1 = Proj Rdc (µt +η∇µL(µt,yt+1))
+as in the non-accelerated version of Algorithm 2 withTy = 1. Before proceeding, we would like to
+look into the properties ofD(µ) defined in (16) under the setting (47):
+D(µ) = min
+y
+−h1(µ) +⟨y,Aµ⟩ +h2(y) (52)
+whereh1(µ) is smooth and linear (concave) inµ,h2(y) is smooth and strongly convex iny, andA is
+of full rank in column. The next lemma shows thatD(µ) features strong concavity and smoothness.
+Lemma 13 (Smoothness and strongly concavity ofD(µ)). Supposeh1 is concave andlh1,1-smooth,
+h2 isαh2-strongly convex andlh2,1-smooth, andA is full column rank. ThenD(µ) in (52) satisfies
+D(µ) =−h1(µ)−h∗
+2(−Aµ),
+and is σ2
+min(A)
+lh2,1
+-strongly concave and (lh1,1 + σ2
+max(A)
+αh2
+)-smooth with respect toµ.
+Proof. Following Definition 5, we have
+D(µ) =−h1(µ)−h∗
+2(−Aµ)
+whereh∗
+2(y) is 1
+lh2,1
+-strongly convex and 1
+αh2
+-smooth according to Lemma 4.
+For allµ1,µ 2,
+−D(µ1)− (−D(µ2)) =h∗
+2(−Aµ1)−h∗
+2(−Aµ2) +h1(µ1)−h1(µ2)
+≥⟨∂h∗
+2(−Aµ2)
+∂−Aµ2
+,−Aµ1 +Aµ2⟩ + 1/lh2,1
+2 ∥Aµ1−Aµ2∥2
++⟨∇h1(µ2),µ 1−µ2⟩⟩
+≥⟨∇D(µ2),µ 1−µ2⟩ + σ2
+min(A)/lh2,1
+2 ∥µ1−µ2∥2.
+where the first inequality follows the strong convexity ofh∗
+2(y) and the fact that−h1(µ) is convex as
+h1(y) is concave. and the second inequality follows the chain rule to formulate∇D(µ2). Therefore,
+−D(µ) is σ2
+min(A)
+lh2,1
+-strongly convex, andD(µ) is σ2
+min(A)
+lh2,1
+-strongly concave.
+MoreoverD(µ) is (lh1,1 + σ2
+max(A)
+αh2
+)-smooth as
+D(µ1)−D(µ2) =−h∗
+2(−Aµ1)− (−h∗
+2(−Aµ2))−h1(µ1) +h1(µ2)
+24
+
+≤⟨∂−h∗
+2(−Aµ2)
+∂−Aµ2
+,−Aµ1− (−Aµ2)⟩ + 1/αh2
+2 ∥− Aµ1− (−Aµ2)∥2
++⟨−∇h1(µ2),µ 1−µ2⟩⟩ + lh1,1
+2 ∥µ1−µ2∥2
+≤⟨∇D(µ2),µ 1−µ2⟩ +
+lh1,1 + σ2
+max(A)
+αh2
+2 ∥µ1−µ2∥2.
+The first inequality holds ash∗
+2(y) andh1(µ) are smooth. The second follows the chain rule.
+Noteσmax(A)≥σmin(A)> 0 asA is full column rank. This completes the proof.
+KnowingD(µ) has such favorable properties, we next analyze the update of∥µt+1−µt∥, where
+{µt} is the sequence generated in the non-accelerated version of Algorithm 2 withTy = 1.
+Lemma 14 (Update of∥µt+1−µt∥). Consider the problem in (47) where h1 is concave and
+lh1,1-smooth,h2 isαh2-strongly convex andlh2,1-smooth, andA is full column rank. Running the
+non-accelerated version of Algorithm 2 withTy = 1 andη1≤lh2,1
+−1 gives
+1
+η2
+∥µt+1−µt∥≤
+
+lh1,1 + σ2
+max(A)
+αh2
+
+∥µt−µ∗∥
++σmax(A)(1−η1αh2/2)∥yt−∇h∗
+2(−Aµt)∥ +∥λ∥ (53)
+where the constantλ satisfies 0≤λ< ∞ andµ∗ = arg maxµ∈Rdc
++
+D(µ) withD(µ) defined in (52).
+Proof. According to Lemma 13,
+D(µ) = min
+y∈Rdy
+−h1(µ) +y⊤Aµ +h2(y) =−h1(µ)−h∗
+2(−Aµ)
+is σ2
+min(A)
+lh2,1
+-strongly concave and (lh1,1 + σ2
+max(A)
+αh2
+)-smooth with respect toµ. Moreover, the problem
+maxµ∈Rdc
++
+D(µ) is equivalent to the unconstrained problem with the Lagrange multiplier
+max
+µ∈Rdc
+˜D(µ) := D(µ) +λ⊤µ
+where uniqueλ is non-negative and finite in all dimension, i.e. 0≤ λ <∞, asD(µ) is strongly
+convex andµ∈ Rdc
++ is equivalent toµ≥ 0 satisfying the LICQ condition (Lemma 5). In this way,
+∇ ˜D(µ) =∇D(µ) +λ =−∇h1(µ) +A⊤∇h∗
+2(−Aµ) +λ. (54)
+We can see that ˜D(µ) is smooth and strongly concave with the same modulus asD(µ). The first-order
+stationary condition requires
+∇ ˜D(µ∗) =−∇h1(µ∗) +A⊤∇h∗
+2(−Aµ∗) +λ = 0. (55)
+In this way,
+1
+η2
+∥µt+1−µt∥ = 1
+η2
+∥ ProjRdc
++
+ 
+µt +η2(−∇h1(µt) +A⊤yt+1)
+
+−µt∥
+(a)
+≤∥−∇ h1(µt) +A⊤yt+1∥
+=∥−∇ h1(µt) +A⊤∇h∗
+2(−Aµt) +λ +A⊤yt+1−A⊤∇h∗
+2(−Aµt)−λ∥
+(b)
+≤∥∇ ˜D(µt)∥ +σmax(A)∥yt+1−∇h∗
+2(−Aµt)∥ +∥λ∥
+(c)
+≤∥∇ ˜D(µt)−∇ ˜D(µ∗)∥ +σmax(A)(1−η1αh2/2)∥yt−∇h∗
+2(−Aµt)∥ +∥λ∥
+(d)
+≤
+
+lh1,1 + σ2
+max(A)
+αh2
+
+∥µt−µ∗∥ +σmax(A)(1−η1αh2/2)∥yt−∇h∗
+2(−Aµt)∥ +∥λ∥
+Inequality (a) comes from the non-expansiveness (1-Lipschitzness) of the projection operation, (b)
+follows triangle inequality and uses (54), (c) uses (55) and (49) in Lemma 12, and (d) comes from
+the smoothness of ˜D(µ), which is of the same modulus asD(µ). This completes the proof.
+25
+
+In (53), the update behavior of∥µt+1−µt∥ depends on∥µt−µ∗∥. We further look into the update
+of∥µt−µ∗∥ and summarize in the following lemma the bound of the update of∥µt−µ∗∥.
+Lemma 15 (Update of∥µt−µ∗∥). Consider the problem in (47) whereh1 is concave and lh1,1-
+smooth, h2 is αh2-strongly convex and lh2,1-smooth, and A is full column rank. Conduct the
+non-accelerated version of Algorithm 2 withTy = 1, gives
+∥µt+1−µ∗∥≤
+
+1−η2
+σ2
+min(A)
+2lh2,1
+
+∥µt−µ∗∥ +η2σmax(A)(1−η1αh2/2)∥yt−∇h∗
+2(−Aµt)∥.
+(56)
+whenη1≤lh2,1
+−1 andη2≤
+
+lh1,1 + σ2
+max(A)
+αh2
+−1
+. Hereµ∗ = arg minµ∈Rdc
++
+D(µ) whereD(µ) is
+defined in (52).
+Proof. Define an auxiliary update as
+˜µt+1 := Proj Rdc
++
+(µt +η2∇D(µt)) = Proj Rdc
++
+ 
+µt +η2(−∇h1(µt) +A⊤∇h∗
+2(−Aµt))
+
+. (57)
+This is a projected gradient descent on strongly convex −D(µ). As Rdc
++ is closed and convex,
+following Lemma 7, for η2≤
+
+lh1,1 + σ2
+max(A)
+αh2
+−1
+, where
+
+lh1,1 + σ2
+max(A)
+αh2
+
+is the modulus for
+smoothness ofD(µ) by Lemma 13, we have
+∥˜µt+1−µ∗∥≤
+
+1−η2
+σ2
+min(A)
+2lh2,1
+
+∥µt−µ∗∥.
+As the real update is µt+1 = Proj Rdc
++
+ 
+(µt +η2(−∇h1(µt) +A⊤yt)
+
+, by the non-expansiveness
+(1-Lipschitzness) of projection operation, we have
+∥˜µt+1−µt+1∥≤∥η2A⊤(yt+1−∇h∗
+2(−Aµt))∥≤ η2σmax(A)∥yt+1−∇h∗
+2(−Aµt)∥
+By triangle inequality and (49), we have
+∥µt+1−µ∗∥≤
+
+1−η2
+σ2
+min(A)
+2lh2,1
+
+∥µt−µ∗∥ +η2σmax(A)∥yt+1−∇h∗
+2(−Aµt)∥
+≤
+
+1−η2
+σ2
+min(A)
+2lh2,1
+
+∥µt−µ∗∥ +η2σmax(A)(1−η1αh2/2)∥yt−∇h∗
+2(−Aµt)∥. (58)
+This completes the proof.
+We are ready to proceed with the convergence analysis for the single-loop algorithm (Algorithm 2)
+without acceleration andTy = 1, on the problems (47), which is a general form to (7) and (5). In this
+way, Theorem 4 follows directly from the following theorem.
+Theorem 6. SupposeL(µ,y ) is in the form of (47) whereA is full column rank, h1 is concave
+andlh1,1-smooth,h2 isαh2-strongly convex andlh2,1-smooth satisfyinglh1,1 =O(1),lh2,1,lα2≥
+O(1), and
+lh2,1
+αh2
+=O(1). Conduct the non-accelerated version of Algorithm 2 with Ty = 1 . For
+arbitrary small positiveϵ≤
+ 4lh2,1σmax(A)
+αh2σ2
+min(A) (lh1,1 + σ2
+max(A)
+αh2
+)
+−1
+, whenη1 =O( 1
+lh2,1
+)≤ 1
+lh2,1
+and
+η2 =O(ϵ)≤ 1
+lh1,1+σ2max(A)/αh2
+, the algorithm yields output (µT,yT ) such that
+∥µT−µ∗∥2 <ϵ, and ∥yT−y∗∥2 <ϵ
+with complexityT =O(log
+ 
+ϵ−1
+). Here, (µ∗,y∗) = arg maxµ∈Rdc miny∈Rdy L(µ,y ).
+Proof. For some positive constantρ> 0, denote
+Pt :=ρ∥µt−µ∗∥ +∥yt−∇h∗
+2(−Aµt)∥. (59)
+26
+
+Plugging (50) in Lemma 12 , (53) in Lemma 14, and (58) in Lemma 15 to (59), we know
+Pt+1 =ρ∥µt+1−µ∗∥ +∥yt+1−∇h∗
+2(−Aµt+1)∥
+≤ρ
+
+1−η2
+σ2
+min(A)
+2lh2,1
+
+∥µt−µ∗∥ +η2σmax(A)(1−η1αh2/2)∥yt−∇h∗
+2(−Aµt)∥
+
++ (1−η1αh2/2)∥yt−∇h∗
+2(−Aµt)∥ + σmax(A)
+αh2
+η2
+×
+
+(lh1,1 + σ2
+max(A)
+αh2
+)∥µt−µ∗∥ +σmax(A)(1−η1αh2/2)∥yt−∇h∗
+2(−Aµt)∥ +∥λ∥
+
+=
+
+1−η2
+σ2
+min(A)
+2lh2,1
++ 1
+ρ
+σmax(A)
+αh2
+η2(lh1,1 + σ2
+max(A)
+αh2
+)
+
+ρ∥µt−µ∗∥
++ (1−η1αh2/2)
+
+1 +ρη2σmax(A) + σ2
+max(A)
+αh2
+η2
+
+∥yt−∇h∗
+2(−Aµt)∥ + σmax(A)
+αh2
+η2∥λ∥.
+To constructPt+1≤ (1−c)Pt + σmax(A)
+αh2
+η2∥λ∥ for some constant 0<c< 1, it is sufficient to find
+η1≤ 1
+lh2,1
+,η 2≤ 1
+(lh1,1+
+σ2max (A)
+αh2
+)
+, andρ> 0 such that
+
+
+
+0<
+
+1−η2
+σ2
+min(A)
+2lh2,1
++ 1
+ρ
+σmax(A)
+αh2
+η2(lh1,1 + σ2
+max(A)
+αh2
+)
+
+≤ 1−η2
+σ2
+min(A)
+4lh2,1
+< 1
+0< (1−η1αh2/2)
+
+1 +ρη2σmax(A) + σ2
+max(A)
+αh2
+η2
+
+≤ (1−η1αh2/2)(1 +η1αh2/2)< 1
+This can be obtained when 
+
+
+ρ≥
+4lh2,1σmax(A)
+αh2σ2
+min(A) (lh1,1 + σ2
+max(A)
+αh2
+)
+η2≤
+η1αh2
+2
+
+ρσmax(A)+
+σ2max (A)
+αh2
+ (60)
+Conditions in (60) can be satisfied when ϵ > 0 is sufficiently small such that ρ = ϵ−1 ≥
+4lh2,1σmax(A)
+αh2σ2
+min(A) (lh1,1 + σ2
+max(A)
+αh2
+),η1 =O( 1
+lh2,1
+) andη2 =O(
+αh2
+lh2,1
+ρ−1) =O(ϵ−1). In this way,
+Pt+1≤(1−c)Pt +O(α−1
+h2
+ϵ)
+wherec> 0 is of the orderO(ϵ). Iteration gives
+Pt≤(1−c)tP0 +O(α−1
+h2
+). (61)
+NoticeO(α−1
+h2
+)<O(1) andP0 =O(ϵ−1) asρ =ϵ−1. In this way, there existT1 =O(log
+ 
+ϵ−1
+)
+such that for allt>T 1, (1−c)tP0 =O(1) andO(α−1
+h2
+)≤O (1). Accordingly, we can achieve
+Pt =O(1), ∀t>T 1.
+Moreover, asPt =ϵ−1∥µt−µ∗∥ +∥yt−∇h∗
+2(−Aµt)∥,
+∥µt−µ∗∥≤ ϵPt =O(ϵ), ∀t>T 1. (62)
+Furthermore, chooseη1 =O( 1
+lh2,1
+) satisfyingη1≤ 1
+lh2,1
+, fort>T 1,
+∥yt−∇h∗
+2(−Aµt)∥≤ (1−η1αh2/2)t−T1∥yT1−∇h∗
+2(−AµT1 )∥ +O(ϵ).
+This is an iteration outcome using (50) in Lemma 12, (62), and the fact thatη1αh2/2 =O(
+αh2
+lh2,1
+) =
+O(1). In this way, for anotherT2 =O(log
+ 
+ϵ−1
+) steps, we have
+∥yt−∇h∗
+2(−Aµt)∥ =O(ϵ),
+and ∥yt−y∗∥≤∥ yt−∇h∗
+2(−Aµt)∥ +∥∇h∗
+2(−Aµt)−∇h∗
+2(−Aµ∗)∥
+≤∥yt−∇h∗
+2(−Aµt)∥ + σ2
+max(A)
+αh2
+∥µt−µ∗∥
+=O
+ 
+ϵ +α−1
+h2
+ϵ
+
+=O (ϵ), ∀t>T 1 +T2.
+We can see that the algorithm converges linearly with complexityO(T1 +T2) =O(log
+ 
+ϵ−1
+). In
+this way, obtaining
+∥yT−y∗∥2 =O(ϵ) and ∥µT−µ∗∥2 =O(ϵ),
+requires complexityT =O(log
+ 
+(√ϵ)−1
+) =O(log
+ 
+ϵ−1
+). This completes the proof.
+27
+
+E Applications to Hyperparameter Optimization for SVM
+In this section, we provide additional details about the SVM model training experiment for the linear
+SVM model, including the problem formulation and analysis of the results.
+E.1 Problem formulation
+SVMs train a machine learning model by finding the optimal hyperplane that separates data points
+of different classes with the maximum marginw. Misclassification is not tolerated for hard-margin
+SVMs. In contrast, some samples are allowed to be misclassified for soft-margin SVMs. Specifically,
+one first introduces variablesξi, which measure the violation associated with the classification of
+sample i, and then augments the original SVM objective with the norm of ξ, which is a vector
+collecting the values ofξi for all the samples in the training set.
+BLO can be applied to the hyperparameter selection task of SVM. For example, it can be used to
+choose the value of the regularization parameters during soft-margin linear SVM training. Let us
+consider a classification problem and defineDtr :={(ztr,i,l tr,i)}|Dtr|
+i=1 as the training set, withztr,i
+being the input feature vector for samplei andltr,i being its associated binary label. Similarly, let
+Dval :={(zval,,l val,)}|Dval|
+i=1 be the validation set. For a linear classification problem, the parameters
+of the SVM arew, a vector of coefficients with the same size asztr,i, and the interceptb.
+In short, we are interested in the following constrained BLO problem
+min
+c
+LDval(w∗,b∗) =
+X
+(zval,,lval,)∈Dval
+exp
+ 
+1−lval,
+ 
+z⊤
+val,w∗ +b∗
++ 1
+2∥c∥2 (63a)
+withw∗,b∗,ξ∗ = arg min
+w,b,ξ
+1
+2∥w∥2 (63b)
+s.t. ltr,i(z⊤
+tr,iw +b)≥ 1−ξi ∀i∈{ 1,..., |Dtr|} (63c)
+ξi≤ci ∀i∈{ 1,..., |Dtr|}. (63d)
+The first term of upper-level objective (63a) is a validation loss, evaluated on the validation setDval,
+the second is a regulation term on the upper-level variable c; the lower-level problem is designed
+to train the parameters of the hyperplane on the training setDtr, with the soft margin violation ξi
+being upper bounded by the hyperparameter ci [cf. (63d), which are the CCs]. The lower-level
+objective focuses on maximizing the margin by minimizing∥w∥2 while allowing for violationsξ
+to the separating hyperplane, which are regulated by the hyperparameterc. The BLO formulation
+aims to adjust the hyperparameterc using the validation loss (upper-level objective), ensuring that the
+model parameters (lower-level variables) are optimal for the training dataset.
+E.2 Experiment details
+In this section, we present detailed experimental results for the training of the SVM model in
+(63) using our BLOCC algorithm. We compare our algorithm to two baselines, LV-HBA [72] and
+GAM [69], both designed for BLO problems with inequality CCs. The GAM algorithm often
+encounters issues with matrix inversion, as the matrix required for the GAM algorithm to solve the
+problem in (63) can be singular, preventing it from finding a solution. Consequently, only BLOCC
+and LV-HBA solve the problem in(63), while GAM uses a different formulation as introduced in
+[69]. We compare the algorithms based on validation loss (the first term in the upper-level objective)
+and classification accuracy. These metrics are computed for both validation and test datasets. We
+evaluate the algorithms on two datasets: diabetes [20] and fourclass [29].
+The detailed results are shown in Figure 4 and 5. Ten realizations of the problem are run, each with
+different training and validation sets. The plots show both the mean (line) and standard deviation
+(shaded region). The results reveal that our algorithm converges faster in terms of accuracy and
+loss, achieving a lower loss value than the alternatives for both datasets, in validation and test sets.
+Furthermore, in terms of accuracy, we observe that for the diabetes dataset, our algorithm reaches a
+higher accuracy value faster than the alternatives in both validation and test sets.
+28
+
+0 2 4
+Running time /s
+0.60
+0.65
+0.70
+0.75
+0.80Accuracy
+Test Accuracy
+BLOCC
+LV-HBA
+GAM
+(a) Test accuracy.
+0 2 4
+Running Time /s
+1.5
+2.0
+2.5
+3.0
+3.5
+4.0Loss
+Validation Loss (Upper Level)
+BLOCC
+LV-HBA
+GAM (b) Validation loss.
+0 25 50 75
+Iteration Count
+0
+2
+4Loss
+Lower Level Objective
+BLOCC
+LV-HBA
+GAM (c) Lower level objective.
+Figure 4: Plots for diabetes dataset
+0 1 2
+Running time /s
+0.6
+0.7
+0.8Accuracy
+Test Accuracy
+BLOCC
+LV-HBA
+GAM
+(a) Test accuracy.
+0 1 2
+Running Time /s
+1.5
+2.0
+2.5
+3.0
+3.5
+4.0Loss
+Validation Loss (Upper Level)
+BLOCC
+LV-HBA
+GAM (b) Validation loss.
+0 25 50 75
+Iteration Count
+0.0
+0.1
+0.2Loss
+Lower Loss
+BLOCC
+LV-HBA
+GAM (c) Lower level objective.
+Figure 5: Plots for fourclass dataset
+F Applications to Transportation Network Planning
+This section applies the proposed BLOCC algorithm to a transportation network design problem,
+comparing it with the baselines from [69] and [72].
+F.1 Problem formulation
+In transportation network planning, the planning operator is to construct a new transportation network
+(upper level) connecting a collection of stationsS, and the passengers will decide whether to use the
+new network (lower level), considering the options given by the new network and existing alternatives
+(constraints). The goal is to design a network that maximizes the operator’s benefit, knowing the
+passengers will make rational choices depending on the given design.
+The operator considers building a new network on a collection of linksA⊆S×S . For any link
+(i,j )∈A connecting stationsi∈S toj∈S , the operator needs to design the capacityxij. If the
+link’s capacity is set to zero, then the link is not constructed. The larger the capacity, the larger the
+number of travelers, thus the larger the revenue while the higher the construction costcij.
+The passengers are in demand to travel in the networkK⊆S×S . For every origin-destination pair
+(o,d ), the traffic demandwod and the traffic time on the existing route tod
+ext is known. We assume
+that there is only one existing network. The proportion of passengers choosing the new networkyod
+andyod
+ij the fraction of passengers using link (i,j ) to travel fromo tod will be determined following
+passengers’ rational choice, modeled by logit choice model [ 5, 11] that will be explained later. If
+yod
+ij = 0, then the link does not belong to the route that passengers follow to travel fromo tod.
+In a) of Figure 6, the stationS are presented as the dots, and linksA are as the dashed lines (input
+topology); b) of Figure 6 shows a heatmap for the demand matrix for each (o,d )∈K (input to the
+design); c) is an example of the constructed network connecting some of the stations (output of the
+design); and d) illustrates the number of passengers using the constructed network (design output).
+To summarize, in this experiment, we assume that
+A1) Only one existing alternative network exists;
+A2) Passengers decide whether to use our network rationally, which is modeled by the logit
+choice model considering a utility depends on travel attributes (travel time) [5, 11]; and,
+A3) The demand per market, the trip prices, and the travel times per link are known to operators.
+29
+
+Figure 6: Example of a transportation network design. (a) represents the set of stations S =
+{1, 2, 3, 4, 5, 6, 7, 8, 9} and the set of linksA⊆S×S , where the number of links is|A| = 30 (15
+segments with two orientations each) and the value on each edge represents the travel time. (b)
+represents the demand{wod} between all (o,d ) pairs, where|K| = 9× 8 = 72 values are provided
+(those in the off-diagonal elements of the heatmap). (c) represents the constructed network, where,
+to facilitate visualization, we have assumed that the capacity is symmetric and used the width of
+the edge to represent the capacity of every link. (d) represents{wodyod}{∀(o,d)∈K}, the number of
+passengers served by the constructed network.
+We summarize the optimization variables as follows
+• xij∈ R+, the capacity constructed for the link(i,j )∈A . The number of capacity variables
+is|A|. The link is not constructed ifxij = 0.
+• yod∈ [0, 1], the fraction (proportion) of passengers from market (o,d )∈K choosing the
+new network for their travel. The number of flow variables is|K|. Since we consider only
+one competitor, 1−yod represents the fraction of incumbent network passengers. Ifyod = 0,
+then the passengers of market (o,d ) do not use the new network.
+• yod
+ij ∈ [0, 1], the fraction of passengers from market (o,d )∈K that, when choosing the new
+network to travel fromo tod, use the link (i,j )∈A in their route to the destination. The
+number of link flow variables is|A||K|. With this definition, it holds thatyod
+ij ≤yod; and, if
+yod
+ij = 0, then link (i,j ) does not belong to the route when traveling fromo tod.
+To simplify the notation and to make it consistent with the notations used in the paper, we denote
+• x ={xij}∀(i,j)∈A represents the upper-level variables to be optimized.
+• X = R|A|
++ represents the domain ofx.
+• y ={yod,{yod
+ij}∀(i,j)∈A}∀(o,d)∈K represents the lower-level variables to be optimized
+30
+
+• Y = [0, 1]|K|× [0, 1]|A||K| represents the domain ofy.
+Besides the optimization variables, our objective and constraints include the following parameters
+• wod, the total estimated demand (number of passengers) for the market (o,d )∈K .
+• mod, the revenue obtained by the operator from a passenger in the market (o,d )∈K .
+• cij, the construction cost per passenger associated with link (i,j )∈A .
+• tij, the travel time for link (i,j )∈A .
+• tod
+ext, travel time on the alternative network for passengers in the market (o,d )∈K .
+• ωt < 0, the coefficient associated with the travel time in passengers’ utility function.
+In transportation network design, a bilevel formulation is essential due to the interaction between
+two players with different levels of influence: the operator, who constructs the network, and the
+passengers, who choose their routes based on the network’s characteristics. The operator’s goal is
+to maximize their benefit by minimizing construction costs and maximizing attracted demand, with
+link capacity as the optimization variable. Conversely, passengers aim to maximize their trip utility,
+determining the proportion of demand using each link. This dual optimization requires that passenger
+choices comply with link capacity constraints set by the operator, coupling the variables at both
+levels. This necessitates a bilevel optimization approach, specifically using BLOCC, to address the
+interdependent decisions and constraints effectively.
+Now, we are ready to introduce the objective formulations of our BLO problem. For the upper level,
+the network operator aims to maximize profits and minimize costs, and therefore, its interest is
+min
+x∈X
+f (x,y∗
+g (x)) :=−
+ X
+∀(o,d)∈K
+modyod∗(x)−
+X
+∀(i,j)∈A
+cijxij
+!
+, (64)
+whereyod∗(x) are optimal lower-level passenger flows associated with the network designx.
+For the lower level, we model the passenger’s behavior by finding the flow variables that maximize
+utility and minimizes flow entropy cost.
+min
+y∈Y
+g(x,y ) :=−
+ X
+(o,d)∈K
+X
+(i,j)∈A
+wodωttijyod
+ij +
+X
+(o,d)∈K
+wodωttod
+ext(1−yod)
+| {z }
+passengers utility
+(65)
++
+X
+(o,d)∈K
+wodyod(log
+ 
+yod
+− 1) +
+X
+(o,d)∈K
+wod(1−yod)(log
+ 
+1−yod
+− 1)
+| {z }
+flow entropy cost
+!
+.
+The passengers’ utility considers the time cost of choosing the new network and the existing network.
+The users set the flow variables y so that the transportation network yielding a higher utility is
+preferred. Here, the probability of chosing new network is modeled by a logistic (softmax) model.
+However, setting the objective as a simple linear utility maximization would lead to an all-or-nothing
+policy, which is not the behavior observed in practice. Hence, the second term is brought to consider.
+The approach considered here is to formulate an objective given by the Legendre transform (cf.
+Definition 5) of the softmax sharing (see [53, 56, 55] for additional details). Intuitively, this means
+that rather than imposing the softmax sharing a fortiori, we formulate a convex problem whose KKT
+conditions lead to the softmax sharing. Using the fact that the Legendre transform of an exponential
+ey is the negative entropy functiony(log(y)− 1), the lower-level objective is traditional as in [56].
+Having introduced the optimization variables, parameters, and objective functions, we next formulate
+our BLO problem, where we also incorporate the network constraints:
+min
+x∈X
+−
+X
+∀(o,d)∈K
+modyod∗ +
+X
+∀(i,j)∈A
+cijxij (66a)
+s.t. (yod∗,y od∗
+ij ) = arg min
+y∈Y
+−
+X
+(o,d)∈K
+X
+(i,j)∈A
+wodωttijyod
+ij −
+X
+(o,d)∈K
+wodωttod
+ext(1−yod) (66b)
+31
+
+Market (o,d )
+Parameter (1,2) (1,3) (2,1) (2,3) (3,1) (3,2)
+demandwod 1 1 1 1 1 1
+revenuemod 2 6 2 1 6 1
+travel time incumbenttod
+ext 3 3 3 3 3 3
+Link (i,j )
+Parameter (1,2) (1,3) (2,1) (2,2) (3,1) (3,2)
+link construction costcij 1 10 1 3 10 3
+link travel timetij 1 10 1 2 10 2
+Table 4: Value of the parameters for scenario 1 (3-node network). The value ofωt is set to 0.1.
++
+X
+(o,d)∈K
+wodyod(log
+ 
+yod
+− 1) +
+X
+(o,d)∈K
+wod(1−yod)(log
+ 
+1−yod
+− 1)
+s.t.
+X
+∀j|(i,j)∈A
+yod
+ij −
+X
+∀j|(j,i)∈A
+yod
+ji =
+
+
+
+yod ifi =o
+−yod ifi =d
+0 otherwise
+∀i, (o,d )∈S×K (66c)
+X
+∀(o,d)∈K
+wodyod
+ij ≤xij ∀(i,j )∈A (66d)
+where (66c) are the flow-conservation constraints, (66d) are the capacity constraints that involve both
+upper and lower-level variables, coupling the optimization and motivating the use of BLOCC. Note
+that, for networks withn stations (nodes): i) the number of CCs is approximately n2; and ii) each of
+the constraints involves approximatelyn2 variables. Hence, even for a moderate-size network (say
+30-50 nodes), we may have thousands of CCs involving millions of variables.
+Experiment roadmap. To provide numerical results illustrating the behavior of our algorithm, we
+solve the optimization in (66) for three scenarios:
+S1) The design of a 3-node simple synthetic network;
+S2) The design of a 9-node synthetic network from the prior transportation literature; and
+S3) The design of a (real-world) subway network for the city of Seville, Spain, with 24 nodes
+where S1) involves 6 CCs and 48 variables, and S3) involves around 100 CCs and 50,000 variables.
+For the 3-node network scenario, we will conduct a comparative analysis against other algorithms to
+evaluate the efficacy of our approach. In the other two scenarios, the baseline algorithms cannot find
+a solution; hence, for the 9-node and Seville networks, we will focus on providing insights into the
+performance and behavior of our algorithm under varying parameters, shedding light on the versatility
+and adaptability of our approach to real-world transportation networks.
+Before delving into the presentation and analysis of the results, two additional remarks are in order:
+R1) While one of the goals of these experiments was to compare our BLOCC algorithm against
+LV-HBA [72] and GAM [ 69], for the scenario at hand, the GAM algorithm cannot be
+implemented, since the inverse of a matrix at each iteration for the problem in (66) is not
+tractable. In this way, we only conducted the experiments using our BLOCC and LV-HBA.
+R2) The BLOCC algorithm produces two lower level variables:yTF
+F,T andyTg
+g,T . While Theorems
+1 and 2 guarantee that (xT,yTF
+F,T ) is an ϵ-approximate solution, the pair (xT,yTg
+g,T ) is
+strictly feasible, meaning that yTg
+g,T = y∗
+g (xT ). Since strict feasibility is important in the
+transportation network, this section will report the results using bothyTF
+F,T andyTg
+g,T .
+F.2 Numerical results for the 3-node network
+In this section, we address the problem defined in equation (66) for a network comprising 3 nodes
+(stations). We assume that the graph of potential links A is complete, leading to a total of 6 link
+32
+
+Figure 7: Negative upper-level objective
+−f (xt,yt) for a 3-node network design problem;
+Solid lines show mean value of−f (xt,yTg
+g,t) with
+the shaded region as a standard deviation; Dashed
+lines show the mean value of−f (xt,yTF
+F,t) with
+the shaded region as a standard deviation; Three
+differentγ values (red, purple, blue) and fixed
+stepsizeη = 1.6e− 4; The orange color repre-
+sents the result of the LV-HBA algorithm.
+Figure 8: Optimality gap of the lower-level
+problem for a 3-node network design prob-
+lem g(xt,yt)− g(xt,y∗
+t ). Solid lines repre-
+sent the mean value of the 10 realizations of
+the upper-level variables, dashed lines represent
+g(xt,yTF
+F,t)−g(xt,y∗
+t ), and the shaded region is
+the standard deviation. Three different γ values
+are represented in our algorithm, and fixed step-
+sizeη = 1.6e− 4.
+capacities that need to be determined in the upper level. Additionally, as in the rest of the manuscript,
+we assume that there is demand for all markets, meaning that the setK is complete and includes all 6
+possible origin-destination pairs. The specific values of the key parameters can be found in Table 4,
+with further details about the simulated scenario available in the online code repository.
+For BLOCC, we set the stepsize to η = 1.6× 10−4 and analyze the algorithm’s convergence for
+three different values ofγ:γ = 2,γ = 3, andγ = 4. The upper-level objective values are computed
+using−f (xt,yTg
+g,t) and−f (xt,yTF
+F,t). The results are presented in Figures 7 and 8.
+Figure 7 illustrates the performance of our BLOCC algorithm over time. The orange line represents
+the evolution of−f (xt,yt) for the LV-HBA algorithm, while the other six lines represent different
+implementations of BLOCC. Each color represents a different value of γ; solid lines represent
+−f (xt,yTg
+g,t) and dashed lines represent−f (xt,yTF
+F,t). Each simulation is conducted 10 times with
+10 different random initializations of the upper-level variables, and both the mean and the standard
+deviation values are displayed. The results indicate that all versions of our BLOCC algorithm
+converge in less than 10 seconds, while LV-HBA shows slight fluctuations even after running for
+more than 50 seconds. This may be attributed to the fact that the LV-HBA algorithm requires a joint
+projection into{X×Y :gc(x,y )≤ 0} at each iteration, involving 42 variables and 6 CCs.
+Figure 8 shows the lower-level optimality gap, namelyg(xt,yt)−g(xt,y∗(xt)) for LV-HBA and
+BLOCC with 3 different values ofγ. In the case of LV-HBA, lower-level optimality is not attained
+within 70 seconds of running time. Conversely, for BLOCC, lower-level optimality is achieved by
+construction whenyt is set toyTg
+g,T , resulting in a zero gap. Additionally, whenyt is set toyTF
+F,T , we
+observe that: i) lower-level optimality is accomplished forγ≥ 3, and ii) whenγ = 2, an optimality
+gap exists, but it is one order of magnitude smaller than that for LV-HBA.
+F.3 Numerical results for the 9-node network
+In this case, we consider the network in [ 21], see also Figure 6, which has |S| = 9 nodes and
+|A| = 30 potential links. As before, we consider that all markets exist, so that|K| = 9· 8 = 72 . The
+remaining parameters are described in Figure 6 and the code repository.
+Figure 9 is the counterpart of Figure 7 for the 9-node scenario, showing the behavior of our BLOCC
+algorithm for η = 1.6e− 4 and γ∈{ 2, 3, 4}. Each simulation is repeated 10 times (using 10
+different random initializations of the upper-level variables), and both the mean and the standard
+deviation values are shown. Since the number of variables and constraints is almost one order of
+33
+
+Figure 9: Negative upper-level objective
+−f (xt,yt) for a 9-node network design problem;
+Solid lines show the mean value of−f (xt,yTg
+g,t)
+with the shaded region as a standard deviation;
+Dashed lines show the mean value of−f (xt,yTF
+F,t)
+with the shaded region as a standard deviation;
+Three differentγ values (red, purple, blue) and
+fixed stepsize η = 1.6e− 4; The orange color
+represents the result of the LV-HBA algorithm.
+Figure 10: Negative upper-level objective
+−f (xt,yt) for a metro network design problem
+in Seville, Spain, for 2 random initializations of
+the upper-level variables. Solid lines represent the
+mean of−f (xt,yTg
+g,t), and the shaded region is
+the standard deviation. The dashed lines represent
+the mean of−f (xt,yTF
+F,t), and the shaded region
+is the standard deviation. Three differentγ values
+are tested with a fixed stepsizeη = 1.6e− 4.
+magnitude larger, the algorithm requires more time to converge. However, convergence takes place in
+a reasonable amount of time (20-40 times longer than in the previous 3-node test case). Regarding the
+optimal value, we observe that: i) the sensitivity of the (steady-state) optimal value with respect toγ is
+not too large; ii) the solutions based onyTF
+F,T yield better upper-level values than those based onyTg
+g,T ;
+and iii) the gap betweenf (xT,yTg
+g,T ) andf (xT,yTF
+F,T ) decreases asγ increases. Observation ii) is due
+to the fact thatyTF
+F,T is not feasible (meaning that it violates the optimality of the lower level); hence, it
+is able to achieve a better upper-level objective. In addition, the behavior observed in iii) is consistent
+with the discussion in section 2.2, with the value ofγ having an impact on the suboptimality ofyTF
+F,t
+at the lower level. Specifically, higher values ofγ pushyTF
+F,t closer toyTg
+g,t and, hence, decrease the
+lower-level optimality gap. Finally, we must note that for the solid lines (associated with yTg
+g,t), it
+holds thatf (xt,yTg
+g,t) = f (xt,y∗(xt)). This implies that if we need a solution that is feasible at the
+lower level, then better objective values are associated with higher values ofγ.
+F.4 Numerical results for the Seville network
+Figure 11: Topology of the Seville network.
+In this section, we demonstrate the practical use
+of BLOCC in a real transportation network de-
+sign problem. Specifically, we address the de-
+sign of a metro network in the city of Seville,
+which has approximately one million inhabitants
+and is located in the south of Spain, with the bus
+system as its competitor. The data for the de-
+mand, number of stations, and locations have
+been taken from [ 21]. Information about the
+construction costs, capacity, and travel time has
+been obtained from Spanish rapid transit oper-
+ators (see references in [10, 55] for full details).
+The city authorities considered|S| = 24 poten-
+tial station locations. Regarding the links, the following assumptions are made:
+A1) The link between nodes (i,j )∈S×S only exists if node j is one of the three closest
+neighbors toi, or vice versa. The distance here is measured in terms of travel time. This
+assumption limits the number of lines in any station to be at most 3, which is a very mild
+assumption for a network with 24 stations.
+34
+
+A2) The link between nodes (i,j )∈S×S only exists if the travel timetij is less than 7 minutes.
+This is also a mild assumption, since it enables all the stations to be connected, including
+those that are further away from the city center (the airport and the university campus [21]).
+Under these two conditions, the setA of potential links contains|A| = 88 links. The sets of links and
+stations, along with their actual locations, are shown in Figure 11. Finally, we consider all possible
+markets between nodes, so|K| = 24× 23 = 552 .
+Following the narrative in Sections F.2 and F.3, Figure 10 presents the evolution of the upper-level
+objective function with time for three values of the parameterγ∈{ 2, 3, 4}. The stepsize value has
+been set toη = 1.6× 10−4, and two different initializations have been considered. Regarding the
+behavior of the algorithm with respect to the value of γ and the particular output chosen (yTg
+T,g vs.
+yTF
+T,F ), the findings are very similar to those in Figure 9. Namely, smaller gaps are found for larger
+values ofγ, and if feasibility at the lower level (i.e., consistency with the user preference level) must
+be preserved, better objective values are achieved for larger values ofγ.
+The most important observation, however, is related to the running time. Specifically, Figure 10
+reveals that, for this real-world scenario, our BLOCC algorithm converges in 10-20 hours. While this
+is more than 1,000 times larger than the convergence interval for the 3-node network, the number
+of variables and constraints here is 100 times larger. More importantly, in the context of network
+transportation design, optimization times of 100 hours are widely accepted even for single-level
+formulations. Overall, we believe that the numerical results demonstrate that the BLOCC algorithm
+proposed in this work can solve problems with a large number of variables and CCs, which can have
+practical value in real-world applications, such as the one studied in this section.
+35

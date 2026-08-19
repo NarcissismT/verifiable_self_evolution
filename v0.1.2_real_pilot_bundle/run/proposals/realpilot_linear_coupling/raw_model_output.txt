@@ -1,0 +1,4 @@
+{
+  "algorithm_family": "Primal-Dual Assisted Method",
+  "hypothesis": "This approach leverages both primal and dual information to ensure feasibility and optimize the upper-level objective."
+}

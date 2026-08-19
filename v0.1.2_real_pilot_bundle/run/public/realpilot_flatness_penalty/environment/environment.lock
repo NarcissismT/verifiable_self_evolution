@@ -1,0 +1,17 @@
+{
+  "case_id": "realpilot_flatness_penalty",
+  "evaluation_seeds": [
+    1031,
+    2063,
+    4099,
+    8191
+  ],
+  "filesystem_policy": "read-only except declared output directory",
+  "network_policy": "none",
+  "numpy": "1.26.4",
+  "oracle_budget": 4000,
+  "python": "3.11",
+  "schema_version": 1,
+  "student_api": "solve(case_id, problem, seed, oracle_budget, hyperparameters) -> {point, oracle_calls}",
+  "target_visible_to_student": false
+}

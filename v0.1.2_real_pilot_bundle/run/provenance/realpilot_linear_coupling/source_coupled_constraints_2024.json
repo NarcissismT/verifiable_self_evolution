@@ -1,0 +1,9 @@
+{
+  "api_url": "https://export.arxiv.org/api/query?id_list=2406.10148v1",
+  "arxiv_id": "2406.10148",
+  "declared_available_at_utc": "2024-06-14T15:59:36Z",
+  "published": "2024-06-14T15:59:36Z",
+  "timestamp_matches_declaration": true,
+  "title": "A Primal-Dual-Assisted Penalty Approach to Bilevel Optimization with Coupled Constraints",
+  "version": "v1"
+}

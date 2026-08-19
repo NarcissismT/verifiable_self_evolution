@@ -1,0 +1,66 @@
+{
+  "case_id": "realpilot_flatness_penalty",
+  "execution_digest": "41cf9f72f47bb3c4095891b0fa34a910eca27d8034e7e2664473d763ccc6191c",
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "network_policy": "none",
+  "proposal_digest": "642c29c3ef63cad971e6e4091fbb08111890c478e4c4da70319a19c3ebfcf381",
+  "records": [
+    {
+      "metrics": {
+        "lower_residual": 0.0,
+        "primal_feasibility": 0.0,
+        "upper_regret": 2.3699322948544932e-08
+      },
+      "oracle_calls": 4000,
+      "point": [
+        1.2314428690575479,
+        1.182132596876102
+      ],
+      "seed": 1031,
+      "within_budget": true
+    },
+    {
+      "metrics": {
+        "lower_residual": 5.551115123125783e-17,
+        "primal_feasibility": 0.0,
+        "upper_regret": 4.342705747784059e-07
+      },
+      "oracle_calls": 4000,
+      "point": [
+        0.4422852376980817,
+        0.6212517636386147
+      ],
+      "seed": 2063,
+      "within_budget": true
+    },
+    {
+      "metrics": {
+        "lower_residual": 1.1102230246251565e-16,
+        "primal_feasibility": 0.0,
+        "upper_regret": 9.579700595137389e-08
+      },
+      "oracle_calls": 4000,
+      "point": [
+        1.128440366972477,
+        0.8739557590968184
+      ],
+      "seed": 4099,
+      "within_budget": true
+    },
+    {
+      "metrics": {
+        "lower_residual": 1.1102230246251565e-16,
+        "primal_feasibility": 0.0,
+        "upper_regret": 1.435077047889921e-07
+      },
+      "oracle_calls": 4000,
+      "point": [
+        0.8194328607172643,
+        0.94677983218672
+      ],
+      "seed": 8191,
+      "within_budget": true
+    }
+  ],
+  "schema_version": 1
+}

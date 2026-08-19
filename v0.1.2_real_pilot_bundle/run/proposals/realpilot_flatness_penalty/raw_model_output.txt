@@ -1,0 +1,4 @@
+{
+  "algorithm_family": "Adaptive Flatness Penalty Method",
+  "hypothesis": "This method dynamically adjusts the penalty coefficient to balance lower feasibility and upper progress while ensuring finite outputs and seed reproducibility."
+}

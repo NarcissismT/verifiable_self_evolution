@@ -1,0 +1,9 @@
+{
+  "api_url": "https://export.arxiv.org/api/query?id_list=2302.05185v1",
+  "arxiv_id": "2302.05185",
+  "declared_available_at_utc": "2023-02-10T07:45:56Z",
+  "published": "2023-02-10T11:30:19Z",
+  "timestamp_matches_declaration": false,
+  "title": "On Penalty-based Bilevel Gradient Descent Method",
+  "version": "v1"
+}

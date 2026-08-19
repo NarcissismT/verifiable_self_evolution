@@ -10,10 +10,22 @@ import subprocess
 import time
 from typing import Sequence
 
-from .hashing import canonical_json, content_hash
+from .hashing import canonical_json, content_hash, file_hash
 
 
 TRUSTED_PRODUCER_ID = "vse-trusted-launcher-v1"
+
+
+def _docker_network_values(command: Sequence[str]) -> tuple[str, ...]:
+    values: list[str] = []
+    for index, token in enumerate(command):
+        if token.startswith("--network="):
+            values.append(token.split("=", 1)[1])
+        elif token == "--network":
+            if index + 1 >= len(command):
+                raise ValueError("docker --network requires a value")
+            values.append(command[index + 1])
+    return tuple(values)
 
 
 @dataclass(frozen=True)
@@ -35,6 +47,7 @@ class TrustedProducerReceipt:
     execution_digest: str = ""
     signature: str = ""
     runtime_mode: str = "docker"
+    artifact_digest: str = ""
 
     def sealed(self, trust_key: bytes) -> "TrustedProducerReceipt":
         if len(trust_key) < 32:
@@ -77,6 +90,7 @@ def verify_trusted_receipt(value: dict, *, trust_key: bytes) -> TrustedProducerR
         execution_digest=str(value["execution_digest"]),
         signature=str(value["signature"]),
         runtime_mode=str(value.get("runtime_mode", "docker")),
+        artifact_digest=str(value.get("artifact_digest", "")),
     )
     if receipt.producer_id != TRUSTED_PRODUCER_ID:
         raise ValueError("untrusted receipt producer")
@@ -110,22 +124,32 @@ def run_trusted_process(
     container_digest: str,
     trust_key: bytes,
     output_path: Path | None = None,
+    artifact_path: Path | None = None,
     runtime_mode: str = "local_test",
 ) -> TrustedProducerReceipt:
     if not command:
         raise ValueError("trusted command is required")
     if not container_digest:
         raise ValueError("container digest is required")
+    if artifact_path is not None and artifact_path.exists():
+        raise FileExistsError(f"trusted artifact path must be new: {artifact_path}")
+    if output_path is not None and output_path.exists():
+        raise FileExistsError(f"trusted receipt path must be new: {output_path}")
     if runtime_mode not in {"docker", "local_test"}:
         raise ValueError("runtime_mode must be docker or local_test")
     if runtime_mode == "docker":
-        if Path(command[0]).name != "docker" or not any(
-            token == "--network=none"
-            or (token == "--network" and index + 1 < len(command) and command[index + 1] == "none")
-            for index, token in enumerate(command)
+        image_positions = [
+            index for index, token in enumerate(command) if token == container_digest
+        ]
+        if (
+            Path(command[0]).name != "docker"
+            or len(command) < 3
+            or command[1] != "run"
+            or len(image_positions) != 1
+            or _docker_network_values(command[: image_positions[0]]) != ("none",)
         ):
             raise ValueError("docker trusted runtime requires --network none")
-        if not any(container_digest in token for token in command):
+        if image_positions[0] < 2:
             raise ValueError("docker command is not bound to the declared container digest")
     started = time.monotonic()
     environment = dict(os.environ)
@@ -138,6 +162,11 @@ def run_trusted_process(
         env=environment,
     )
     elapsed = time.monotonic() - started
+    artifact_digest = ""
+    if artifact_path is not None:
+        if not artifact_path.is_file():
+            raise RuntimeError(f"trusted command did not create artifact: {artifact_path}")
+        artifact_digest = file_hash(artifact_path)
     receipt = TrustedProducerReceipt(
         stage=stage,
         capsule_digest=capsule_digest,
@@ -156,6 +185,7 @@ def run_trusted_process(
         stderr_digest=content_hash(completed.stderr.hex()),
         runtime_seconds=elapsed,
         runtime_mode=runtime_mode,
+        artifact_digest=artifact_digest,
     ).sealed(trust_key)
     if output_path is not None:
         output_path.parent.mkdir(parents=True, exist_ok=True)

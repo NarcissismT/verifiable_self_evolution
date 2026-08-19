@@ -1,0 +1,144 @@
+{
+  "allowed_tools": [
+    "python",
+    "numpy",
+    "first_order_oracle"
+  ],
+  "artifacts": [
+    {
+      "artifact_id": "penalty_bgd_2023",
+      "available_at_utc": "2023-02-10T11:30:19Z",
+      "kind": "paper",
+      "provenance_url": "https://arxiv.org/abs/2302.05185v1",
+      "search_text_path": "realpilot_flatness_penalty/artifacts/penalty_bgd_2023.txt",
+      "search_text_sha256": "cc17b3e134300dbe9cd39811dd17ce7fea6ae7845c1d10e4522760f6097aacaa",
+      "snapshot_path": "realpilot_flatness_penalty/artifacts/penalty_bgd_2023.pdf",
+      "snapshot_sha256": "64f5dd55244547b5583d0a98f88123c483c1be5bf5ffef7102d081c04429b2df",
+      "title": "On Penalty-based Bilevel Gradient Descent Method",
+      "version": "v1"
+    },
+    {
+      "artifact_id": "penalty_nonconvex_2023",
+      "available_at_utc": "2023-09-04T18:25:43Z",
+      "kind": "paper",
+      "provenance_url": "https://arxiv.org/abs/2309.01753v1",
+      "search_text_path": "realpilot_flatness_penalty/artifacts/penalty_nonconvex_2023.txt",
+      "search_text_sha256": "35b672902d4a0a7a05bd315976fb63b20fc3c0158858ee7115dfaae8bbef83e3",
+      "snapshot_path": "realpilot_flatness_penalty/artifacts/penalty_nonconvex_2023.pdf",
+      "snapshot_sha256": "7d2bf84373fc47ff62db2d98143a1e59ff8693eb64dfa79f3b8fc59e5c6060e2",
+      "title": "On Penalty Methods for Nonconvex Bilevel Optimization and First-Order Stochastic Approximation",
+      "version": "v1"
+    },
+    {
+      "artifact_id": "fully_first_order_2023",
+      "available_at_utc": "2023-01-26T05:34:21Z",
+      "kind": "paper",
+      "provenance_url": "https://arxiv.org/abs/2301.10945v1",
+      "search_text_path": "realpilot_flatness_penalty/artifacts/fully_first_order_2023.txt",
+      "search_text_sha256": "906e2095c323f222a514405b8b6a0b13c7280db224ca8df88e58e2e1f6d2d371",
+      "snapshot_path": "realpilot_flatness_penalty/artifacts/fully_first_order_2023.pdf",
+      "snapshot_sha256": "37f64a7533cf361b891a25bdb03a11c0fa939411c321057dfa28c7a2a36354c5",
+      "title": "A Fully First-Order Method for Stochastic Bilevel Optimization",
+      "version": "v1"
+    }
+  ],
+  "capsule_id": "realpilot_flatness_penalty",
+  "cutoff_utc": "2024-11-07T18:23:29Z",
+  "environment_lock_path": "realpilot_flatness_penalty/environment/environment.lock",
+  "environment_lock_sha256": "0d62b3f98a9c55ac303893e31f247970862518d1a23f30f985018f05c4bd7de4",
+  "field": "bilevel_stackelberg_alignment_optimization",
+  "public_problem": "Design a target-neutral first-order bilevel optimization procedure for the supplied oracle family. Return one point for each of four fixed seeds within 4,000 oracle calls. The hidden evaluator checks lower-level validity, upper-level progress, finite outputs and seed reproducibility. You may use only the frozen pre-cutoff evidence in this capsule and the declared Python interface. Lower-level strong convexity must not be assumed.",
+  "research_context": {
+    "assumptions": [
+      "Upper and lower objectives are differentiable and have Lipschitz gradients on the bounded test domain.",
+      "The lower solution set is nonempty, but lower-level strong convexity is not assumed.",
+      "Only function values and first-order derivatives of the supplied instance are available."
+    ],
+    "available_datasets": [],
+    "available_environments": [
+      {
+        "environment_id": "vse_hidden_smooth_family_v1",
+        "interface": "student_api_v1"
+      }
+    ],
+    "baseline_code": [
+      {
+        "artifact_id": "penalty_bgd_2023",
+        "baseline_id": "precutoff_penalty_synthesis_1",
+        "implementation_note": "Target-neutral engineering baseline; source paper is frozen in this capsule."
+      },
+      {
+        "artifact_id": "penalty_nonconvex_2023",
+        "baseline_id": "precutoff_penalty_synthesis_2",
+        "implementation_note": "Target-neutral engineering baseline; source paper is frozen in this capsule."
+      },
+      {
+        "artifact_id": "fully_first_order_2023",
+        "baseline_id": "precutoff_penalty_synthesis_3",
+        "implementation_note": "Target-neutral engineering baseline; source paper is frozen in this capsule."
+      }
+    ],
+    "candidate_metrics": [
+      "lower_gap",
+      "upper_stationarity",
+      "gradient_calls",
+      "seed_reproducibility"
+    ],
+    "claim_evidence_graph": [
+      {
+        "claim": "Pre-cutoff penalty formulations provide fully first-order routes for several nonconvex bilevel settings.",
+        "locator": "abstract and method sections in frozen arXiv v1 snapshot",
+        "source_id": "penalty_bgd_2023"
+      },
+      {
+        "claim": "Without lower-level strong convexity, hyper-objective stationarity can be hard or ill posed, so evaluation should include lower-level residuals rather than only a hyper-gradient.",
+        "locator": "abstract and method sections in frozen arXiv v1 snapshot",
+        "source_id": "penalty_nonconvex_2023"
+      }
+    ],
+    "compute_budget": {
+      "cpu_hours": 2,
+      "gpu_hours": 0,
+      "oracle_calls_per_seed": 4000
+    },
+    "formal_problem": "Minimize a smooth upper objective F(x,y) subject to y belonging to the solution set of a smooth lower objective G(x,·). The supplied test family has a non-singleton or weakly curved lower solution geometry; the method may use first-order oracles only and is scored at a fixed oracle budget.",
+    "known_failures_and_conflicts": [
+      {
+        "failure_id": "flat_failure_01",
+        "summary": "A fixed penalty coefficient can trade lower feasibility against upper progress and may stall on weakly curved directions."
+      }
+    ],
+    "known_results": [
+      {
+        "claim_id": "known_flat_01",
+        "summary": "Pre-cutoff penalty formulations provide fully first-order routes for several nonconvex bilevel settings."
+      },
+      {
+        "claim_id": "known_flat_02",
+        "summary": "Without lower-level strong convexity, hyper-objective stationarity can be hard or ill posed, so evaluation should include lower-level residuals rather than only a hyper-gradient."
+      }
+    ],
+    "research_question": "Can a target-neutral, fully first-order penalty procedure achieve stable upper-level stationarity when the lower-level problem is smooth but not strongly convex?",
+    "source_manifest": [
+      {
+        "artifact_id": "penalty_bgd_2023",
+        "git_commit": null,
+        "sha256": "64f5dd55244547b5583d0a98f88123c483c1be5bf5ffef7102d081c04429b2df"
+      },
+      {
+        "artifact_id": "penalty_nonconvex_2023",
+        "git_commit": null,
+        "sha256": "7d2bf84373fc47ff62db2d98143a1e59ff8693eb64dfa79f3b8fc59e5c6060e2"
+      },
+      {
+        "artifact_id": "fully_first_order_2023",
+        "git_commit": null,
+        "sha256": "37f64a7533cf361b891a25bdb03a11c0fa939411c321057dfa28c7a2a36354c5"
+      }
+    ]
+  },
+  "schema_version": 1,
+  "semantic_leak_review_digest": "",
+  "split": "dev",
+  "target_commitment": "1c824c602cd39d88e158ec80bb59e2ad7c8e4c177725d387e70df070422f2da9"
+}

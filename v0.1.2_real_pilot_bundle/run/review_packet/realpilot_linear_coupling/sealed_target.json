@@ -1,0 +1,46 @@
+{
+  "algorithm_names": [
+    "SFLCB"
+  ],
+  "capsule_id": "realpilot_linear_coupling",
+  "code_fingerprints": [],
+  "distinctive_phrases": [],
+  "first_public_at_utc": "2025-10-23T21:44:15Z",
+  "forbidden_terms": [
+    "single-loop first-order algorithm for linearly constrained bilevel optimization"
+  ],
+  "hidden_claims": [
+    {
+      "claim": "A fully first-order single-loop procedure can control stationarity and coupled linear feasibility in a linearly constrained bilevel problem.",
+      "claim_id": "linear_01",
+      "metric": "kkt_feasibility_under_oracle_budget"
+    }
+  ],
+  "hidden_result_spec": {
+    "metric_rules": [
+      "primal_feasibility",
+      "kkt_residual",
+      "outer_objective",
+      "oracle_calls"
+    ],
+    "target_code_snapshot": {
+      "git_commit": "bcfbe57d74376144e16ff3ebe737ff0f73b17310",
+      "path": "realpilot_linear_coupling/target_code.tar.gz",
+      "repository": "https://github.com/ShenGroup/SFLCB",
+      "sha256": "a1988e51bec799ea4b9bfdb12abec9754de0f77773e258ea8ad7bece8ca27f4a"
+    },
+    "trusted_scorer": "trusted_evaluator.py:realpilot_linear_coupling"
+  },
+  "identifiers": [
+    "2510.24710",
+    "https://proceedings.neurips.cc/paper_files/paper/2025/hash/532b828bc342a6af6c7dc01cfa719cd3-Abstract-Conference.html",
+    "https://github.com/ShenGroup/SFLCB",
+    "IMzol5Ywsr"
+  ],
+  "numeric_fingerprints": [],
+  "salt": "a647030fa104bad6b1a813c1c4611725b1fc3ed846e82c7a02d29e463501dd63",
+  "target_id": "neurips2025_linearly_constrained_bilevel",
+  "target_snapshot_path": "realpilot_linear_coupling/target.pdf",
+  "target_snapshot_sha256": "b0ad29b0b1b7c6e36b12a38fec94bac3568e69e9c0ae1945977fc2941e59d557",
+  "title": "A Single-Loop First-Order Algorithm for Linearly Constrained Bilevel Optimization"
+}

@@ -1,0 +1,39 @@
+{
+  "cases": [
+    {
+      "case_id": "realpilot_flatness_penalty",
+      "evaluation_digest": "1d24bf92a96f92dda1a366559f464a9575fd934fe17684aa494f1355b563c02e",
+      "execution_digest": "41cf9f72f47bb3c4095891b0fa34a910eca27d8034e7e2664473d763ccc6191c",
+      "hard_pass": true,
+      "proposal_digest": "642c29c3ef63cad971e6e4091fbb08111890c478e4c4da70319a19c3ebfcf381",
+      "vds_score": 0.9999992736727572
+    },
+    {
+      "case_id": "realpilot_linear_coupling",
+      "evaluation_digest": "cea3a670fa122a9d8d14c7060f8ed5db85e3b92f146e5a4e94c30fe4643681a3",
+      "execution_digest": "7a399ca4483276e491a6083466ab80b836a755aecdf6a39c279157af6566d6de",
+      "hard_pass": true,
+      "proposal_digest": "976cbb712767aaa3eb8bb9cb84dc8cc1107f9e265c8a53b522f8cdb714d0858d",
+      "vds_score": 0.999307001284496
+    },
+    {
+      "case_id": "realpilot_nonconvex_simple",
+      "evaluation_digest": "4d62069027f2d715d68e5db3567006cadd4e7e93215591d3d218846ad48b9eb9",
+      "execution_digest": "329be3fea7d5aa75f477d3a8233c78fe03507f91973795448dc0fd9f2950735d",
+      "hard_pass": true,
+      "proposal_digest": "a38938341f296b1522b8be2a7f21e7a10a589b0df40a0a5872f72b2ce14eb576",
+      "vds_score": 0.9999999999999999
+    }
+  ],
+  "formal_ready": false,
+  "limitations": [
+    "Qwen chooses algorithm_family and hypothesis; qwen_solution.py is a fixed target-neutral engineering adapter.",
+    "This validates execution/evaluation control flow only, not rediscovery, power, QLoRA, or recursive evolution.",
+    "Independent semantic and evaluator-custodian attestations remain required for formal ready preflight."
+  ],
+  "model_manifest_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "network_policy": "none",
+  "schema_version": 1,
+  "scientific_claims_allowed": false,
+  "status": "engineering_vertical_slice_pass"
+}

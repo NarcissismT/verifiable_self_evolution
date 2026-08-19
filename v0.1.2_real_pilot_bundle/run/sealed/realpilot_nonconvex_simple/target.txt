@@ -1,0 +1,1173 @@
+On the Complexity of Finding Stationary Points in Nonconvex
+Simple Bilevel Optimization
+Jincheng Cao ∗ Ruichen Jiang ∗ Erfan Yazdandoost Hamedani † Aryan Mokhtari ∗
+Abstract
+In this paper, we study the problem of solving a simple bilevel optimizat ion problem, where
+the upper-level objective is minimized over the solution set of the lower-level problem. We focus
+on the general setting in which both the upper- and lower-level obj ectives are smooth but po-
+tentially nonconvex. Due to the absence of additional structural assumptions for the lower-level
+objective—such as convexity or the Polyak–/suppress Lojasiewicz (PL) condition—guaranteeing global
+optimality is generally intractable. Instead, we introduce a suitable n otion of stationarity for
+this class of problems and aim to design a ﬁrst-order algorithm that ﬁ nds such stationary points
+in polynomial time. Intuitively, stationarity in this setting means the u pper-level objective can-
+not be substantially improved locally without causing a larger deterior ation in the lower-level
+objective. To this end, we show that a simple and implementable varian t of the dynamic bar-
+rier gradient descent (DBGD) framework can eﬀectively solve the c onsidered nonconvex simple
+bilevel problems up to stationarity. Speciﬁcally, to reach an ( ǫf , ǫg)-stationary point—where ǫf
+and ǫg denote the target stationarity accuracies for the upper- and lower-level objectives, respec-
+tively—the considered method achieves a complexity of O(max(ǫ
+− 3+p
+1+p
+f , ǫ
+− 3+p
+2
+g )), where p ≥ 0 is
+an arbitrary constant balancing the terms. To the best of our kno wledge, this is the ﬁrst com-
+plexity result for a discrete-time algorithm that guarantees joint s tationarity for both levels in
+general nonconvex simple bilevel problems.
+1 Introduction
+In this paper, we consider the following nonconvex simple bi level optimization problem
+min
+x∈Rn
+f(x) s.t. x ∈ X ∗
+g = argmin
+z∈Rn
+g(z), (1)
+where f, g : Rn → R are continuously diﬀerentiable and X ∗
+g denotes the solution set of the lower-
+level problem. This problem is referred to as simple bilevel . The term “simple” distinguishes this
+setting from general bilevel optimization, where the lower -level solution set X ∗
+g may depend on
+the upper-level variable, introducing additional complex ity. Owing to its numerous applications in
+areas such as lifelong learning [
+Mal17; JAMH23] and over-parameterized machine learning [GLL21;
+CJAYM23], simple bilevel optimization has garnered signiﬁcant recent interest in understanding its
+structure and developing eﬃcient algorithms for ﬁnding its solution [JAMH23; CJAYM23; Hsi+24;
+TLRZ24].
+∗ Department of Electrical and Computer Engineering, The Uni versity of Texas at Austin, Austin, TX, USA
+{jinchengcao@utexas.edu, rjiang@utexas.edu, mokhtari@a ustin.utexas.edu}
+† Department of Systems and Industrial Engineering, The Univ ersity of Arizona, Tucson, AZ, USA
+{erfany@arizona.edu}
+1
+arXiv:2507.23155v1  [math.OC]  30 Jul 2025
+
+The main challenge in solving Problem ( 1) stems from the fact that the feasible set, deﬁned as the
+optimal solution set of the lower-level problem, lacks a cle ar characterization and is not explicitly
+given. As a result, a direct application of projection-base d or projection-free methods is infeasible.
+Several works have studied the case where both the upper- and lower-level objectives are convex.
+In this case, Problem ( 1) is “well-behaved”, facilitating the application of vario us optimization
+techniques. For instance, several works [ Sol07; DDD10; KY21; SBY24] employ Tikhonov regu-
+larization [ TA77], combining the upper- and lower-level objectives with an a ppropriately chosen
+weight. Another line of research [ JAMH23; CJAYM23; CJYM24] provides a linear approximation
+of the lower-level objective to form an outer approximation of the lower-level optimal solution set
+X ∗
+g .
+However, in several applications such as neural network tra ining [ Hsi+24], sparse representation
+learning [ GLL21; TLRZ24], and adversarial training [ Mad17; WRK20; Zha+22], the objective
+functions at both levels are not necessarily convex. As a result, the lower-level solution set X ∗
+g could
+be a nonconvex set, making it intractable to achieve any formof global optimality. Consequently, in
+nonconvex simple bilevel optimization, similar to its single-level counterpart, the primary objective
+is to ﬁnd a near-stationary point rather than a near-optimal solution, as deﬁned in [ JAMH23;
+CJYM24; ZCXZ24].
+The search for near-stationary points in nonconvex simple b ilevel problems has been addressed
+by only a few works. Among these, Gong, Liu, and Liu [ GLL21] proposed the Dynamic Barrier
+Gradient Descent (DBGD) algorithm, which employs a dynamic barrier constraint on the search
+direction at each iteration. By adaptively balancing objec tives f and g with a dynamic combi-
+nation coeﬃcient, it guides the optimization trajectory. I t was originally introduced to solve the
+constrained problem:
+min
+x∈Rn
+f(x) s.t. g(x) ≤ c, (2)
+where f and g are smooth but possibly nonconvex, c ≥ g∗, and g∗ is the minimum value of g. Note
+that the analysis in [ GLL21] is limited to the continuous-time limit behavior of DBGD (s tep size
+η →0). Speciﬁcally, it was shown that the continuous-time dyna mics of DBGD converge at a rate
+of O(1/t) in terms of the violation of the Karush–Kuhn–Tucker (KKT) c onditions of Problem ( 2)
+with the assumption of bounded dual iterates, i.e., max t λt < +∞. For the speciﬁc choice of c = g∗,
+the problem in ( 2) becomes equivalent to the simple bilevel problem in ( 1). However, in this case,
+the assumption of bounded dual iterates is violated, rendering the associated theoretical guarantees
+inapplicable. Under the additional assumption that ‖∇f ‖ and ‖∇g‖ are uniformly bounded, the
+presented continuous-time convergence rate deteriorates to O(max(1/t2/τ , 1/t1−1/τ )) for any user-
+deﬁned τ > 1. More importantly, their analysis does not hold when considering the discrete time
+case (step size η > 0).
+Another closely related work is [ Hsi+24], which introduced BLOOP (BiLevel Optimization with
+Orthogonal Projection) for stochastic nonconvex simple bilevel problems. The core idea of BLOOP
+is to project the upper-level gradient onto the space orthogonal to the lower-level gradient. However,
+their analysis is limited to a non-asymptotic convergence r ate of O(1/K1/ 4) for the lower-level
+objective, where K is the number of iterations, without providing any rate guar antees for the
+upper-level objective.
+Motivated by the above discussion, we aim to address the foll owing research question:
+Is it possible to design a ﬁrst-order method with discrete-ti me guarantees for both levels of the
+nonconvex simple bilevel problem in (
+1) under the given assumptions?
+Contributions. Motivated by this research question, We begin by deﬁning a ﬁrst-order stationarity
+2
+
+metric for nonconvex simple bilevel problems in Section 3, which intuitively identiﬁes points where
+no signiﬁcantly better solution exists in a local neighborhood. In Section 3.1, we relate this notion to
+existing stationarity concepts in the literature. We then d evelop and analyze a practical variant of
+the dynamic barrier gradient descent (DBGD) method propose d in [GLL21], providing theoretical
+guarantees for its convergence in discrete time. The speciﬁ cs of our main contributions are as
+follows:
+(i) We deﬁne an (ǫf , ǫg)-stationary point for nonconvex simple bilevel optimization as a point ˆx for
+which there exists λ ≥ 0 such that ‖∇f(ˆx) + λ∇g(ˆx)‖2 ≤ ǫf and ‖∇g(ˆx)‖2 ≤ ǫg, where ǫf and ǫg
+specify the desired stationarity accuracy for the upper and lower levels. We also discuss how this
+notion relates to existing stationarity metrics in the constrained and bilevel optimization literature.
+(ii) We show that to achieve an (ǫf , ǫg)-stationary point of the considered nonconvex simple bile vel
+problem, the studied method has a complexity of O(max(ǫ
+− 3+p
+1+p
+f , ǫ
+− 3+p
+2
+g )), where p ≥ 0. This is
+the ﬁrst explicit (discrete-time) complexity bound that gu arantees stationarity at both levels for
+nonconvex simple bilevel problems.
+Further connections between ﬁrst-order methods for convex and nonconvex simple bilevel problems
+and the DBGD framework are discussed in Appendix
+C.
+1.1 Related Work
+Convex simple bilevel problems. Most studies on the “simple bilevel optimization problem”
+focus on cases where both the upper-level and lower-level ob jective functions are convex. Various
+approaches have been developed to address such convex simpl e bilevel optimization problems, in-
+cluding regularization-based methods [
+Sol07; DDD10; KY21; SBY24; GHL24], penalty-based meth-
+ods [CSJW24], sequential averaging methods [SS17; MS23], online-learning-based methods [SHK23],
+lower-level linearized based methods [ JAMH23; CJAYM23; CJYM24], and bisection-based meth-
+ods [ WSJ24; ZCXZ24]. However, due to the convexity assumption underlying thes e algorithms,
+they are not applicable in our setting.
+Nonconvex constrained minimization problems. The simple bilevel problem (
+1) can also be
+reformulated as Problem ( 2) with c = g∗. This reformulation suggests that existing method for
+functionally constrained optimization [ CGT14; CGT17; CGT19b; CGT19a; FKLS21; BGMST16;
+BDL23; LMX19] could be applied to solve ( 2). However, this approach presents several chal-
+lenges. First, since g is nonconvex, estimating g∗ to high accuracy is intractable. Moreover, Prob-
+lem (2) does not satisfy strict feasibility, and most common const raint qualiﬁcations, such as the
+Mangasarian-Fromovitz Constraint Qualiﬁcation, do not ho ld. Hence, many results, such as those
+in [FKLS21; LMX19; BDL23] may no longer hold.
+Nonconvex general bilevel problems. Recent works on nonconvex general bilevel optimiza-
+tion [KKWN23a; CXZ24; LYWSL22; SC23; XLC23; Hua24] rely on diﬀerent stationarity notions
+or assumptions and are thus not directly applicable to our se tting. For instance, the works in
+[KKWN23a; CXZ24] deﬁne stationarity based on the norm of the hyper-gradient , which may be
+ill-deﬁned in the simple bilevel setting where no upper-lev el variables are present, rendering it an
+invalid metric. Moreover, most existing approaches assume the Polyak–/suppress Lojasiewicz (PL) condition
+[LYWSL22; XLC23; KKWN23a; CXZ24] for the lower-level problem—an assumption not made in
+our setting, thereby invalidating the convergence guarantees established in those works. A detailed
+comparison between algorithms for general and simple bilev el problems, along with a discussion of
+diﬀerent stationarity metrics and other related methods, is provided in Appendix D.
+3
+
+2 Assumptions
+We denote g∗ > −∞ and f ∗ > −∞ as the minimum value of g and f, respectively. We next
+formally state our assumptions.
+Assumption 2.1. We assume these conditions hold:
+(i) f has bounded gradients, i.e., ‖∇f(x)‖ ≤ Gf < ∞ for any x ∈ Rn.
+(ii) f is continuously diﬀerentiable, and ∇f is Lf -Lipschitz, i.e., ‖∇f(x) − ∇f(y)‖ ≤ Lf ‖x − y‖.
+(iii) g is continuously diﬀerentiable, and ∇g is Lg-Lipschitz, i.e., ‖∇g(x) − ∇g(y)‖ ≤ Lg‖x − y‖.
+3 Stationarity Metric
+This section introduces our performance metric for evaluat ing convergence rates of algorithms for
+Problem (1). While objective value gap is commonly used in convex setti ngs [ JAMH23; SBY24;
+CJYM24; WSJ24; ZCXZ24], it is intractable here due to the potential nonconvexity o f f and g.
+Instead, we measure stationarity, deﬁning an approximate stationary point as a point ˆx ∈ Rn where
+no signiﬁcantly better solution exists nearby—i.e., one that lowers g, or lowers f without increasing
+g. We next present ﬁrst-order conditions that capture this no tion, followed by their interpretation.
+Deﬁnition 3.1. Given ǫf ≥ 0 and ǫg ≥ 0, a point ˆx ∈ Rn is an (ǫf , ǫg)-stationary point of
+Problem (1) if there exists a scalar λ ≥ 0 such that:
+‖∇g(ˆx)‖2 ≤ ǫg and ‖∇f(ˆx) + λ∇g(ˆx)‖2 ≤ ǫf . (3)
+Deﬁnition 3.1 consists of two conditions that measure the stationarity ofa given solution ˆx. The ﬁrst
+condition requires that the gradient of the lower-level obj ective g at ˆx is small, meaning that x is
+near stationary for g. To better interpret the second condition, we ﬁrst introduc e a decomposition
+that expresses the upper-level gradient ∇f(ˆx) as the sum of two orthogonal components: one
+parallel to ∇g(ˆx) and the other orthogonal to it. Speciﬁcally, we write ∇f(ˆx) = ∇f‖(ˆx) +∇f⊥(ˆx),
+where ∇f‖(ˆx) is the component parallel to ∇g(ˆx) and ∇f⊥(ˆx) is the component orthogonal to
+∇g(ˆx). Using this decomposition, we can further express:
+∇f(ˆx) + λ∇g(ˆx) = ∇f⊥(ˆx) + (∇f‖(ˆx) + λ∇g(ˆx)), (4)
+where the ﬁrst term is orthogonal to ∇g(ˆx) and the second part (in parenthesis) is parallel to
+it. Hence, the conditions in ( 3) ensure that all the following norms are small: (i) ‖∇g(ˆx)‖,
+(ii) ‖∇f⊥(ˆx)‖, and (iii) ‖∇f‖(ˆx) + λ∇g(ˆx)‖. Interestingly, as we shall show in the convergence
+analysis, these terms do not necessarily diminish at the sam e rate.
+This decomposition oﬀers key insights into the ﬁnal output. I f the ﬁrst two terms are small, the
+resulting point satisﬁes two key conditions: (i) the gradie nt norm of the lower-level problem is
+small, and (ii) the component of the upper-level gradient or thogonal to the lower-level gradient is
+also small. In other words, in directions that do not negativ ely impact the lower-level objective,
+there is no remaining energy to further decrease the upper-l evel objective.
+The third term being small leads to two possible cases. If ∇f‖(ˆx) is aligned with ∇g(ˆx), then since
+‖∇g(ˆx)‖ is small and λ > 0, it follows that ∇f‖(ˆx) is also small. Combined with the smallness of
+4
+
+‖∇f⊥(ˆx)‖, this implies ‖∇f(ˆx)‖ is small as well. On the other hand, if ∇f‖(ˆx) is in the opposite
+direction of ∇g(ˆx), we cannot make a deﬁnitive statement about ‖∇f‖(ˆx)‖, as λ could be large.
+Hence, any point satisfying the conditions in ( 3) must fall into one of the following two cases:
+• Case I: At ˆx, both ‖∇g(ˆx)‖ and ‖∇f(ˆx)‖ are small, indicating near-stationarity for both the
+lower- and upper-level objectives.
+• Case II: At ˆx, ‖∇g(ˆx)‖ is small and the gradient off has minimal energy in directions orthogonal
+to ∇g(ˆx) and its remaining energy (norm) is in the opposite directio n of ∇g(ˆx).
+In both cases, we reach a point where further decreasing f would necessarily increase g, indicating
+that no additional progress can be made without violating th e constraint. This means the objec-
+tive function cannot be signiﬁcantly improved in its local n eighborhood without incurring greater
+infeasibility. This concept is formally characterized in t he following lemma.
+Lemma 3.1. A point ˆx ∈ Rn is an ( ǫf , ǫg)-stationary point of Problem (1) if and only if the
+following holds: for any δ > 0, there exists a radius r > 0 such that:
+• For any x satisfying ‖x − ˆx‖ ≤ r, we have g(x) ≥ g(ˆx) − (1 + δ)√ǫg‖ˆx − x‖.
+• For any x satisfying ‖x − ˆx‖ ≤ r and g(x) ≤ g(ˆx), we have f(x) ≥ f(ˆx) − (1 + δ)√ǫf ‖ˆx − x‖.
+The ﬁrst condition of the lemma guarantees that the lower-le vel objective g cannot be improved
+by more than O(√ǫg‖ˆx − x‖) locally. The second condition further shows that the upper -level
+objective cannot be signiﬁcantly improved without negativ ely impacting g.
+3.1 Connections with Other Stationarity Metrics
+In this section, we examine the connection between our propo sed stationarity metrics in Deﬁni-
+tion
+3.1 and existing notions of stationarity in both constrained op timization and bilevel optimiza-
+tion literature.
+3.1.1 Connection with the Metrics in Constrained Optimization Literature
+We note that Deﬁnition
+3.1 is closely related to approximate KKT conditions for a refor mulation
+of Problem ( 1). Speciﬁcally, recall g∗ = min x∈Rn g(x) and the constraint in ( 1) is equivalent to
+g(x) − g∗ ≤ 0. Thus, Problem ( 1) can be reformulated as Problem ( 2) with c = g∗. Given a point
+x and its Lagrange multiplier λ ≥ 0, the KKT conditions for ( 2) are:
+g(x) − g∗ ≤ 0, λ ≥ 0, ∇f(x) + λ∇g(x) = 0, λ (g(x) − g∗) = 0.
+However, since Problem (2) with c = g∗ is not strictly feasible, Slater’s condition does not hold, and
+the KKT conditions may not hold at an optimal solution. Moreover, since g is nonconvex, enforcing
+strict feasibility is intractable. To resolve this, the literature on nonconvex constrained optimization
+has considered relaxed stationarity conditions such as the scaled KKT conditions [CGT14; CGT17;
+CGT19b; CGT19a; FKLS21]. When specialized to Problem ( 1), these papers aim to ﬁnd a point
+ˆx that satisﬁes one of the following for given accuracy parameters ǫp and ǫd: (i) ˆx satisﬁes an
+approximate scaled KKT conditions, i.e.,
+g(ˆx) − g∗ ≤ ǫp, λ ≥ 0, ‖∇f(ˆx) + λ∇g(ˆx)‖ ≤ ǫd(1 + λ). (5)
+5
+
+Here, the accuracy of the last condition is proportional to t he Lagrange multiplier λ. (ii) ˆx is an
+infeasible stationary point of the constraint function, i. e.,
+g(ˆx) − g∗ ≥ 0.99ǫp, ‖∇g(ˆx)‖ ≤ ǫd. (6)
+Moreover, [BGMST16] considered the stronger unscaled KKT conditions , where ( 5) is replaced by
+g(ˆx) − g∗ ≤ ǫp, λ ≥ 0, ‖∇f(ˆx) + λ∇g(ˆx)‖ ≤ ǫd. (7)
+Unlike the scaled KKT conditions, the accuracy requirement in the last condition does not depend
+on the multiplier λ. We observe that our Deﬁnition 3.1 implies the unscaled KKT conditions.
+Suppose ˆx is an approximate ( ǫ2
+d, ǫ2
+d)-stationary point. Then, if g(ˆx) − g∗ ≥ 0.99ǫp, the condition
+in (
+6) holds; otherwise, the condition in ( 7) is satisﬁed.
+3.1.2 Connection with the Metrics in Bilevel Optimization Literature
+In this section, we also relate our proposed stationarity me tric for the original simple bilevel prob-
+lem (
+1) to those used in common reformulations in the bilevel optim ization literature. A widely
+used reformulation is the value-function-based approach, deﬁned as follows:
+min
+x∈Rn
+f(x) s.t. g(x) − g∗ = 0 (8)
+However, the KKT conditions of the value-function reformul ation are not necessary for optimality,
+as standard constraint qualiﬁcations may be violated—even when the lower-level objective satisﬁes
+additional conditions such as the Polyak-/suppress Lojasiewicz (PL) condition [LYWSL22; XLC23]. Instead,
+we aim to connect our proposed stationarity condition with t he KKT conditions of the gradient-
+based reformulation. Before establishing this connection , we introduce the following deﬁnition and
+assumption.
+Deﬁnition 3.2 ((ǫp, ǫd)-KKT conditions [
+XLC23]). A gradient-based reformulation of Problem (1)
+is
+min
+x∈Rn
+f(x), s.t. ∇g(x) = 0, (9)
+A point ˆx is an (ǫp, ǫd)-KKT point of Problem (9) if there exists w ∈ Rn such that
+‖∇f(ˆx) + ∇2g(ˆx)w‖2 ≤ ǫp, ‖∇g(ˆx)‖2 ≤ ǫd (10)
+Note that the reformulation (9) is equivalent to Problem (1) when g satisﬁes the PL condition. To
+analyze the relationship between Deﬁnition 3.1 and 3.2, we introduce the following assumption.
+Assumption 3.1 (Local Error Bound [ LT93]). There exists c > 0 such that for ǫ small enough
+and for any x satisfying ‖∇g(x)‖ ≤ ǫ, we have dist(x, ∇g−1({0})) ≤ c‖∇g(x)‖.
+This local error bound condition is implied by a local PL ineq uality, which itself is a relaxation of
+the global PL condition. We are now ready to connect our propo sed stationarity metric with the
+(ǫp, ǫd)-KKT conditions of the gradient-based reformulated problem. The Proof is in Appendix A.2.
+Theorem 3.2. Suppose Assumption 3.1 holds and ∇2g(x) is LH-Lipschitz. If a point ˆx ∈ Rn is
+an ( ǫf , ǫg)-stationary point of Problem (1) for some ǫf , ǫg > 0, then it is an ( ǫp, ǫd)-KKT point of
+Problem (9) for ǫp = O(ǫf + λ‖∇g(ˆx)‖ǫg) and ǫd = ǫg.
+Theorem 3.2 implies that although the KKT solutions of Problem (9) typically rely on second-order
+information of the lower-level objective, they can still be approximated using ﬁrst-order methods.
+In particular, this result holds without requiring any cons traint qualiﬁcation (CQ) conditions com-
+monly assumed in the bilevel optimization literature [ GLL21; LYWSL22; DD12].
+6
+
+4 Algorithmic Framework
+To eﬃciently ﬁnd a stationary point for the nonconvex simple bilevel problem in ( 1), we adopt
+the dynamic barrier gradient descent (DBGD) framework in [ GLL21]. It was ﬁrst proposed for
+the constrained optimization problem in ( 2), with theoretical guarantees established only in the
+continuous-time limit. One of our contributions is applying this framework to the nonconvex simple
+bilevel problem (1) and establishing the ﬁrst discrete-time stationarity guarantees. The core idea of
+DBGD is to choose a descent direction that aligns with the upp er-level gradient while minimizing
+its impact on the lower-level problem. Speciﬁcally, consid er the general update rule
+xk+1 = xk − ηkdk, (11)
+where ηk > 0 is a step size and dk is a descent direction. For the simple bilevel problem of int erest,
+we seek a vector dk that balances progress on both objectives. When the lower-l evel objective is
+far from optimal, the focus is on minimizing it while ensurin g that any reduction in the upper-level
+objective f does not hinder the decrease of g. As the lower-level objective nears optimality, priority
+shifts to minimizing f, which may require a controlled increase in g to keep iterates x within or
+close to the solution set X ∗
+g . It turns out that both properties can be achieved if dk is selected as
+dk = argmin
+d∈Rn
+‖∇f(xk) − d‖2 s.t. ∇g(xk)⊤d ≥ φ(xk). (12)
+Here, φ : Rd → R+ is a non-negative function that controls the inner product b etween the selected
+direction and the gradient of the lower-level problem. Spec iﬁcally, Gong, Liu, and Liu [ GLL21]
+propose the choice φ(x) = min {α(g(xk) − g∗), β‖∇g(xk)‖2}. This represents one possible design,
+and as elaborated in Appendix C, alternative choices for φ give rise to other methods studied in
+the literature. The main property of φ is that it should capture some form of infeasibility for the
+original problem, i.e., suboptimality in the lower-level p roblem.
+A key point is that dk is chosen as the closest vector to the upper-level gradient ∇f while maintain-
+ing a positive angle with the lower-level gradient. The set o f feasible directions depends on how far
+the current point is from feasibility. If g(xk) = g∗, i.e., φ(xk) = 0, any direction with an angle less
+than 90 degrees is feasible, allowing us to reduce f without increasing g (up to ﬁrst-order). But if
+φ(xk) is large, we prioritize reducing g by choosing a direction closely aligned with ∇g.
+Close form solution of the subproblem. Since ( 12) is a quadratic convex program with a
+single inequality constraint, its optimal solution can be e xplicitly expressed as
+dk = ∇f(xk) + λk∇g(xk), (13)
+where λk can be computed as follows:
+λk = max
+{ φ(xk) − ∇f(xk)⊤∇g(xk)
+‖∇g(xk)‖2 , 0
+}
+(14)
+Hence, our method of interest with stepsize ηk can be easily implemented by following the update
+xk+1 = xk − ηk(∇f(xk) + λk∇g(xk)). (15)
+Our choice of the subproblem. To establish convergence guarantees for the nonconvex simp le
+bilevel problem, we analyze the version of the discussed alg orithm that incorporates φ(xk) =
+7
+
+βk‖∇g(xk)‖2 in its update. This choice is motivated by the fact that, in no nconvex lower-level
+problems, the gradient norm is the most computationally tra ctable measure of suboptimality. In
+this case, the expression for the parameter λk introduced in (14) can be simpliﬁed as
+λk = max
+{ βk‖∇g(xk)‖2 − ∇f(xk)⊤∇g(xk)
+‖∇g(xk)‖2 , 0
+}
+(16)
+In Section 5, we establish the convergence rate of the update that follow s the update in ( 15) when
+λk is computed based on the expression in ( 16).
+5 Convergence Analysis
+In this section, we analyze the convergence rate of a variant of the dynamic barrier descent method,
+which follows the updates in (
+15) and (16) to solve the nonconvex simple bilevel problem in (1). As
+discussed, our goal is to ﬁnd a point ˆx that satisﬁes the conditions in (3). To achieve this, it suﬃces
+to show that, for at least one iterate of the method, both the l ower-level gradient norm ‖∇g(xk)‖
+and the update direction norm ‖dk‖ are small. Given that dk = ∇f(xk) + λk∇g(xk) and that λk
+in our algorithm is always non-negative, this guarantees th e desired convergence in Deﬁnition 3.1.
+Our starting point is to use the smoothness property of the ob jective functions f and g (Assump-
+tion 2.1(ii) and (iii)) to derive a descent-type lemma. This leads to an upper bound on ‖dk‖ and
+‖∇g(xk)‖ in each iteration, which is shown in the following lemma. The proof is in Appendix B.1.
+Lemma 5.1. Suppose Assumption 2.1 holds and let {xk} be the iterates generated by (15) and
+(16) with a constant step size ηk ≡ η and a constant hyperparameter 0 ≤ βk ≡ β ≤ 1. Deﬁne
+∆fk = f(xk) − f(xk+1) and ∆gk = g(xk) − g(xk+1). We have
+(1 − ηLf
+2 )‖dk‖2 ≤ ∆fk
+η + λkβ‖∇g(xk)‖2, (17)
+β‖∇g(xk)‖2 ≤ ∆gk
+η + Lg
+2 η‖dk‖2. (18)
+Lemma 5.1 shows that ‖dk‖ can be upper bounded in terms of ∆f = f(xk)−f(xk+1) and ‖∇g(xk)‖,
+while ‖∇g(xk)‖ can, in turn, be upper bounded in terms of ∆ g = g(xk) − g(xk+1) and ‖dk‖.
+A natural strategy, therefore, is to combine the two inequal ities ( 17) and ( 18) and construct a
+potential function of the form ‖dk‖2 + c‖∇g(xk)‖2, where c is an appropriate constant. This would
+be easy to achieve if λk is uniformly bounded by an absolute constant M. Indeed, in this case,
+by adding ( 17) and ( 18) multiplied by 2 M, and further assuming that η ≤ 1
+Lf +2M Lg , we obtain
+1
+2 ‖dk‖2 + M ‖∇g(xk)‖2 ≤ ∆ fk+2M ∆ g
+η . Applying the standard telescoping argument then yields a
+convergence rate of O( 1
+ηK ) for both ‖dk‖2 and ‖∇g(xk)‖2.
+However, a key challenge is that we do not have an a priori upper bound on λk, which prevents us
+from setting a constant step size η that depends on such a bound. Moreover, such a uniform upper
+bound on λk may not even exist at all, as λk could diverge to inﬁnity when xk approaches a near-
+stationary point of the lower-level objective g. To see this, recall the expression for λk in (16) and
+the decomposition of the upper-level gradient ∇f(xk) = ∇f‖(xk) +∇f⊥(xk), where ∇f‖(xk) is the
+component parallel to ∇g(xk) and ∇f⊥(xk) is the component orthogonal to ∇g(xk). When ∇f‖(xk)
+is in the opposite direction of ∇g(xk), we have λk = β − ∇f (xk)⊤∇g(xk)
+‖∇g(xk)‖2 = β +
+‖∇f‖ (xk)‖‖∇g(xk)‖
+‖∇g(xk)‖2 =
+8
+
+β +
+‖∇f‖ (xk)‖
+‖∇g(xk)‖ . Thus, as ‖∇g(xk)‖ approaches zero, λk diverges whenever ∇f‖(xk) is nonzero—that
+is, when the upper-level gradient retains nonzero energy in the opposite direction of ∇g(xk).
+The following lemma presents our ﬁrst attempt to use the boun dedness of the upper-level gradient
+(Assumption 2.1(i)) to control the magnitude of λk. The proof is in Appendix B.2.
+Lemma 5.2. Recall the expression of λk in (16). If Assumption 2.1 holds, then λk ≤ β + Gf
+‖∇g(xk)‖ .
+Remark 5.1. This result shows λk is proportional to 1
+‖∇g(xk)‖ rather than being uniformly bounded
+by a constant. As a result, for the λ generated by DBGD, we have ǫp = O(ǫf + ǫg) in Theorem 3.2.
+However, this bound still suﬀers from the same issue: it is vac uous as ‖∇g(xk)‖ approaches zero.
+To address this challenge, we construct a new potential func tion that circumvents the need to
+explicitly upper-bound λk by a constant. The key observation is that λk appears in (17) only as a
+coeﬃcient of the term ‖∇g(xk)‖2. Hence, while λk is potentially unbounded, the total contribution
+of the term λk‖∇g(xk)‖2 in (17) can be controlled by β‖∇g(xk)‖2 + Gf ‖∇g(xk)‖, which converges
+to zero as long as ‖∇g(xk)‖ diminishes. This suggests that we may still obtain a meaning ful bound
+on ‖dk‖ by appropriately combining (17) and (18). This is stated in the next lemma.
+Lemma 5.3. Consider the updates in (15). If Assumptions 2.1 hold, η ≤ 1
+Lf +Lg
+, and β ≤ 1, then
+‖dk‖2 ≤ 2(∆fk + β∆gk)
+η + 2
+√
+βGf
+√
+∆gk
+η + Lg
+2 η‖dk‖2. (19)
+Note that this is an implicit inequality for ‖dk‖, as ‖dk‖ is also present in the right-hand side under
+the square root. To obtain an explicit bound, we ﬁrst present the following intermediate lemma.
+Lemma 5.4. Suppose x ≥ 0 and x ≤ A + B√x, where A ∈ R and B ≥ 0. Then x ≤ 2A + B2.
+To apply Lemma 5.4 and obtain an explicit upper bound on ‖dk‖2, we ﬁrst manipulate ( 19) to
+match the form of the inequality in Lemma 5.4. Speciﬁcally, adding 2∆ gk
+Lgη2 to both sides of ( 19) and
+deﬁning Sk ≜ ‖dk‖2 + 2∆ gk
+Lgη2 , we obtain the following inequality
+Sk ≤ 2(∆fk + β∆gk)
+η + 2∆gk
+Lgη2 +
+√
+βGf
+√
+2Lgη
+√
+Sk. (20)
+Applying Lemma 5.4 to (20) yields Sk ≤ 4(∆ fk+β ∆ gk)
+η + 4∆ gk
+Lgη2 + 2βG2
+f Lgη. Since Sk = ‖dk‖2 + 2∆ gk
+Lgη2 ,
+it follows
+‖dk‖2 ≤ 4(∆fk + β∆gk)
+η + 2∆gk
+Lgη2 + 2βG2
+f Lgη, (21)
+which provides an upper bound on ‖dk‖2. As we shall see later, this inequality together with
+(
+18) will be the key to constructing our new potential function. We can now proceed to our main
+theorem, which characterizes the convergence rate of the al gorithm. The proof is in Appendix B.5.
+Theorem 5.5. Suppose Assumption 2.1 holds and let {xk} be generated by (15) and (16) with a
+constant step size ηk ≡ η = 1
+LK 1/ (3+p) , where L := Lf + Lg, and hyperparameter βk ≡ β = (Lη)p =
+1
+K p/ (3+p) , where p ≥ 0. Further, deﬁne ∆f := f(x0) − inf f , and ∆g := g(x0) − g∗. Then, there
+exists an index k∗ ∈ {1, · · · , K} such that
+‖∇g(xk∗)‖2 ≤ 4L∆f
+K 3/ (3+p) + 4L∆g
+K +
+3L∆g + 2G2
+f
+K 2/ (3+p) (22)
+9
+
+0 200 400 600 800 100010-20
+10-15
+10-10
+10-5
+100
+105
+(a) ‖∇g‖2
+0 200 400 600 800 100010-20
+10-15
+10-10
+10-5
+100
+105
+(b) ‖∇⊥f ‖2
+0 200 400 600 800 1000
+-1
+-0.5
+0
+0.5
+1
+(c) cos θ
+Figure 1: The performance of DBGD compared with Penalty meth ods with diﬀerent choices of λ
+on Problem (24) in terms of ‖∇g‖2, ‖∇⊥f ‖2, and cos θ.
+‖∇f(xk∗) + λk∗∇g(xk∗)‖2 ≤ 8L∆f
+K (2+p)/ (3+p) + 8L∆g
+K (2+2p)/ (3+p) +
+6L2∆g + 4G2
+f
+LgK (1+p)/ (3+p) (23)
+As a corollary, the algorithm based on the updates in (15) and (16) ﬁnds an (ǫf , ǫg)-stationary point
+after O(max(ǫ
+− 3+p
+1+p
+f , ǫ
+− 3+p
+2
+g )) iterations, where p ≥ 0. If we want to balance the rates of the upper
+and lower levels, we can choose p = 1, i.e. β = O(η), in which case the algorithm ﬁnds an ( ǫf , ǫg)-
+stationary point after O(max(ǫ−2
+f , ǫ−2
+g )) iterations. To our knowledge, this is the ﬁrst discrete-t ime
+non-asymptotic guarantee to the stationary points for nonc onvex simple bilevel optimization.
+Remark 5.2. Gong, Liu, and Liu [ GLL21] analyzed the continuous-time limit of the algorithm
+in (15) and (16). However, their continuous-time analysis does not account for the additional
+error introduced by approximating functions f and g by their ﬁrst-order Taylor expansions. As
+a result, their convergence result does not directly transl ate into a concrete convergence bound
+for the discrete-time algorithm. Some of our key contributi ons include addressing the additional
+discretization error—requiring the solution of an implici t inequality (cf. Lemma 5.3) and careful
+selection of the step size η and hyperparameter β—as well as removing the common assumption of
+uniformly bounded ‖∇g‖.
+6 Numerical Experiments
+While the primary focus of this work is theoretical, we inclu de a set of numerical experiments to
+illustrate the behavior of the proposed algorithm and to support our theoretical ﬁndings. Since prior
+studies [GLL21; Hsi+24] have already demonstrated the strong empirical performan ce of DBGD
+in large-scale neural network training tasks, we do not repe at such experiments here. Instead, we
+evaluate DBGD on deterministic optimization problems, whi ch align more closely with the scope
+of this paper. For comparison, we consider a penalty-based m ethod with updates of the form
+xk+1 = xk − ηk(∇f(xk) + λ∇g(xk)), where λ ≥ 0 is ﬁxed. We justify the use of this penalty
+method as a baseline in Appendix D, and provide full experimental details in Appendix E.
+T oy Example. We study the following nonconvex simple bilevel problem,
+min
+x∈R2
+(x1 + π
+20)2 + (x2 + 1)2 s.t. x ∈ argmin
+z∈R2
+(z2 − sin(10z1))2 (24)
+10
+
+10-2 10-1 100
+0.5
+1
+1.5
+(a) f1
+10-6 10-4 10-2
+129
+130
+131
+132
+133
+134
+135
+136
+(b) f1
+10-2 10-1 100
+100
+(c) f2
+10-6 10-4 10-2
+40
+45
+50
+55
+(d) f2
+Figure 2: The performance of DBGD compared with Penalty meth ods on Problem (25) in terms of
+‖∇g‖2, ‖∇⊥f ‖2, g, and f. Blue dots indicate the performance of DBGD with diﬀerent cho ices of
+β, while red dots show the performance of the penalty method wi th varying penalty parameters λ.
+Based on Deﬁnition 3.1, we use ‖∇g‖, ‖∇⊥f ‖, and cos θ—where θ is the angle between ∇g and
+∇f—to measure stationarity. Speciﬁcally, ‖∇g‖ corresponds to the ﬁrst condition in Deﬁnition 3.1,
+while ‖∇⊥f ‖ and cos θ reﬂect the second condition. As shown in Figure 1, DBGD outperforms the
+penalty methods across all the metrics, regardless of the ch oice of penalty parameter λ. In Figure 1
+(a), although increasing the penalty parameter λ in the penalty method accelerates early-stage
+convergence, the lower-level stationarity metric ‖∇g‖ ultimately plateaus. In Figure 1 (b), only
+small values of λ eﬀectively reduce the norm of the orthogonal component of ∇f. In Figure 1 (c),
+the penalty methods produce iterates where the angle betwee n ∇f and ∇g remains less than 90 ◦,
+indicating that the gradients are not fully conﬂicting and t hat further improvement is possible. In
+contrast, DBGD consistently improves both ‖∇g‖2 and ‖∇⊥f ‖2 in Figure 1 (a) and (b). Moreover,
+the angle between ∇g and ∇f approaches 180 ◦ in Figure 1 (c), indicating that further local im-
+provement is not possible. Taken together, these observati ons show that the iterate generated by
+DBGD satisﬁes Deﬁnition 3.1.
+Matrix F actorization. We formulate matrix factorization [ SJ03; DHS05; AGKM12] as a simple
+bilevel problem that seeks to approximate a symmetric matri x via M ≈ UU⊤, where U is a
+low-rank tall matrix, while simultaneously optimizing a se condary criterion.
+min
+U∈Rn×r
+f(U) s.t. U ∈ argmin
+V∈Rn×r
+g(V) = ‖M − VV⊤‖2
+F (25)
+In our experiments, the lower-level objective is the recons truction loss, while the upper-level objec-
+tive f(U) is designed to promote sparsity. Since theℓ1-norm is non-smooth, one can adopt a smooth
+approximation such as f1(U) = ∑
+i,j
+√
+U 2
+ij + α. Alternatively, a log-smooth sparsity penalty can
+be used [CWB08]: f2(U) = ∑
+i,j log(1 + U 2
+ij/α ). Both f1 and f2 are smooth and encourage sparsity
+in U.
+Figure 2 presents the results of applying DBGD and the penalty method with various choices of β
+or λ to solve Problem (25). Similar to the previous experiment, we use ‖∇g‖ and ‖∇⊥f ‖ as conver-
+gence metrics, corresponding to the two conditions in Deﬁni tion 3.1. Additionally, we report the
+objective values of both the upper- and lower-level problem s, which represent the sparsity and re-
+construction loss, respectively. As shown in Figures 2 (a) and (c), the solutions obtained by DBGD
+consistently outperform those produced by the penalty meth od with respect to both stationarity
+metrics, ‖∇g‖ and ‖∇⊥f ‖. This superiority holds across a wide range of hyperparamet er values,
+regardless of the choice of β for DBGD or λ for the penalty method, highlighting the eﬀectiveness
+of DBGD in achieving stationarity. In addition to the statio narity metrics, DBGD also consis-
+11
+
+tently achieves low reconstruction loss g(U) and sparsity penalty f(U) across a wide range of β
+values. In contrast, the performance of the penalty-based m ethods is highly sensitive to the choice
+of the penalty parameter λ, often resulting in suboptimal trade-oﬀs between reconstru ction and
+sparsity. These diﬀerences are clearly illustrated in Figur es 2 (b) and (d), further demonstrating
+the eﬀectiveness of DBGD.
+7 Conclusion
+In this paper, we focused on nonconvex simple bilevel proble ms and introduced the deﬁnition of
+(ǫf , ǫg)-stationary points as a stationarity metric for this probl em class, examining its relationship
+with existing metrics in the literature. We then establishe d a novel non-asymptotic analysis for a
+variant of the dynamic barrier gradient descent algorithm framework from [
+GLL21], demonstrating
+a convergence rate of O(max(ǫ
+− 3+p
+1+p
+f , ǫ
+− 3+p
+2
+g )), where p ≥ 0, for achieving ( ǫf , ǫg)-stationary points
+for nonconvex simple bilevel problems.
+Acknowledgements
+The research of J. Cao, R. Jiang and A. Mokhtari is supported i n part by NSF Grants 2127697,
+2019844, and 2112471, ARO Grant W911NF2110226, the Machine Learning Lab (MLL) at UT
+Austin, and the Wireless Networking and Communications Gro up (WNCG) Industrial Aﬃliates
+Program. The research of E. Yazdandoost Hamedani is support ed by NSF Grant 2127696.
+12
+
+References
+[AGKM12] Sanjeev Arora, Rong Ge, Ravindran Kannan, and Anku r Moitra. “Computing a non-
+negative matrix factorization–provably”. In: Proceedings of the forty-fourth annual
+ACM symposium on Theory of computing . 2012, pp. 145–162 (page
+11).
+[BGMST16] Ernesto G Birgin, JL Gardenghi, Jos´ e Mario Mart´ınez, Sandra A Santos, and Ph L
+Toint. “Evaluation complexity for nonlinear constrained optimization using unscaled
+KKT conditions and high-order models”. In: SIAM Journal on Optimization 26.2
+(2016), pp. 951–967 (pages 3, 6).
+[BDL23] Digvijay Boob, Qi Deng, and Guanghui Lan. “Stochast ic ﬁrst-order methods for
+convex and nonconvex functional constrained optimization ”. In: Mathematical Pro-
+gramming 197.1 (2023), pp. 215–279 (page 3).
+[CWB08] Emmanuel J Candes, Michael B Wakin, and Stephen P Boy d. “Enhancing sparsity
+by reweighted ℓ1 minimization”. In: Journal of Fourier analysis and applications 14
+(2008), pp. 877–905 (page 11).
+[CJAYM23] Jincheng Cao, Ruichen Jiang, Nazanin Abolfazli, Erfan Yazdandoost Hamedani, and
+Aryan Mokhtari. “Projection-free methods for stochastic simple bilevel optimization
+with convex lower-level problem”. In: Advances in Neural Information Processing
+Systems 36 (2023) (pages 1–3).
+[CJYM24] Jincheng Cao, Ruichen Jiang, Erfan Yazdandoost Ha medani, and Aryan Mokhtari.
+“An accelerated gradient method for convex smooth simple bi level optimization”.
+In: Advances in Neural Information Processing Systems 37 (2024), pp. 45126–45154
+(pages 2–4).
+[CGT17] Coralia Cartis, Nicholas IM Gould, and Ph L Toint. “C orrigendum: On the complex-
+ity of ﬁnding ﬁrst-order critical points in constrained non linear optimization”. In:
+Mathematical Programming 161 (2017), pp. 611–626 (pages 3, 5).
+[CGT19a] Coralia Cartis, Nicholas IM Gould, and Ph L Toint. “ Optimality of orders one to
+three and beyond: characterization and evaluation complex ity in constrained non-
+convex optimization”. In: Journal of Complexity 53 (2019), pp. 68–94 (pages 3, 5).
+[CGT19b] Coralia Cartis, Nicholas IM Gould, and Philippe L T oint. “Evaluation complexity
+bounds for smooth constrained nonlinear optimization usin g scaled KKT conditions
+and high-order models”. In: Approximation and Optimization: Algorithms, Complex-
+ity and Applications (2019), pp. 5–26 (pages 3, 5).
+[CGT14] Coralia Cartis, Nicholas IM Gould, and Philippe L To int. “On the complexity of
+ﬁnding ﬁrst-order critical points in constrained nonlinea r optimization”. In: Mathe-
+matical Programming 144.1 (2014), pp. 93–106 (pages 3, 5).
+[CMZ23] Lesi Chen, Yaohua Ma, and Jingzhao Zhang. “Near-opt imal fully ﬁrst-order al-
+gorithms for ﬁnding stationary points in bilevel optimizat ion”. In: arXiv preprint
+arXiv:2306.14853 (2023) (pages 21, 22).
+[CXZ24] Lesi Chen, Jing Xu, and Jingzhao Zhang. “On ﬁnding sm all hyper-gradients in bilevel
+optimization: Hardness results and improved analysis”. In : The Thirty Seventh An-
+nual Conference on Learning Theory . PMLR. 2024, pp. 947–980 (pages 3, 21, 22).
+[CSJW24] Pengyu Chen, Xu Shi, Rujun Jiang, and Jiulin Wang. “ Penalty-based Methods for
+Simple Bilevel Optimization under H\”{o} lderian Error Bounds”. In: arXiv preprint
+arXiv:2402.02155 (2024) (page 3).
+13
+
+[Dem02] Stephan Dempe. Foundations of bilevel programming . Springer Science & Business
+Media, 2002 (page 21).
+[DD12] Stephan Dempe and Joydeep Dutta. “Is bilevel program ming a special case of a
+mathematical program with complementarity constraints?” In: Mathematical pro-
+gramming 131 (2012), pp. 37–48 (page 6).
+[DDD10] Stephen Dempe, Nguyen Dinh, and Joydeep Dutta. “Opt imality conditions for a sim-
+ple convex bilevel programming problem”. In: Variational Analysis and Generalized
+Diﬀerentiation in Optimization and Control: In Honor of Boris S. Mordukhovich
+(2010), pp. 149–161 (pages 2, 3).
+[DHS05] Chris Ding, Xiaofeng He, and Horst D Simon. “On the eq uivalence of nonnegative
+matrix factorization and spectral clustering”. In: Proceedings of the 2005 SIAM
+international conference on data mining . SIAM. 2005, pp. 606–610 (page 11).
+[FKLS21] Francisco Facchinei, Vyacheslav Kungurtsev, Lor enzo Lampariello, and Gesualdo
+Scutari. “Ghost penalties in nonconvex constrained optimi zation: Diminishing step-
+sizes and iteration complexity”. In: Mathematics of Operations Research 46.2 (2021),
+pp. 595–627 (pages 3, 5).
+[GHL24] Khanh-Hung Giang-Tran, Nam Ho-Nguyen, and Dabeen L ee. “A projection-free
+method for solving convex bilevel optimization problems”. In: Mathematical Pro-
+gramming (2024), pp. 1–34 (page 3).
+[GLL21] Chengyue Gong, Xingchao Liu, and Qiang Liu. “Bi-obj ective trade-oﬀ with dynamic
+barrier gradient descent”. In: Proceedings of the 35th International Conference on
+Neural Information Processing Systems . 2021, pp. 29630–29642 (pages 1–3, 6, 7, 10,
+12).
+[HWWY20] Mingyi Hong, Hoi-To Wai, Zhaoran Wang, and Zhuoran Yang. “A two-timescale
+framework for bilevel optimization: Complexity analysis a nd application to actor-
+critic”. In: arXiv preprint arXiv:2007.05170 (2020) (page 21).
+[Hsi+24] Yu-Guan Hsieh, James Thornton, Eugene Ndiaye, Mic hal Klein, Marco Cuturi, and
+Pierre Ablin. “Careful with that Scalpel: Improving Gradient Surgery with an EMA”.
+In: arXiv preprint arXiv:2402.02998 (2024) (pages 1, 2, 10, 20).
+[Hua24] Feihu Huang. “Optimal Hessian/Jacobian-free nonc onvex-PL bilevel optimization”.
+In: arXiv preprint arXiv:2407.17823 (2024) (pages 3, 22).
+[JYL21] Kaiyi Ji, Junjie Yang, and Yingbin Liang. “Bilevel o ptimization: Convergence analy-
+sis and enhanced design”. In: International conference on machine learning . PMLR.
+2021, pp. 4882–4892 (page 21).
+[JAMH23] Ruichen Jiang, Nazanin Abolfazli, Aryan Mokhtari , and Erfan Yazdandoost Hamedani.
+“A conditional gradient-based method for simple bilevel op timization with convex
+lower-level problem”. In: International Conference on Artiﬁcial Intelligence and
+Statistics. PMLR. 2023, pp. 10305–10323 (pages 1–4, 20).
+[KY21] Harshal D Kaushik and Farzad Youseﬁan. “A method with convergence rates for
+optimization problems with variational inequality constr aints”. In: SIAM Journal
+on Optimization 31.3 (2021), pp. 2171–2198 (pages 2, 3).
+[KKWN23a] Jeongyeol Kwon, Dohyun Kwon, Stephen Wright, and Robert Nowak. “On penalty
+methods for nonconvex bilevel optimization and ﬁrst-order stochastic approxima-
+tion”. In: arXiv preprint arXiv:2309.01753 (2023) (pages 3, 21, 22).
+14
+
+[KKWN23b] Jeongyeol Kwon, Dohyun Kwon, Stephen Wright, and Robert D Nowak. “A fully
+ﬁrst-order method for stochastic bilevel optimization”. I n: International Conference
+on Machine Learning . PMLR. 2023, pp. 18083–18113 (page 21).
+[LMX19] Qihang Lin, Runchao Ma, and Yangyang Xu. “Inexact pr oximal-point penalty meth-
+ods for constrained non-convex optimization”. In: arXiv preprint arXiv:1908.11518
+(2019) (page 3).
+[LYWSL22] Bo Liu, Mao Ye, Stephen Wright, Peter Stone, and Qi ang Liu. “Bome! bilevel op-
+timization made easy: A simple ﬁrst-order approach”. In: Advances in neural infor-
+mation processing systems 35 (2022), pp. 17248–17262 (pages 3, 6, 21, 22).
+[LT93] Zhi-Quan Luo and Paul Tseng. “Error bounds and conver gence analysis of feasible
+descent methods: a general approach”. In:Annals of Operations Research 46.1 (1993),
+pp. 157–178 (page 6).
+[Mad17] Aleksander Madry. “Towards deep learning models re sistant to adversarial attacks”.
+In: arXiv preprint arXiv:1706.06083 (2017) (page 2).
+[Mal17] Yura Malitsky. “Chambolle-pock and tseng’s method s: relationship and extension to
+the bilevel optimization”. In: arXiv preprint arXiv:1706.02602 (2017), p. 3 (page 1).
+[MS23] Roey Merchav and Shoham Sabach. “Convex bi-level opt imization problems with
+non-smooth outer objective function”. In: arXiv preprint arXiv:2307.08245 (2023)
+(page 3).
+[SS17] Shoham Sabach and Shimrit Shtern. “A ﬁrst order metho d for solving convex bilevel
+optimization problems”. In: SIAM Journal on Optimization 27.2 (2017), pp. 640–660
+(page 3).
+[SBY24] Sepideh Samadi, Daniel Burbano, and Farzad Youseﬁa n. “Achieving optimal com-
+plexity guarantees for a class of bilevel convex optimizati on problems”. In: 2024
+American Control Conference (ACC) . IEEE. 2024, pp. 2206–2211 (pages 2–4).
+[SC23] Han Shen and Tianyi Chen. “On penalty-based bilevel g radient descent method”.
+In: International Conference on Machine Learning . PMLR. 2023, pp. 30992–31015
+(pages 3, 21, 22).
+[SHK23] Lingqing Shen, Nam Ho-Nguyen, and Fatma Kılın¸ c-Ka rzan. “An online convex
+optimization-based framework for convex bilevel optimiza tion”. In: Mathematical
+Programming 198.2 (2023), pp. 1519–1582 (page 3).
+[Sol07] Mikhail Solodov. “An explicit descent method for bi level convex optimization”. In:
+Journal of Convex Analysis 14.2 (2007), p. 227 (pages 2, 3).
+[SJ03] Nathan Srebro and Tommi Jaakkola. “Weighted low-ran k approximations”. In: Pro-
+ceedings of the 20th international conference on machine le arning (ICML-03) . 2003,
+pp. 720–727 (page 11).
+[TA77] A.N. Tikhonov and V.Y. Arsenin. Solutions of Ill-Posed Problems . New York: Wiley,
+1977 (page 2).
+[TLRZ24] Nicol´ as Garc´ ıa Trillos, Sixu Li, Konstantin Riedl, and Yuhua Zhu. “CB2O: Consensus-
+Based Bi-Level Optimization”. In: arXiv preprint arXiv:2411.13394 (2024) (pages 1,
+2).
+[WSJ24] Jiulin Wang, Xu Shi, and Rujun Jiang. “Near-Optimal Convex Simple Bilevel Op-
+timization with a Bisection Method”. In: arXiv preprint arXiv:2402.05415 (2024)
+(pages 3, 4).
+15
+
+[WRK20] Eric Wong, Leslie Rice, and J Zico Kolter. “Fast is be tter than free: Revisiting
+adversarial training”. In: arXiv preprint arXiv:2001.03994 (2020) (page 2).
+[XLC23] Quan Xiao, Songtao Lu, and Tianyi Chen. “A Generaliz ed Alternating Method for
+Bilevel Learning under the Polyak- {\L} ojasiewicz Condition”. In: arXiv preprint
+arXiv:2306.02422 (2023) (pages 3, 6, 21, 22).
+[ZCXZ24] Huaqing Zhang, Lesi Chen, Jing Xu, and Jingzhao Zha ng. “Functionally Constrained
+Algorithm Solves Convex Simple Bilevel Problems”. In:arXiv preprint arXiv:2409.06530
+(2024) (pages 2–4).
+[Zha+22] Yihua Zhang, Guanhua Zhang, Prashant Khanduri, Mi ngyi Hong, Shiyu Chang,
+and Sijia Liu. “Revisiting and advancing fast adversarial t raining through the lens
+of bi-level optimization”. In: International Conference on Machine Learning . PMLR.
+2022, pp. 26693–26712 (page 2).
+16
+
+Appendix
+A Omitted Proofs in Section
+3
+A.1 Proof of Lemma 3.1
+First, we show that if the point ˆx is an (ǫf , ǫg)-stationary point as deﬁned in Deﬁnition 3.1, then the
+two conditions in Lemma3.1 are satisﬁed. For any δ > 0, let r = min{2δ√ǫg/Lg, 2δ√ǫf /(λLg+Lf)}.
+For any x satisfying ‖x − ˆx‖ ≤ r, Using the fact that g is Lg-smooth and ‖∇g(ˆx)‖2 ≤ ǫg, it holds
+that
+g(x) ≥ g(ˆx) + ⟨∇g(ˆx), x − ˆx⟩ − Lg
+2 ‖ˆx − x‖2
+≥ g(ˆx) − √ǫg‖x − ˆx‖ − δ√ǫg‖ˆx − x‖ = g(ˆx) − (1 + δ)√ǫg‖x − ˆx‖,
+where we used ‖x − ˆx‖ ≤ r ≤ 2δ√ǫg/Lg in the second inequality. Thus, the ﬁrst condition
+in Lemma 3.1 is satisﬁed. Moreover, Consider any x that satisﬁes ‖x − ˆx‖ ≤ r and g(x) ≤
+g(ˆx). Since f is Lf-smooth, it holds that f(x) ≥ f(ˆx) + ⟨∇f(ˆx), x − ˆx⟩ − Lf
+2 ‖ˆx − x‖2. By using
+‖∇f(ˆx) + λ∇g(ˆx)‖ ≤ √ǫf, we further have
+f(x) ≥ f(ˆx) + ⟨∇f(ˆx) + λ∇g(ˆx), x − ˆx⟩ − λ⟨∇g(ˆx), x − ˆx⟩ − Lf
+2 ‖ˆx − x‖2
+≥ f(ˆx) − √ǫf ‖x − ˆx‖ − λ⟨∇g(ˆx), x − ˆx⟩ − Lf
+2 ‖ˆx − x‖2.
+Using the smoothness of g, we also have g(x) ≥ g(ˆx) +⟨∇g(ˆx), x − ˆx⟩ − Lg
+2 ‖x − ˆx‖2. Hence, we get
+−⟨∇g(ˆx), x − ˆx⟩ ≥ − Lg
+2 ‖x − ˆx‖2. Thus, this leads to
+f(x) ≥ f(ˆx) − √ǫf ‖x − ˆx‖ − λ Lg
+2 ‖ˆx − x‖2 − Lf
+2 ‖ˆx − x‖2.
+Since ‖ˆx − x‖ ≤ r ≤ 2δ√ǫf /(λLg + Lf), we obtain f(x) ≥ f(ˆx) − (1 + δ)√ǫf ‖x − ˆx‖. This shows
+that the second condition in Lemma 3.1 is also satisﬁed.
+For the other direction, assume that ˆx satisﬁes both conditions in Lemma 3.1. Consider any
+direction d ∈ Rn. Then Condition (i) implies that, for all t small enough, we have g(ˆx − td) ≥
+g(ˆx)−(1+δ)ǫgt‖d‖, which can be rewritten as g(ˆx)−g(ˆx−td)
+t ≤ (1+δ)ǫg‖d‖. By taking the limit t → 0,
+we obtain ⟨∇g(ˆx), d⟩ ≤ (1 + δ)ǫg‖d‖. By taking d = ∇g(ˆx), this implies that ‖∇g(ˆx)‖ ≤ (1 + δ)ǫg.
+Since this holds for any δ > 0, taking the limit δ → 0 yields ‖∇g(ˆx)‖ ≤ ǫg. Moreover, let
+d ∈ Rn be any direction that satisﬁes ⟨∇g(ˆx), d⟩ > 0. Then for all t small enough, it holds that
+g(ˆx − td) ≤ g(ˆx). Thus, using Condition (ii), we have
+f(ˆx − td) ≥ f(ˆx) − (1 + δ)ǫf t‖d‖ ⇒ f(ˆx) − f(ˆx − td)
+t ≤ (1 + δ)ǫf ‖d‖.
+Similarly, by taking the limits t → 0 and δ → 0, we obtain ⟨∇f(ˆx), d⟩ ≤ ǫf ‖d‖. Since this holds
+for any d that satisﬁes ⟨∇g(ˆx), d⟩ > 0, continuity ensures that it also holds for any d such that
+⟨∇g(ˆx), d⟩ ≥ 0. If ⟨∇f(x), ∇g(x)⟩ ≥ 0, then by setting d = ∇f(x), we obtain that ‖∇f(ˆx)‖ ≤ ǫf.
+Otherwise, if ⟨∇f(x), ∇g(x)⟩ < 0, let λ = − ⟨∇f (ˆx), ∇g(ˆx)⟩
+‖∇g(ˆx)‖2 > 0 and set d = ∇f(ˆx) + λ∇g(ˆx). Note
+that this choice of λ ensures that ⟨∇g(ˆx), d⟩ = 0, and hence ⟨∇f(ˆx), d⟩ = ‖d‖2 ≤ ǫf ‖d‖, which
+implies that ‖d‖ ≤ ǫf. This completes the proof.
+17
+
+A.2 Proof of Theorem 3.2
+Suppose ˆx is an ( ǫf , ǫg)-stationary point of Problem ( 1), the second inequality in Deﬁnition 3.2
+is satisﬁed with ǫd = ǫg. Now, we start to prove the ﬁrst inequality in Deﬁnition 3.2 by setting
+w = λ(ˆx − x∗), where x∗ denotes the stationary point closest to ˆx.
+‖∇f(ˆx) + ∇2g(ˆx)w‖ ≤ ‖∇ f(ˆx) + ∇2g(x∗)w‖ + ‖∇2g(ˆx) − ∇2g(x∗)‖‖w‖
+≤ ‖∇f(ˆx) + λ∇g(ˆx)‖ + λ‖∇g(ˆx) − ∇2g(x∗)(ˆx − x∗)‖ + λLH‖ˆx − x∗‖2
+≤ ǫf + λ‖∇g(ˆx) − ∇g(x∗) − ∇2g(x∗)(ˆx − x∗)‖ + λLH‖ˆx − x∗‖2
+≤ ǫf + 2λLH‖ˆx − x∗‖2 ≤ ǫf + λ‖∇g(ˆx)‖ · 2LH c2ǫg
+= O(ǫf + λ‖∇g(ˆx)‖ǫg)
+where the second and fourth inequalities follow from the Lip schitz continuity of ∇2g(x), the third
+follows from the second condition in Deﬁnition3.1, and the last follows from Assumption3.1. Hence,
+the ﬁrst condition in Deﬁnition 3.2 holds with ǫp = O(ǫf + λ‖∇g(ˆx)‖ǫg).
+B Omitted Proofs in Section 5
+B.1 Proof of Lemma 5.1
+From Assumption 2.1, f has an Lf-Lipschitz continuous gradient, hence,
+f(xk+1) − f(xk) ≤ −η∇f(xk)⊤dk + Lf
+2 η2‖dk‖2
+= −η(∇f(xk) − dk)⊤dk − η(1 − Lf
+2 η)‖dk‖2
+= ηλk∇g(xk)⊤dk − η(1 − Lf
+2 η)‖dk‖2
+where in the last equality we used ∇f(xk) = dk − λk∇g(xk). Since dk is the optimal solution of
+subproblem (12) with the corresponding optimal dual multiplier λk, the complementarity slackness
+implies that λk(∇g(xk)⊤dk − β‖∇g(xk)‖2) = 0. Hence, we further obtain
+f(xk+1) − f(xk) ≤ −η(1 − Lf
+2 η)‖dk‖2 + ηλkβ‖∇g(xk)‖2.
+By dividing both sides by η and rearranging the inequality, we obtain ( 17).
+Moreover, from Assumption 2.1, g has an Lg-Lipschitz continuous gradient, which implies that
+g(xk+1) − g(xk) ≤ −η∇g(xk)⊤dk + Lg
+2 η2‖dk‖2 ≤ −ηβ‖∇g(xk)‖2 + Lg
+2 η2‖dk‖2,
+where we used ∇g(xk)⊤dk ≥ β‖∇g(xk)‖2 from (12) in the last inequality. Dividing both sides by
+η and rearranging the inequality yields ( 18).
+18
+
+B.2 Proof of Lemma 5.2
+By Assumption 2.1, the gradient of f is bounded by Gf. Thus, we have
+λk ≤ β + | ⟨∇f(xk), ∇g(xk)⟩ |
+‖∇g(xk)‖2 ≤ β + Gf
+‖∇g(xk)‖ .
+This completes the proof.
+B.3 Proof of Lemma 5.3
+By combining Lemma 5.2 with (17), we have (1− ηLf
+2 )‖dk‖2 ≤ ∆ fk
+η + β2‖∇g(xk)‖2 + βGf ‖∇g(xk)‖.
+Substituting the upper bound on ‖∇g(xk)‖ in ( 18) and combining terms, we arrive at (1 −
+η(Lf +βL g)
+2 )‖dk‖2 ≤ ∆ fk+β ∆ gk
+η + √βGf
+√
+∆ gk
+η + Lg
+2 η‖dk‖2. Since η ≤ 1
+Lf +Lg ≤ 1
+Lf +βL g , the left
+side of this inequality can be lower bounded by 1
+2 ‖dk‖2. By multiplying both sides by 2 the claim
+follows.
+B.4 Proof of Lemma
+5.4
+Since x ≤ A + B√x, we have (√x − B
+2 )2 ≤ A + B2
+4 , which further implies √x − B
+2 ≤
+√
+A + B2
+4 . By
+adding B
+2 to both sides, taking the square, and using Young’s inequality we obtain x ≤ (
+√
+A + B2
+4 +
+B
+2 )2 = A + B2
+2 + B
+√
+A + B2
+4 ≤ A + B2
+2 + B2
+4 + (A + B2
+4 ) = 2A + B2. This completes the proof.
+B.5 Proof of Theorem 5.5
+Multiplying (18) by 1
+Lg η and adding it to ( 21), implies
+‖dk‖2
+2 + β‖∇g(xk)‖2
+Lgη ≤ 4(∆fk + β∆gk)
+η + 3∆gk
+Lgη2 + 2βG2
+f Lgη.
+Deﬁne the potential function as Gk ≜ 1
+2 ‖dk‖2 + β
+Lg η ‖∇g(xk)‖2. Averaging the above inequality
+over k = 0 to K − 1 and noting that ∑ K−1
+k=0 ∆fk = f(x0) − f(xK) ≤ f(x0) − inf f = ∆ f and∑ K−1
+k=0 ∆gk = g(x0) − g(xK) ≤ g(x0) − g∗ = ∆g, we obtain
+1
+K
+K−1∑
+k=0
+Gk ≤ 4(∆f + β∆g)
+ηK + 3∆g
+Lgη2K + 2βG2
+f Lgη.
+Since η = 1
+LK 1/ (3+p) and β = 1
+K p/ (3+p) , by letting k∗ = argmin0≤k≤K−1 Gk, we get
+Gk∗ ≤ 4L∆f
+K (2+p)/ (3+p) + 4L∆g
+K (2+2p)/ (3+p) + 3L2∆g
+LgK (1+p)/ (3+p) +
+2G2
+f
+K (1+p)/ (3+p) .
+Finally, since Gk∗ = 1
+2 ‖dk∗‖2 + β
+Lgη ‖∇g(xk∗)‖2, it follows that ‖dk∗‖2 ≤ 2Gk∗ and ‖∇g(xk∗)‖2 ≤
+Lgη
+β Gk∗ = Lg Gk∗
+LK (1−p)/ (3+p) . By the deﬁnition dk = ∇f(xk) + λk∇g(xk) and the fact that λk ≥ 0, the
+proof is complete.
+19
+
+C Other Choices of φ(x) and their connection to methods consid-
+ered in the literature.
+In this section, we brieﬂy discuss the connection between ot her methods studied in the literature
+and the general algorithmic framework described in ( 11)-(12).
+Lower-level linearization based methods. If we set φ(x) = α(g(x) − g∗) in the update ( 12),
+where α = 1/η, the resulting method closely aligns with the lower-level linearization-based approach
+introduced in [JAMH23]. This method was originally developed to solve simple bilevel optimization
+problems with a convex lower-level objective. The key idea of this type of method is to construct
+a halfspace to approximate the lower-level solution set X ∗
+g . Speciﬁcally, the approximated set is
+constructed using a linear approximation of the lower-leve l objective as follows,
+Xk = {x ∈ Rn : g(xk) + ∇g(xk)⊤(x − xk) ≤ g∗}
+If g is convex, then the constructed set Xk contains X ∗
+g for all k. The update of the projection
+variant of the algorithm in [ JAMH23] is as follows,
+xk+1 = ΠXk(xk − η∇f(xk))
+which would be equivalent to
+xk+1 = argmin
+x
+‖x − (xk − η∇f(xk))‖2 s.t. g(xk) + ∇g(xk)⊤(x − xk) ≤ g∗
+Through change of variables and deﬁning d = ( xk − x)/η, we can equivalently reformulate the
+above subproblem as
+dk = argmin
+d
+‖d − ∇f(xk)‖2 s.t. ∇g(xk)⊤d ≥ (g(xk) − g∗)/η.
+This is a special instance of ( 12) with φ(x) = ( g(x) − g∗)/η. This choice of φ(x) is suitable for
+convex problems, as the solution set X ∗
+g is convex and can be contained within Xk. However, when
+the lower-level loss is nonconvex, X ∗
+g is also nonconvex, meaning the inclusion X ∗
+g ⊆ X k is not
+guaranteed. To address this, φ(x) must be adapted, and using the gradient norm oﬀers a natural
+extension to the nonconvex case.
+Orthogonal projection methods . BiLevel Optimization with Orthogonal Projection (BLOOP)[
+Hsi+24]
+was recently proposed for stochastic simple bilevel optimization. Its key idea is projecting the upper-
+level gradient to be orthogonal to the lower-level gradient. In the deterministic version, the descent
+direction dk for the update xk+1 = xk − ηkdk is chosen as
+dk = β∇g(xk) +
+[
+∇f(xk) − ∇f(xk)⊤∇g(xk)
+‖∇g(xk)‖2 ∇g(xk)
+]
+The second part of dk is the projection of the upper-level gradient onto the ortho gonal space of the
+lower-level gradient. If we rearrange the terms in dk, dk is equivalent to
+dk = argmin
+d
+‖d − ∇f(xk)‖2 s.t. ∇g(xk)⊤d = β‖∇g(xk)‖2.
+This is a special case of ( 12) with φ(x) = β‖∇g(x)‖2, but with an equality constraint instead of an
+inequality. Solving the equality-constrained subproblem with the chosen φ(x) ensures convergence
+of the lower-level objective but not the upper-level one [ Hsi+24]. In contrast, we show that solving
+the inequality-constrained problem also guarantees conve rgence for the upper level.
+20
+
+D Connections with Algorithms for General Bilevel Problems
+In this section, we discuss why most algorithms designed forgeneral bilevel problems are not directly
+applicable to our simple bilevel setting and highlight the c onnections between the two classes of
+algorithms. In the general form of bilevel problems, the upp er-level function f may also depend on
+an additional variable y ∈ Rm that in turn inﬂuences the lower-level problem:
+min
+x∈Rn, y∈Rm
+f(x, y) s.t. x ∈ arg min
+z∈Rn
+g(z, y)
+However, in our considered simple bilevel setting, there is no additional upper-level variable. As
+a result, the upper-level updates present in algorithms for general bilevel problems become in-
+valid. When these updates are removed, some algorithms—suc h as those in [
+HWWY20; JYL21;
+XLC23]—reduce to standard gradient descent on g, i.e., xk+1 = xk − ηk∇g(xk). Many other
+methods [LYWSL22; SC23; KKWN23a; CMZ23; CXZ24] reduce to the update,
+xk+1 = xk − ηk (∇f(xk) + λk∇g(xk)) ,
+which we refer to as the penalty method for nonconvex simple b ilevel problems. We include this
+method as a baseline in our experiments in Section 6. The key challenge for the penalty method
+lies in selecting an appropriate penalty parameter λk. The choices of λk used in general bilevel
+problems are not suitable for the simple bilevel setting, as they are based on diﬀerent stationarity
+metrics. Therefore, determining the appropriate value of λk for this method requires a tailored
+analysis speciﬁc to the simple bilevel setting. Note that DB GD algorithm essentially provides a
+dynamic scheme for selecting λk, as described in ( 14).
+D.1 Connections with Stationarity Metrics for General Bile vel Problems
+Besides the algorithms themselves, the stationarity metrics for general bilevel problems are also not
+directly applicable to the simple bilevel setting. For inst ance, [ KKWN23b; KKWN23a; CXZ24]
+adopt the norm of the hyper-gradient as a measure of stationa rity. Recall that the hyper-objective
+[Dem02] is deﬁned as follows :
+min
+y∈Rm
+ϕ(y), where ϕ(y) = min
+x∈X ∗(y)
+f(x, y),
+where X ∗(y) ≜ arg minz g(z, y). However, in the simple bilevel setting without upper-level variables
+y, the norm of the hyper-gradient constant and thus fails to se rve as a valid metric. Furthermore,
+most existing approaches rely on strong convexity or the Polyak–/suppress Lojasiewicz (PL) condition for the
+lower-level problem—assumptions that are violated in our c ase, where the hyper-gradient may not
+even be well-deﬁned.
+Other works, such as [
+XLC23], consider alternative stationarity metrics. When rewrit ten in the
+context of our simple bilevel setting, their condition beco mes: there exists w ∈ Rn such that
+‖∇2g(ˆx)(∇f(ˆx) + ∇2g(ˆx)w)‖2 ≤ ǫf , ‖∇g(ˆx)‖2 ≤ ǫg.
+Intuitively, the ﬁrst condition ensures that the component of ∇f(ˆx) +∇2g(ˆx)w projected onto the
+kernel of ∇2g(ˆx) is small, i.e.,
+ProjKer(∇2g(ˆx))
+(
+∇f(ˆx) + ∇2g(ˆx)w
+)
+≈ 0.
+This stationary metric is generally weaker than the metric d eﬁned in Deﬁnition 3.2.
+21
+
+D.2 Additional Related Works on General Bilevel Problems
+To go beyond strongly convex lower-level objectives, additional assumptions on the lower-level prob-
+lem are necessary to ensure meaningful guarantees, particu larly in light of the negative results for
+general bilevel optimization with merely convex lower-lev el objectives [ CXZ24]. A common strat-
+egy is to assume that the nonconvex lower-level objective sa tisﬁes the Polyak–/suppress Lojasiewicz (PL)
+condition. Speciﬁcally, a penalty-based gradient method w as introduced in [ SC23] for both uncon-
+strained and constrained nonconvex-PL bilevel optimizati on. Later, [ XLC23] proposed GALET, a
+Hessian-vector-product-based method with non-asymptotic convergence guarantees to the modiﬁed
+KKT points of a gradient-based reformulation. In [ KKWN23a], nonconvex bilevel optimization un-
+der the proximal error-bound (EB) condition was studied, wh ich is analogous to the PL condition.
+More recently, in [ Hua24], a Hessian/Jacobian-free method was developed that achie ves optimal
+convergence complexity for nonconvex-PL bilevel problems. Besides imposing the PL condition on
+the lower-level problem, these works also rely on diﬀerent ad ditional assumptions. For example,
+[LYWSL22] additionally assumes that both the upper- and lower-level function values, as well as
+the norms of their gradients, are bounded, and the lower-level optimal solution is unique. The work
+in [XLC23] requires both PL and convexity assumptions on the lower-le vel problem to guarantee
+convergence. The studies in [ KKWN23a] and [ CXZ24] impose the condition that a weighted sum
+of the upper- and lower-level objectives satisﬁes the PL condition. Finally, in [Hua24] it is assumed
+that ∇2g(x) is non-singular at the minimizer of g.
+D.3 On the Role of the PL Condition
+The PL condition plays a central role in the analyses of the aforementioned works in general bilevel
+optimization. For example, [ CXZ24] heavily relies on the fact that the PL condition induces a
+”strongly convex subspace” around any minimizer of the lowe r-level objective. This structural
+property enables the adaptation of proof techniques simila r to those in [ CMZ23], which developed
+an algorithm for general bilevel problems with a strongly co nvex lower-level objective. Essentially,
+in general bilevel settings, the PL condition ensures the co ntinuity of the hyper-objective ϕ(y),
+thereby guaranteeing the existence of the hyper-gradient. This facilitates rapid convergence to a
+neighborhood of X ∗(y). However, in our considered simple bilevel setting, the hy per-objective and
+its gradient are not well-deﬁned, and we instead rely on alte rnative stationarity metrics. Conse-
+quently, the PL condition is less applicable and oﬀers limited beneﬁt compared to its role in general
+bilevel problems.
+E Experiments Details
+In this section, we include more details of the numerical exp eriments in Section
+6. All simulations
+are implemented using MATLAB R2022a on a PC running macOS Son oma with an Apple M1 Pro
+chip and 16GB Memory.
+T oy Example. Recall that for Problem ( 24), the optimal solution set of the lower-level problem
+is given by X ∗
+g = {x ∈ R2 : x2 = sin(10 x1)}. The optimal solution of the bilevel problem is
+x∗ =
+(
+− π
+20 , −1
+)
+. We apply DBGD using φ(x) = ‖∇g(xk)‖2, i.e., with β = 1, and also employ the
+Penalty methods introduced in Section D with λ ∈ {1, 10, 100, 1000}. Both methods are initialized
+at the point x0 = (−3, −1), using a base stepsize of η = 10 −2 and a total of K = 103 iterations.
+Since the penalty methods become unstable for large values o f λ, we further scale the stepsize by
+22
+
+a factor of 1 /(1 + λ) in each independent run.
+Matrix F actorization. For Problem ( 25), we set n = r = 10 to generate U∗ and construct
+M = U∗U⊤
+∗ + ǫIn, where ǫ ∼ N (0, 0.01) and In ∈ Rn×n denotes the identity matrix. We apply
+DBGD with β ∈ {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1} and compare it against the penalty meth-
+ods described in Section
+D, using λ ∈ { 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000}. Both methods use a
+stepsize of η = 10−5 and are run for K = 106 iterations. Since the penalty methods become unsta-
+ble for large values of λ, we further scale the stepsize by a factor of 1 /(1 + λ) in each independent
+run. The hyperparameter α in both f1 and f2 is set to 1.
+E.1 Additional Experiment
+-3 -2 -1 0 1 2 3
+-2
+-1.5
+-1
+-0.5
+0
+0.5
+1
+(a) Trajectories
+0 100 200 300 400 500
+10-5
+100
+105
+(b) λ k
+0 100 200 300 400 500
+-1
+-0.5
+0
+0.5
+1
+(c) cos θ
+0 100 200 300 400 500
+10-10
+10-5
+100
+(d) ‖∇⊥f (xk)‖2
+0 100 200 300 400 50010-10
+10-5
+100
+(e) ‖∇‖ f (xk)‖2
+0 100 200 300 400 50010-10
+10-5
+100
+(f) ‖∇g(xk)‖2
+Figure 3: Solving Problem ( 24) with diﬀerent Initializations
+In this additional experiment, we analyze the exact station ary points to which DBGD converges
+and examine the eﬀect of diﬀerent λk values at these points, as discussed in Section 3.
+We consider the problem in Equation (24) from Section 6 and run DBGD with φ(x) = ‖∇g(x)‖2 on
+the speciﬁed instance. As shown in Figure 3, the algorithm converges to three distinct stationary
+points, depending on the initialization. This behavior cor responds to the two scenarios discussed
+in Section 3, further supporting our theoretical insights.
+• Case I: For Initialization 2 (green), DBGD converges to a point wher e both ‖∇f(xk)‖ and
+‖∇g(xk)‖ are small. As shown in Figure 3(d), (e), and (f), all three metrics decrease. As
+illustrated in Figure 3(c), the cosine of the angle between ∇f(xk) and ∇g(xk) remains positive
+and eventually approaches 1. Figure 3(b) shows that λk decreases to 0, aligning with the closed-
+form expression (16).
+23
+
+• Case II: For Initializations 1 and 3 (blue and red), DBGD converges to stationary points where
+‖∇g(xk)‖ is small, as shown in Figure3(f). Additionally, ∇f(xk) has minimal energy in directions
+orthogonal to ∇g(xk), as seen in Figure 3(d). The remaining energy of ∇f(xk) is entirely in the
+opposite direction of ∇g(xk), since ‖∇‖f(xk)‖ does not converge (Figure 3(e)), and the angle
+between ∇f(xk) and ∇g(xk) is close to 180 ◦, as shown in Figure 3(c). In this case, λk cannot be
+bounded by an absolute constant, as depicted in Figure 3(b), which is also consistent with our
+theoretical results.
+24

@@ -1,0 +1,29 @@
+{
+  "arxiv": {
+    "api_url": "https://export.arxiv.org/api/query?id_list=2510.24710v1",
+    "arxiv_id": "2510.24710",
+    "published": "2025-10-28T17:58:17Z",
+    "title": "A Single-Loop First-Order Algorithm for Linearly Constrained Bilevel Optimization",
+    "version": "v1"
+  },
+  "cutoff_lag_days": 30,
+  "cutoff_provisional": true,
+  "cutoff_utc": "2025-04-26T21:44:15Z",
+  "effective_cutoff_lag_days": 180,
+  "first_public_at_utc": "2025-10-23T21:44:15Z",
+  "github": {
+    "api_url": "https://api.github.com/repos/ShenGroup/SFLCB",
+    "created_at": "2025-10-24T02:12:42Z",
+    "default_branch": "main",
+    "reachable_commit_count": 5,
+    "repository": "https://github.com/ShenGroup/SFLCB",
+    "root_commit": "bcfbe57d74376144e16ff3ebe737ff0f73b17310",
+    "root_commit_date": "2025-10-23T21:44:15Z"
+  },
+  "openreview": {
+    "api_url": "https://api2.openreview.net/notes?id=IMzol5Ywsr",
+    "cutoff_policy": "exclude OpenReview and use conservative 180-day lag",
+    "reason": "official OpenReview API returned a browser challenge",
+    "status": "challenge_fallback"
+  }
+}

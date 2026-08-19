@@ -1,0 +1,45 @@
+{
+  "bundle_id": "vse-real-paper-pilot-v0.1.2",
+  "cases": [
+    {
+      "capsule_path": "public/realpilot_flatness_penalty/capsule.json",
+      "capsule_pre_review_digest": "e4789c5f8b69bb4c831641bdf945e81cf78ad596ce3f680f43ae3ab3d563bbb0",
+      "case_id": "realpilot_flatness_penalty",
+      "cutoff_provisional": true,
+      "cutoff_utc": "2024-11-07T18:23:29Z",
+      "first_public_at_utc": "2025-05-06T18:23:29Z",
+      "openreview_metadata_status": "challenge_fallback",
+      "root_code_commit": "415acbeab836b1ae7c7eb8c6fe79a1dcfee54d76",
+      "target_commitment": "1c824c602cd39d88e158ec80bb59e2ad7c8e4c177725d387e70df070422f2da9",
+      "target_path": "sealed/realpilot_flatness_penalty/target.json"
+    },
+    {
+      "capsule_path": "public/realpilot_nonconvex_simple/capsule.json",
+      "capsule_pre_review_digest": "f2074e8c62f46eff7dbddfd3d7e507d01cd0d801e42c8f069f566cbaa67bf67c",
+      "case_id": "realpilot_nonconvex_simple",
+      "cutoff_provisional": true,
+      "cutoff_utc": "2024-09-29T20:43:52Z",
+      "first_public_at_utc": "2025-03-28T20:43:52Z",
+      "openreview_metadata_status": "challenge_fallback",
+      "root_code_commit": "d9dd7aed2caad6a759c4fe6c8886a34f5b115341",
+      "target_commitment": "7952b39260361bd12146a59dad111840489abe381bfc308ea48adc1c1c8c88b8",
+      "target_path": "sealed/realpilot_nonconvex_simple/target.json"
+    },
+    {
+      "capsule_path": "public/realpilot_linear_coupling/capsule.json",
+      "capsule_pre_review_digest": "00e5fbb38027b9241d891f4ff676eab05432734f3e22b791a8a72e99a6acfabd",
+      "case_id": "realpilot_linear_coupling",
+      "cutoff_provisional": true,
+      "cutoff_utc": "2025-04-26T21:44:15Z",
+      "first_public_at_utc": "2025-10-23T21:44:15Z",
+      "openreview_metadata_status": "challenge_fallback",
+      "root_code_commit": "bcfbe57d74376144e16ff3ebe737ff0f73b17310",
+      "target_commitment": "78502a5b6f564e429b93c83a12fe9fa3f6254c05e931291f4db2d96b9fdf9466",
+      "target_path": "sealed/realpilot_linear_coupling/target.json"
+    }
+  ],
+  "curated_at_utc": "2026-08-19T14:09:22Z",
+  "cutoff_provisional": true,
+  "schema_version": 1,
+  "status": "blocked_pending_independent_semantic_review_provisional_cutoff"
+}

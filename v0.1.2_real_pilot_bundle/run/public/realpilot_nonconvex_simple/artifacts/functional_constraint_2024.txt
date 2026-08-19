@@ -1,0 +1,1540 @@
+arXiv:2409.06530v1  [math.OC]  10 Sep 2024
+Functionally Constrained Algorithm Solves
+Convex Simple Bilevel Problems
+Huaqing Zhang * 1 Lesi Chen * 1 Jing Xu 1 Jingzhao Zhang 1,2,3
+1IIIS, Tsinghua University 2Shanghai AI Lab
+3Shanghai Qizhi Institute
+{zhanghq22, chenlc23, xujing21}@mails.tsinghua.edu.cn , jingzhaoz@mail.tsinghua.edu.cn
+Abstract
+This paper studies simple bilevel problems, where a convex u pper-level function is minimized over
+the optimal solutions of a convex lower-level problem. We ﬁr st show the fundamental diﬃculty of simple
+bilevel problems, that the approximate optimal value of suc h problems is not obtainable by ﬁrst-order
+zero-respecting algorithms. Then we follow recent works to pursue the weak approximate solutions. For
+this goal, we propose novel near-optimal methods for smooth and nonsmooth problems by reformulating
+them into functionally constrained problems.
+1 Introduction
+This work focuses on the following optimization problem:
+min
+x∈Rn
+f (x) s.t. x ∈ X ∗
+g ≜ arg min
+z∈Rn
+g(z), (1)
+where f,g are convex and continuous functions. Such a problem is often referred to as “simple bilevel
+optimization” in the literature, as the upper-level object ive function f is minimized over the solution set of a
+lower-level problem. It captures a hierarchical structure and thus has many applications in machine learning,
+including lexicographic optimization [12, 14] and lifelon g learning [12, 17]. Understanding the structure of
+simple bilevel optimization and designing eﬃcient algorit hms for it is vital and has gained massive attention
+in recent years [1, 5, 6, 10, 11, 12, 13, 18, 22, 23, 24, 25, 26].
+To solve the problem, one may observe that Problem (1) is equi valent to the convex optimization problem
+minx∈X ∗
+g f (x) with implicitly deﬁned convex domain X ∗
+g . Hence, it is natural to try to design ﬁrst-order
+methods to ﬁnd ˆ x∈ Rn such that
+|f (ˆ x) −f ∗| ≤ ǫf, g (ˆ x) −g∗ ≤ǫg, (2)
+where f ∗ is the optimal value of Problem (1) and g∗ is the optimal value of the lower-level problem. We
+highlight the asymmetry in f and g here. f ∗ is the minimal in a constrained set, and hence it is possible
+that f (x) < f∗ for some x ∈ Rn. On the other hand, g∗ is globally minimal and hence g∗ ≤ g(x) for any
+x ∈ Rn. Such asymmetry is natural as the role of f,g are inherently asymmetrical for bilevel problems. We
+call such ˆ xa (ǫf,ǫ g)-absolute optimal solution .
+When X ∗
+g is explicitly given, ﬁnding such a solution is easy as we can a pply methods for constrained
+optimization problems such as the projected gradient metho d and Frank-Wolfe method [4, Section 3]. Yet,
+somewhat surprisingly, our ﬁrst contribution in this paper (Theorem 4.1 and 4.2) shows that it is generally
+intractable for any zero-respecting ﬁrst-order method to ﬁ nd absolute optimal solutions for Problem (1). Our
+negative result shows the fundamental diﬃculty of simple bi level problems compared to classical constrained
+optimization problems.
+*Equal contributions.
+1
+
+As a compromise, most approaches developed for simple bilev el optimization in the literature aim to ﬁnd
+a solution ˆ x∈ Rn such that
+f (ˆ x) −f ∗ ≤ǫf, g (ˆ x) −g∗ ≤ǫg, (3)
+which we call a (ǫf,ǫ g)-weak optimal solution . Much progress has been achieved towards this goal [10, 17,
+18, 22, 23, 24]. We note all above algorithms fall in the class of zero-respecting algorithms (Assumption 3.4)
+and hence cannot obtain absolute optimal solutions.
+Our second contribution pushes this boundary by proposing n ear-optimal lower and upper bounds. We
+study two settings: (a) f is Cf -Lipschitz and g is Cg-Lipschitz, (b) f is Lf -smooth and g is Lg-smooth.
+We can extend the worst-case functions for single-level opt imization to Problem (1) to show lower bounds of
+1. Ω
+(
+max
+{
+C2
+f/ǫ2
+f,C 2
+g/ǫ2
+g
+})
+for the setup (a);
+2. Ω
+(
+max
+{√
+Lf/ǫf,
+√
+Lg/ǫg
+})
+for the setup (b).
+Given our constructed lower bounds, we further improve know n upper bounds by reducing the task of ﬁnding
+(ǫf,ǫ g)-weak optimal solutions to minimizing the functionally con strained problem:
+min
+x∈B(x0,D)
+f (x), s.t. ˜g(x) ≜ g(x) − ˆg∗ ≤ 0, (4)
+where ˆg∗ is an approximation of g∗ such that ˆg∗ −g∗ ≤ ǫg
+2 ,D is an upper bound of initial distance ‖x0 − x∗‖2,
+and B(x0,D ) is the Euclidean ball centered at the initial point x0 that contains the optimal solution x∗ to
+Problem (1). Here we restrict the domain to B(x0,D ) so that the subprocesses adopted in our method have
+a uniﬁed upper complexity bound (see Section 5.3). Then we fu rther leverage the reformulation by Nesterov
+[19, Section 2.3.4] which relates the optimal value of Probl em (4) to the minimal root of the following
+auxiliary function, where a discrete minimax problem deﬁne s the function value:
+ψ∗(t) = min
+x∈B(x0,D)
+{
+ψ(t, x) ≜ max {f (x) −t, ˜g(x)}
+}
+. (5)
+Based on this reformulation, we introduce a novel method FC- BiO (Functionally Constrained Bilevel
+Optimizer). FC-BiO is a double-loop algorithm. It adopts a b isection procedure on t in the outer loop and
+applies gradient-based methods to solve the sub-problem (5 ). Our algorithms achieve the following upper
+bounds:
+1. ˜O
+(
+max
+{
+C2
+f/ǫ2
+f,C 2
+g/ǫ2
+g
+})
+for the setup (a);
+2. ˜O
+(
+max
+{√
+Lf/ǫf,
+√
+Lg/ǫg
+})
+for the setup (b),
+where ˜O hides logarithmic terms. Both complexity upper bounds matc h the corresponding lower bounds
+up to logarithmic factors. In words, we summarize our contri butions as follows:
+• We prove the intractability for any zero-respecting ﬁrst- order methods to ﬁnd a (ǫf,ǫ g)-absolute optimal
+solution of simple bilevel problems.
+• We propose a novel method FC-BiO that has near-optimal rate s for ﬁnding (ǫf,ǫ g)-weak optimal
+solutions of both nonsmooth and smooth problems.
+2 Related work
+In the literature, various methods [1, 3, 6, 10, 11, 12, 13, 17 , 18, 22, 23, 24, 25, 26] have been proposed to
+achieve a (ǫf,ǫ g)-weak optimal solution deﬁned as Equation (3) . Below, we rev iew the existing methods
+with non-asymptotic convergence. For ease of presentation , we state the results for ǫf =ǫg =ǫ.
+2
+
+Prior results on Lipschitz problems Kaushik and Youseﬁan [13] proposed the averaging iterative ly
+regularized gradient (a-IRG) for convex optimization with variational inequality constraints, of which Prob-
+lem (1) is a special case. a-IRG achieves the rate of O(1/ǫ4). Shen et al. [24] proposed a method for solving
+Problem (1) with O(1/ǫ3) complexity based on the online learning framework. When f is Lipschitz and g
+is smooth, Merchav and Sabach [18] proposed a gradient-base d algorithm with O(1/ǫ1/(1−α)) complexity for
+anyα ∈ (0.5, 1). However, none of these methods can achieve the optimal rate of O(ǫ−2).
+Prior results on smooth problems Samadi et al. [23] proposed the regularized accelerated pro ximal
+method (R-APM) with a complexity of O(1/ǫ). Under the additional weak sharp minima condition on g,
+the complexity of R-APM improves to O (1/√ǫ). However, this condition is often too strong and does not
+hold for many problems, Chen et al. [10] extended the result o f [23] to the more general α-Hölderian error
+bound condition. However, their method achieves the optima l rate only when α = 1 , which reduces to the
+weak sharp minima condition. Jiang et al. [12] developed a Fr ank-Wolfe type algorithm (CG-BiO) with a
+complexity of O (1/ǫ), which approximates X ∗
+g by a cutting plane approach. Later on, Cao et al. [6] proposed
+an accelerated algorithm with a similar cutting plane appro ach to achieve the rate of O(1/√ǫ) under the weak
+sharp minima condition. Recently, Wang et al. [27] reduced P roblem (1) to ﬁnding the smallest c such that
+the optimal value of the following parametric problem is g∗: minx∈Rng(x), s.t. f(x) ≤c. They adopted a
+bisection method to ﬁnd such a c. To solve this parametric problem, Accelerated Proximal Gr adient method
+is applied on g with projection operator onto the sublevel set Fc = {x | f (x) ≤ c}, which we call sublevel
+set oracles. This leads to an upper bound of ˜O(1/√ǫ). Such an oracle is obtainable for norm-like functions
+such as f (x) = 1
+2 ‖x‖2. However, projection onto sublevel sets may be hard for more general functions, such
+as MSE loss or logistic loss. Compared with prior works [6, 10 , 23, 27], our proposed methods achieve the
+˜O(1/√ǫ) rate under standard assumptions, without relying on the wea k sharp minima condition or sublevel
+set oracles.
+Comparison with Nesterov’s methods for functionally const rained problems Based on similar
+reformulation, Nesterov [19] have proposed algorithms for functionally constrained problems, of which Prob-
+lem (4) is a special case: one for smooth problems in Section 2 .3.5, and one for Lipschitz problems in Section
+3.3.4. However, the ﬁrst algorithm relies on the strong conv exity of f and ˜g, which does not hold in our
+setups. Moreover, both algorithms require quadratic progr am (QP) sub-solvers, which are ineﬃcient in
+large-scale problems: the ﬁrst algorithm uses it to iterati vely move t to the root of ψ∗(t), while the second
+algorithm uses it to project onto the sublevel set of a piecew ise linear approximation of ψ(t, x). In contrast,
+our proposed algorithms have the following advantages: (a) require no strong convexity assumption; (b)
+require no QP solvers that lead to additional computational cost; (c) have a uniﬁed framework for both
+smooth and Lipschitz problems.
+3 Preliminaries
+For any x ∈ Rn, let x[j] represent the j-th coordinate of x forj = 1, · · ·,n . The Euclidean ball centered at x
+with radius D is denoted as B(x,D ) ≜ {y | ‖y − x‖2 ≤D}. For any closed convex set C ⊆ Rn, the Euclidean
+projection of x onto C is denoted by Π C(x) ≜ arg miny∈C ‖y − x‖2. We say a function h is C-Lipschitz in
+domain Z if ‖h(x) −h(y)‖2 ≤C‖x − y‖2 for all x, y ∈ Z . We say a diﬀerentiable real-valued function h is
+L-smooth if it has L-Lipschitz continuous gradients.
+We now state the assumptions on the function class required i n our theoretical results. Complexity
+guarantees for ﬁnding an optimal solution to a convex optimi zation problem typically depend on the initial
+distance of ‖x∗ − x0‖2, where x0 is a pre-speciﬁed point as the initialization of algorithms . In our setting,
+we assume an explicit upper bound D of this value.
+Assumption 3.1. Consider Problem (1). We assume that
+1. Functions f and g : Rn → R are convex and continuous.
+2. For a pre-speciﬁed point x0, the initial distance ‖x∗ − x0‖2 is upper bounded by D, where x∗ is the
+optimal solution to Problem (1).
+3
+
+We use Assumption 3.1 throughout this paper, but distinguis h the following two diﬀerent settings.
+Assumption 3.2. Consider Problem (1). We assume that f andg areLf -smooth andLg-smooth respectively.
+We call such problems (Lf,L g)-smooth problems.
+Assumption 3.3. Consider Problem (1). We assume that f and g are Cf -Lipschitz and Cg-Lipschitz in
+B(x0,D ) respectively. We call such problems (Cf,C g)-Lipschitz problems.
+To study the complexity of solving Problem (1), we make the fo llowing assumption on the algorithms.
+Assumption 3.4 (zero-respecting algorithm class) . An iterative method A can access the objective functions
+f and g only through a ﬁrst-order black-box oracle, which takes a tes t point ˆx as the input and returns
+f (ˆ x),g (ˆ x),∂f (ˆ x),∂g (ˆ x), where ∂f (ˆx),∂g (ˆx) are arbitrary subgradients of the objective functions at ˆx. A
+generates a sequence of test points {xk}K
+k=0 with
+xk ∈ x0 + Span{∂f (x0),∂g (x0), · · ·,∂f (xk−1),∂g (xk−1)}.
+This assumption generalizes the standard deﬁnition of zero-respecting algorithm for single-level mini-
+mization problems [7, 19]. Many existing ﬁrst-order method s for Problem (1) fall into this algorithm class,
+including [10, 17, 18, 22, 23, 24].
+The following concept of ﬁrst-order zero-chain , introduced by Nesterov [19, Section 2.1.2], plays an
+essential role in proving lower bounds for zero-respecting algorithms. In our paper, we leverage the chain-
+like structure to show the intractability of ﬁnding absolut e optimal solutions.
+Deﬁnition 3.1 (ﬁrst-order zero-chain) . We call a diﬀerentiable function h(x) : Rq → R a ﬁrst-order zero-
+chain if for any sequence {xk}k≥0 satisfying
+xk ∈ Span{∇h(x0), · · ·, ∇h(xk−1)}, k ≥ 1; x0 = 0,
+it holds that xk,[j] = 0,k + 1 ≤j ≤q.
+Deﬁnition 3.1 deﬁnes diﬀerentiable zero-chain functions. We can similarly deﬁne non-diﬀerentiable zero-
+chain, by requiring xk to be in Span{∂h(x0), · · ·,∂h (xk−1)} where ∂h(x) is a (possibly adversarial) subgra-
+dient of h at x.
+4 Finding absolute optimal solutions is hard
+Faced with Problem (1), a natural initial response is to seek an approximate solution ˆx such that f (ˆx) is as
+close to f ∗ as possible, under the premise that g(ˆx) is close to g∗. Such a goal is captured by the concept
+of (ǫf,ǫ g)-absolute optimal solutions as deﬁned in (2). However, it tu rns out that ﬁnding a (ǫf,ǫ g)-absolute
+optimal solution is intractable for any zero-respecting ﬁr st-order methods in both smooth and Lipschitz
+problems as shown in the following theorems.
+Theorem 4.1. For any ﬁrst-order algorithm A satisfying Assumption 3.4 that runs for T iterations and
+any initial point x0, there exists a (1, 1)-smooth instance of Problem (1) such that the optimal soluti on x∗
+satisﬁes ‖x0 − x∗‖2 ≤ 1 and |f (x0) −f ∗| ≥ 1
+48 . For the iterates {xk}T
+k=0 generated by A, the following holds:
+f (xk) = f (x0), ∀1 ≤k ≤T.
+Theorem 4.2. For any ﬁrst-order algorithm A satisfying Assumption 3.4 that runs for T iterations and
+any initial point x0, there exists a (1, 1)-Lipschitz instance of Problem (1) and some adversarial subgr adients
+{∂f (xk),∂g (xk)}T −1
+k=0 such that the optimal solution x∗ satisﬁes ‖x0 − x∗‖2 ≤ 1 and |f (x0) −f ∗| ≥ 1
+4 . For
+the iterates {xk}T
+k=0 generated by A, the following holds
+f (xk) = f (x0), ∀1 ≤k ≤T.
+The proofs of Theorem 4.1 and Theorem 4.2 rely on the concept o f worst-case convex zero-chain (Propo-
+sition A.1 and A.2). We show that for any ﬁrst-order zero-res pecting algorithm that runs for T iterations,
+there exists a “hard instance” such that f (xt) remains unchanged from the initial value f (x0) throughout
+the entire process. The complete proof is provided in Append ix A.
+4
+
+Remark 4.1. Some previous works [6, 12, 23] provide guarantees for ﬁnding (ǫf,ǫ g)-absolute optimal so-
+lutions. However, these works assume an additional Hölderian e rror bound condition [20] on g. Our near-
+optimal methods for ﬁnding weak optimal solutions, propose d in the next section, also work well under this
+additional assumption and achieve the best-known converge nce rate for absolute suboptimality both in smooth
+and Lipschitz settings. See Appendix D for further discussio ns.
+5 Near-optimal methods for weak optimal solutions
+Due to the intractability of obtaining (ǫf,ǫ g)-absolute optimal solutions of Problem (1), most existing w orks
+focus on developing ﬁrst-order methods to ﬁnd (ǫf,ǫ g)-weak optimal solutions as deﬁned in (3). In this
+section, we establish the lower complexity bounds for ﬁndin g weak optimal solutions and propose a new
+framework for simple bilevel problems named Functionally C onstrained Bilevel Optimizer (FC-BiO) that
+achieves near-optimal convergence in both Lipschtitz and s mooth settings.
+5.1 Lower complexity bounds
+We ﬁrst establish the lower complexity bounds for ﬁnding a (ǫf,ǫ g)-weak optimal solution of (Lf,L g)-smooth
+problems and (Cf,C g)-Lipschitz problems.
+Theorem 5.1. Given Lf,L g,D > 0. For any ﬁrst-order algorithm A satisfying Assumption 3.4 and any
+initial point x0, there exists a (Lf,L g)-smooth instance of Problem (1) such that the optimal soluti on x∗
+satisﬁes ‖x∗ − x0‖2 ≤ D and A needs at least Ω
+(
+max
+{√
+Lf
+ǫf
+,
+√
+Lg
+ǫg
+}
+D
+)
+iterations to ﬁnd a (ǫf,ǫ g)-weak
+optimal solution.
+Theorem 5.2. Given Cf,C g,D > 0. For any ﬁrst-order algorithm A satisfying Assumption 3.4 and any
+initial point x0, there exists a (Cf,C g)-Lipschitz instance of Problem (1) such that the optimal sol ution x∗
+satisﬁes ‖x∗ −x0‖2 ≤D and A needs at least Ω
+(
+max
+{ C 2
+f
+ǫ2
+f
+,
+C 2
+g
+ǫ2
+g
+}
+D2
+)
+iterations to ﬁnd a (ǫf,ǫ g)-weak optimal
+solution.
+We prove these results by setting both f (x) and g(x) to be the worst-case zero-chain (Proposition A.1
+and A.2), with f (x) depending only on the ﬁrst half of the coordinates of x andg(x) depending only on the
+remaining coordinates. This construction decouples the op timization processes for f and g. The full proof
+is provided in Appendix C.1.
+5.2 Our proposed algorithms
+We now present a uniﬁed framework applicable to both smooth a nd Lipschitz problems. The proposed
+algorithms nearly match the lower complexity bounds in both settings.
+Problem reformulation We apply two steps of reformulation. First, we relax Problem (1) to Problem
+(4), where the constraint x ∈ X ∗
+g is replaced by a relaxed functional constraint ˜g(x) ≜ g(x) − ˆg∗ ≤ 0. In our
+proposed method, the domain Q in (4) is set to be the Euclidean ball B(x0,D ), so that the the subprocesses
+adopted in our method have a uniﬁed upper complexity bound (s ee Section 5.3). Denoting ˆf ∗ as the optimal
+value of Problem (4), the following lemma holds:
+Lemma 5.1. If g∗ ≤ ˆg∗ ≤g∗ + ǫg
+2 and ˆx is a (ǫf,ǫ g/2)-weak optimal solution to Problem (4), i.e. f (ˆx) ≤
+ˆf ∗ +ǫf, ˜g(ˆx) ≤ǫg/2, then ˆx is a (ǫf,ǫ g)-weak optimal solution to Problem (1).
+Therefore, it suﬃces to pursue an approximate solution of Pr oblem (4). Second, Problem (4) is further
+reduced to the problem of ﬁnding the smallest root of the foll owing auxiliary function:
+ψ∗(t) = min
+x∈B(x0,D)
+{
+ψ(t, x) ≜ max {f (x) −t, ˜g(x)}
+}
+. (6)
+Such reformulation is introduced in Nesterov [19, Section 2 .3] with the following characterization.
+5
+
+Algorithm 1 Functionally Constrained Bilevel Optimizer (FC-BiO)
+Require: Problem parameters x0,D , desired accuracy ǫ, total number of iterations T , initial bounds ℓ,u ,
+and a subroutine for Problem (6) M.
+1: Set N =
+⌈
+log2
+u−ℓ
+ǫ/2
+⌉
+, K =T/N . Set ¯x = x0.
+2: for k = 0, · · ·,N − 1 do
+3: Set t = ℓ+u
+2 .
+4: Solve with the subroutine (ˆx(t), ˆψ∗(t)) = M(¯x,D,t,K ).
+5: Set ¯x = ˆx(t)
+6: if ˆψ∗(t)> ǫ
+2 then
+7: Set ℓ =t.
+8: else
+9: Set u =t.
+10: end if
+11: end for
+12: return ˆx = ˆx(u) as the approximate solution.
+Lemma 5.2 (Nesterov [19, Lemma 2.3.4]) . Let ˆf ∗ be the optimal value of Problem (4), and let ψ∗(t) be the
+auxiliary function as deﬁned in (6). The following holds:
+1. ψ∗(t) is continuous, decreasing, and Lipschitz with constant 1.
+2. ˆf ∗ is exactly the smallest root of ψ∗(t).
+Bisection procedure Based on the preceding reformulation, we propose Algorithm 1 (FC-BiO), which
+uses a bisection procedure to estimate the smallest root of ψ∗(·). For now, we assume that the desired
+accuracy on upper-level and lower-level problems is the sam e, ( i.e. ǫf = ǫg = ǫ). Later we will show in
+Corollary 5.1 that we can handle the case when ǫf ⁄=ǫg by simply scaling the objectives.
+Algorithm 1 applies the bisection method within an initial i nterval [ℓ,u ] which contains the smallest root,
+ˆf ∗, for N =
+⌈
+log2
+u−ℓ
+ǫ/2
+⌉
+iterations. Similar to [27], the initial interval can be obt ained by applying single-level
+ﬁrst-order methods. The lower bound ℓ is obtained by solving the global minimum of the upper-level objective
+f , while u = f (ˆxg) serves as a valid upper bound, where ˆxg is an approximate solution to the lower-level
+problem. Further details can be found in Appendix B.1. In eac h iteration, we set t = ℓ+u
+2 . To approximate
+the function value of ψ∗(t), we apply a ﬁrst-order algorithm M to solve the discrete minimax problem (6).
+For the Lipschitz setting, we let M be the Subgradient Method (SGM, Algorithm 2) [4, Section 3.1 ]. And for
+the smooth setting, we let M be the generalized accelerated gradient method (generaliz ed AGM, Algorithm
+3) [19, Algorithm 2.3.12]. For both settings, these methods guarantee to ﬁnd an approximate solution ˆx(t)
+of Problem (6) such that
+ψ∗(t) ≤ ˆψ∗(t) ≜ ψ(t, ˆx(t)) ≤ψ∗(t) + ǫ
+2. (7)
+If ˆψ∗(t) > ǫ/2, we update ℓ = t. Conversely, if ˆψ∗(t) ≤ ǫ/2, we set u = t. For the initial point of M, we
+exploit a warm-start strategy (see more details in Appendix B.2). After completi ngN iterations, we return
+ˆx = ˆx(u) as the output. As shown in Lemma 5.3, ˆx is guaranteed to be a (ǫ,ǫ )-weak optimal solution to
+Problem (1).
+We remark that since we can only solve an approximate value of ψ∗(t), the upper bound u might fall
+below ˆf ∗ during the bisection process. But this is acceptable since w e are only in pursuit of a weak optimal
+solution instead of an absolute optimal solution.
+Lemma 5.3. If ˆg∗ satisﬁes g∗ ≤ ˆg∗ ≤g∗ + ǫ
+2 and (7) holds for every t in the process of Algorithm 1, then
+the approximate solution ˆx returned by Algorithm 1 is a (ǫ,ǫ/ 2)-weak optimal solution to Problem (4), and
+therefore a (ǫ,ǫ )-weak optimal solution to Problem (1) by Lemma 5.1.
+According to this lemma, O(log(1/ǫ)) iterations of the outer loops are suﬃcient to ﬁnd a (ǫ,ǫ )-weak
+optimal solution. Next, we will discuss the process and comp lexity of the subroutines in detail.
+6
+
+Algorithm 2 Solve Problem (6) with SGM (x0,D,t,K )
+Require: Problem parameters x0,D,t , total number of iterations K.
+1: Set η =D/(C
+√
+K), where C = max{Cf,C g}.
+2: for k = 0, · · ·,K − 1 do
+3: Obtain a subgradient s ∈∂xψ(t, x) by Proposition 5.1.
+4: Update xk+1 = Π B(x0,D)(xk −ηs).
+5: end for
+6: return ˆx(t) = 1
+K
+∑ K−1
+k=0 xk as the approximate solution and ˆψ∗(t) = max {f (ˆx(t)) −t, ˜g(ˆx(t))} as the
+approximate value.
+5.3 Subroutines and total complexity
+To proceed with the bisection process, we need to invoke a sub routine M to approximate the function value
+of ψ∗(t) = min x∈Rnψ(t, x) in each outer iteration, where ψ(t, x) = max {f (x) −t, ˜g(x)}. This reduces to a
+discrete minimax optimization problem (Problem (6)) for a g ivent. Below we demonstrate the subroutines
+to solve this problem in Lipschitz and smooth settings.
+Lipschitz setting Whenf andg are convex and Cf andCg-Lipschitz respectively, it holds that ψ(t, x) is
+also convex and Lipschitz with constant max{Cf,C g}. In this case, setting M to be the Subgradient Method
+(SGM) [4, Section 3.1] applied on ψ(t, ·) (Algorithm 2) directly achieves the optimal convergence ra te. To
+implement the SGM method, the subgradient of ψ(t, x) needs to be computed as given in the following
+proposition:
+Proposition 5.1 (Nesterov [19, Lemma 3.1.13]) . Considerψ(t, x) = max {f (x) −t, ˜g(x)} wheref andg are
+convex functions. For given t. We have
+∂xψ(t, x) =
+
+
+
+
+
+∂f (x), f (x) −t> ˜g(x);
+∂˜g(x), f (x) −t< ˜g(x);
+Conv {∂f (x),∂ ˜g(x)}, f (x) −t = ˜g(x).
+Algorithm 2 has the following convergence guarantee:
+Lemma 5.4 (Bubeck et al. [4, Theorem 3.2]) . Suppose Assumption 3.1 and 3.3 hold. When K ≥ 16D2C 2
+ǫ2 ,
+the approximate value ˆψ∗(t) produced by Algorithm 2 satisﬁes ψ∗(t) ≤ ˆψ∗(t) ≤ ψ∗(t) + ǫ
+2 , where C =
+max{Cf,C g}.
+We refer to Algorithm 1 with SGM subroutine (Algorithm 2) as F C-BiOLip. Combining with Lemma 5.3,
+we obtain the following total iteration complexity of FC-Bi OLip:
+Theorem 5.3 (Lipschitz setting). Suppose Assumption 3.1 and 3.3 hold and ǫf =ǫg =ǫ. When
+T ≥
+⌈
+log2
+u −ℓ
+ǫ/2
+⌉ 16 max{C2
+f,C 2
+g }
+ǫ2 D2,
+the approximate solution ˆx produced by FC-BiO Lip is a (ǫ,ǫ )-weak optimal solution to Problem (1).
+Smooth setting The optimal ﬁrst-order method for optimizing smooth object ive functions is the cele-
+brated Accelerated Gradient Method (AGM) [19, Section 2.2] proposed by Nesterov. In contrast to the
+Lipschitz setting, AGM cannot be applied to ψ(t, x) = max {f (x) −t,g (x)} directly when f andg are convex
+and smooth, as the smoothness condition no longer holds for ψ(t, ·). However, Nesterov [19, Section 2.3]
+showed that by simply replacing the gradient step in standar d AGM with the following gradient mapping
+7
+
+Algorithm 3 Solve Problem (6) with Generalized AGM (x0,D,t,K ) [19, Algorithm 2.3.12]
+Require: Problem parameters x0,D,t , total number of iterations K.
+1: Set y0 = x0, α0 = 1
+2 .
+2: for k = 0, · · ·K − 1 do
+3: Compute xk+1 as the solution to (8) by Proposition 5.2.
+4: Compute αk+1 from the equation α2
+k+1 = (1 −αk+1)α2
+k.
+5: Set βk = αk(1−αk)
+α2
+k+αk+1
+, yk+1 = xk+1 +βk(xk+1 − xk).
+6: end for
+7: return ˆx(t) = xK as the approximate solution and ˆψ∗(t) = max {f (xK) −t, ˜g(xK )} as the approximate
+value.
+(Nesterov [19, Deﬁnition 2.3.2])
+xk+1 = arg min
+x∈B(x0,D)
+{
+¯ψ(t, x; yk) ≜ max
+{
+f (yk) + ⟨∇f (yk), x − yk⟩ + L
+2 ‖x − yk‖2
+2 −t,
+˜g(yk) + ⟨∇˜g(yk), x − yk⟩ + L
+2 ‖x − yk‖2
+2
+}}
+,
+(8)
+the optimal rate of O(
+√
+L/ǫ) can be achieved for Problem (6). Here {xk}, {yk} are the test point sequences
+and L = max {Lf,L g}. Solving xk+1 for general discrete minimax problems (where the maximum is taken
+over potentially more than two objective functions, as stud ied in Nesterov [19, Section 2.2]), reduces to a
+quadratic programming (QP) problem and may not be eﬃciently solvable. However, we prove that xk+1 has
+a simple close-form solution in our problem setup.
+Proposition 5.2. Deﬁne the descent step candidates
+x1 = Π B(x0,D)
+(
+yk − 1
+L ∇f (yk)
+)
+, x2 = Π B(x0,D)
+(
+yk − 1
+L ∇˜g(yk)
+)
+,
+x3 = Π B(x0,D)∩H
+(
+yk − 1
+L ∇f (yk)
+)
+,
+(9)
+where H ⊂ Rn is a hyperplane deﬁned by
+H = {x | f (yk) − ˜g(yk) + ⟨∇f (yk) − ∇˜g(yk), x − yk⟩ −t = 0}.
+Then the solution to (8) is xk+1 = arg min{xi|i∈{1,2,3}} ¯ψ(t, xi; yk).
+Via Proposition 5.2, we can compute the gradient mapping eﬃc iently. And we present the generalized
+AGM subroutine (Algorithm 3) and its convergence rate below .
+Lemma 5.5 (Nesterov [19, Theorem 2.3.5]) . Suppose Assumption 3.1 and 3.2 hold.When K ≥D
+√
+48L
+ǫ , the
+approximate value ˆψ∗(t) produced by Algorithm 3 satisﬁes ψ∗(t) ≤ ˆψ∗(t) ≤ψ∗(t)+ ǫ
+2 , whereL = max{Lf,L g}.
+We refer to Algorithm 1 with generalized AGM subroutine (Alg orithm 3) as FC-BiO sm, whose total
+iteration complexity is given by the following theorem:
+Theorem 5.4 (Smooth setting) . Suppose Assumption 3.1 and 3.2 hold and ǫf =ǫg =ǫ. When
+T ≥
+⌈
+log2
+u −ℓ
+ǫ/2
+⌉√
+48 max{Lf,L g}
+ǫ D,
+the approximate solution ˆx produced by FC-BiO sm is a (ǫ,ǫ )-weak optimal solution to Problem (1).
+For more general cases when the desired accuracy for the uppe r-level and lower-level problems is diﬀerent
+(i.e. ǫf ⁄=ǫg), we can simply scale the objective functions before applyi ng FC-BiO Lip or FC-BiO sm, resulting
+in the following guarantee:
+8
+
+0 5 10 15
+10-6
+10-2
+102
+0 5 10 1510-2
+10-1
+Figure 1: The performance of Algorithm 1 compared with other methods in Problem (10).
+Corollary 5.1. Suppose Assumption 3.1 holds. By scaling ˜g◦ = ǫf
+ǫg
+˜g and applying FC-BiO Lip or FC-BiO sm
+on functions f and ˜g◦, a (ǫf,ǫ g)-weak optimal solution to Problem (1) is obtained within the complexity of
+˜O
+(
+max
+{ C 2
+f
+ǫ2
+f
+,
+C 2
+g
+ǫ2
+g
+}
+D2
+)
+under Assumption 3.3 and ˜O
+(
+max
+{√
+Lf
+ǫf
+,
+√
+Lg
+ǫg
+}
+D
+)
+under Assumption 3.2.
+Our proposed algorithms also fall in the zero-respecting al gorithm class (Proposition C.1). Hence our
+proposed algorithms are near-optimal in both Lipschitz and smooth settings as the convergence results in
+Corollary 5.1 match the lower bounds established in Theorem 5.1 and Theorem 5.2.
+6 Numerical experiments
+In this section, we evaluate our proposed methods on two diﬀe rent bilevel problems with smooth objectives.
+We compare the performance of FC-BiO sm with existing methods, including a-IRG [13], Bi-SG [18], CG -
+BiO[12], AGM-BiO [6], PB-APG[10], and Bisec-BiO[27]. The f ollowing problems are also Lipschitz given
+B(x0,D ), so we implement FC-BiO Lip as well. The initialization time of FC-BiO sm, FC-BiOLip, CG-BiO, and
+Bisec-BiO is taken into account and is plotted in the ﬁgures. Our implementations of CG-BiO and a-IRG
+are based on the codes from [12], which is available online 1.
+6.1 Minimmum norm solution
+As in [27],we consider the following simple bilevel problem :
+f (x) = 1
+2 ‖x‖2
+2, g (x) = 1
+2 ‖Ax −b‖2
+2, (10)
+We use the Wikipedia Math Essential dataset [21], which cont ains 1068 instances with 730 attributes. We
+uniformly sample 400 instances and denote the feature matrix and outcome vector b y A and b respectively.
+We choose the same random initial point x0 for all methods. We set ǫf =ǫg = 10 −6. For this problem, we
+can explicitly solve x∗ and f ∗ to measure the convergence. Figure 1 shows the superior perf ormance of our
+method compared to existing methods in both upper-level and lower-level. The only exception is Bisec-BiO
+[27], which shows a comparable performance to our method. Th is also aligns well with the theory as these
+two methods have the same convergence rates. See more experi ment details in Appendix E.1.
+6.2 Over-parameterized logistic regression
+We examine simple bilevel problems where the lower-level an d upper-level objectives correspond to the
+training loss and validation loss respectively. Here we add ress the logistic regression problem using the
+“rcv1.binary” dataset from “LIBSVM” [8, 15], which contain s 20, 242 instances with 47, 236 features. We
+1https://github.com/Raymond30/CG-BiO
+9
+
+0 5 10 15
+10-3
+10-2
+10-1
+100
+101
+0 5 10 15
+10-2
+10-1
+100
+101
+Figure 2: The performance of Algorithm 1 compared with other methods in Problem (11)
+uniformly sample m = 5000 instances as the training dataset (Atr, btr), and m instances as the validation
+dataset (Aval, bval). We consider the bilevel problem with:
+f (x) = 1
+m
+m∑
+i=1
+log(1 + exp(−(Aval
+i )⊤xbval
+i )),
+g(x) = 1
+m
+m∑
+i=1
+log(1 + exp(−(Atr
+i )⊤xbtr
+i )).
+(11)
+We set the initial point x0 = 0 for all methods. We set ǫf =ǫg = 10 −3. Since projecting to the sublevel
+set of f (x) is not practical, Bisec-BiO [27] does not apply to this probl em, thus we only consider other
+methods. As shown in Figure 2, our method converges faster th an other algorithms in both upper-level and
+lower-level. More details are provided in Appendix E.2.
+7 Conclusion and future work
+This paper gives a comprehensive study of convex simple bile vel problems. We show that no zero-respecting
+ﬁrst-order algorithm can ﬁnd a (ǫf,ǫ g)-absolute optimal solution, justifying the notion of weak o ptimal
+solution considered by existing works. We then propose a nov el framework FC-BiO for ﬁnding a (ǫf,ǫ g)-
+weak optimal solution. Our proposed methods achieve the nea r-optmal rates of ˜O
+(
+max{1/ǫ2
+f, 1/ǫ2
+g}
+)
+and
+˜O
+(
+max{1/√
+ǫf, 1/√ǫg}
+)
+for Lipschitz and smooth problems respectively.
+We now discuss the limitations not addressed by this work. Fi rst, our method introduces an additional
+logarithmic factor compared to the lower bounds. We hope fut ure works can further close this gap between
+upper and lower bounds. Second, our methods cannot be direct ly applied to stochastic problems [5]. Es-
+tablishing lower complexity bounds and developing optimal methods for stochastic simple bilevel problems
+remain an open question for future research.
+References
+[1] Mostafa Amini and Farzad Youseﬁan. An iterative regular ized incremental projected subgradient
+method for a class of bilevel optimization problems. In 2019 American Control Conference (ACC) ,
+pages 4069–4074. IEEE, 2019.
+[2] Michael Arbel and Julien Mairal. Amortized implicit diﬀ erentiation for stochastic bilevel optimization.
+In ICLR, 2022.
+[3] Amir Beck and Shoham Sabach. A ﬁrst order method for ﬁndin g minimal norm-like solutions of convex
+optimization problems. Mathematical Programming, 147(1):25–46, 2014.
+10
+
+[4] Sébastien Bubeck et al. Convex optimization: Algorithm s and complexity. Foundations and Trends®
+in Machine Learning , 8(3-4):231–357, 2015.
+[5] Jincheng Cao, Ruichen Jiang, Nazanin Abolfazli, Erfan Y azdandoost Hamedani, and Aryan Mokhtari.
+Projection-free methods for stochastic simple bilevel opt imization with convex lower-level problem. In
+NeurIPS, 2023.
+[6] Jincheng Cao, Ruichen Jiang, Erfan Yazdandoost Hamedan i, and Aryan Mokhtari. An accelerated
+gradient method for simple bilevel optimization with conve x lower-level problem. arXiv preprint
+arXiv:2402.08097, 2024.
+[7] Yair Carmon, John C. Duchi, Oliver Hinder, and Aaron Sidf ord. Lower bounds for ﬁnding stationary
+points i. Mathematical Programming, 184(1):71–120, 2020.
+[8] Chih-Chung Chang and Chih-Jen Lin. LIBSVM: A library for support vector machines. ACM
+Transactions on Intelligent Systems and Technology , 2:27:1–27:27, 2011. Software available at
+http://www.csie.ntu.edu.tw/~cjlin/libsvm.
+[9] Lesi Chen, Jing Xu, and Jingzhao Zhang. On ﬁnding small hy per-gradients in bilevel optimization:
+Hardness results and improved analysis. arXiv preprint arXiv:2301.00712 , 2024.
+[10] Pengyu Chen, Xu Shi, Rujun Jiang, and Jiulin Wang. Penal ty-based methods for simple bilevel opti-
+mization under Holderian Error Bounds. arXiv preprint arXiv:2402.02155 , 2024.
+[11] Elias S. Helou and Lucas EA Simões. ǫ-subgradient algorithms for bilevel convex optimization. Inverse
+problems, 33(5):055020, 2017.
+[12] Ruichen Jiang, Nazanin Abolfazli, Aryan Mokhtari, and Erfan Yazdandoost Hamedani. A conditional
+gradient-based method for simple bilevel optimization wit h convex lower-level problem. In AISTATS,
+2023.
+[13] Harshal D. Kaushik and Farzad Youseﬁan. A method with co nvergence rates for optimization problems
+with variational inequality constraints. SIAM Journal on Optimization , 31(3):2171–2198, 2021.
+[14] Matthias Kissel, Martin Gottwald, and Klaus Diepold. N eural network training with safe regularization
+in the null space of batch activations. In Artiﬁcial Neural Networks and Machine Learning , pages
+217–228. Springer, 2020.
+[15] David D Lewis, Yiming Yang, Tony Russell-Rose, and Fan L i. Rcv1: A new benchmark collection for
+text categorization research. Journal of machine learning research , 5(Apr):361–397, 2004.
+[16] Hongzhou Lin, Julien Mairal, and Zaid Harchaoui. Catal yst acceleration for ﬁrst-order convex optimiza-
+tion: from theory to practice. JMLR, 18(212):1–54, 2018.
+[17] Yura Malitsky. Chambolle-pock and Tseng’s methods: re lationship and extension to the bilevel opti-
+mization. arXiv preprint arXiv:1706.02602 , 2017.
+[18] Roey Merchav and Shoham Sabach. Convex bi-level optimi zation problems with nonsmooth outer
+objective function. SIAM Journal on Optimization , 33(4):3114–3142, 2023.
+[19] Yurii Nesterov. Lectures on convex optimization , volume 137. Springer, 2018.
+[20] Jong-Shi Pang. Error bounds in mathematical programmi ng. Mathematical Programming, 79(1):299–
+332, 1997.
+[21] Benedek Rozemberczki, Paul Scherer, Yixuan He, George Panagopoulos, Alexander Riedel, Maria Aste-
+fanoaei, Oliver Kiss, Ferenc Beres, Guzman Lopez, Nicolas C ollignon, et al. Pytorch geometric temporal:
+Spatiotemporal signal processing with neural machine lear ning models. In Proceedings of the 30th ACM
+international conference on information & knowledge managem ent, pages 4564–4573, 2021.
+11
+
+[22] Shoham Sabach and Shimrit Shtern. A ﬁrst order method fo r solving convex bilevel optimization
+problems. SIAM Journal on Optimization , 27(2):640–660, 2017.
+[23] Sepideh Samadi, Daniel Burbano, and Farzad Youseﬁan. A chieving optimal complexity guarantees for
+a class of bilevel convex optimization problems. arXiv preprint arXiv:2310.12247 , 2023.
+[24] Lingqing Shen, Nam Ho-Nguyen, and Fatma Kılınç-Karzan . An online convex optimization-based frame-
+work for convex bilevel optimization. Mathematical Programming, 198(2):1519–1582, 2023.
+[25] Mikhail Solodov. An explicit descent method for bileve l convex optimization. Journal of Convex Analysis ,
+14(2):227, 2007.
+[26] Mikhail V. Solodov. A bundle method for a class of bileve l nonsmooth convex minimization problems.
+SIAM Journal on Optimization , 18(1):242–259, 2007.
+[27] Jiulin Wang, Xu Shi, and Rujun Jiang. Near-optimal conv ex simple bilevel optimization with a bisection
+method. In AISTATS, 2024.
+12
+
+A Proofs for Section 4
+A.1 Constructions of ﬁrst-order zero-chains
+We ﬁrst give the constructions of the zero-chains that are us ed in our negative results. These zero-chains
+are the worst-case functions that Nesterov [19] used to prov e the lower complexity bounds for ﬁrst-order
+methods in single-level optimization.
+Proposition A.1 (Paraphrased from Section 2.1.2 Nesterov [19]). Consider the family of functions hq,L,R(x) :
+Rq → R:
+hq,L,R(x) = L
+4
+(
+1
+2
+(
+x2
+[1] +
+q−1∑
+i=1
+(x[i] − x[i+1])2 + x2
+[q]
+)
+−Rx[1]
+)
+(12)
+The following properties hold for any hq,L,R(x) with q ∈ N+ and L,R> 0:
+1. It is a convex and L-smooth function.
+2. It has the following unique minimizer: x∗
+[j] =R
+(
+1 − j
+q+1
+)
+with norm ‖x∗‖2 ≤R√q.
+3. It is a diﬀerentiable ﬁrst-order zero-chain as deﬁned in Deﬁ nition 3.1.
+Remark A.1. In Section 2.1.2 of Nesterov [19], it is shown that hq,L,1 is a convex and L-smooth zero-chain.
+Here we deﬁne hq,L,R(x) := R2hq,L,1( x
+R ). Then ∇2hq,L,R(x) = ∇2hq,L,1( x
+R ), and hq,L,R(x) is also a convex
+and L-smooth zero-chain. Similarly, in Proposition A.2, we deﬁne rq,C,R(x) := Rrq,C,1( x
+R ). Nesterov [19]
+showed rq,C,1 is a C-Lipschitz zero-chain, which implies that rq,C,R is also a C-Lipschitz zero-chain, since
+∇rq,C,R(x) = ∇rq,C,R( x
+R ).
+Proposition A.2 (Paraphrased from Section 3.2.1 Nesterov [19]). Consider the family of functions rq,L,R(x) :
+Rq → R:
+rq,C,R(x) = C√q
+1 + √q max
+1≤j≤q
+x[j] + C
+2R(1 + √q) ‖x‖2
+2. (13)
+The following properties hold for any rq,L,R(x) with q ∈ N+ and C,R> 0:
+1. It is a convex function and is C-Lipschitz in the Euclidean ball B(0,R ).
+2. It has a unique minimizer x∗ = − R
+√q 1.
+3. It is a non-diﬀerentiable ﬁrst-order zero-chain.
+Remark A.2. The non-diﬀerentiable ﬁrst-order zero-chain presented in P roposition A.2 is slightly diﬀerent
+from the one given in Nesterov [19]. rq,C,R(·) is Lipschitz in B(0,R ), while the zero-chain presented in
+Nesterov [19] is Lipschitz in B(x∗,R ), where x∗ is the minimizer of the zero-chain.
+A.2 Proofs of Theorem 4.1 and Theorem 4.2
+Proof of Theorem 4.1. Consider any ﬁrst-order algorithm A satisfying Assumption 3.4 that runs for T iter-
+ations. Without loss of generality, we assume the initial po int of A is x0 = 0. Otherwise, we can translate
+the following construction to f (x − x0),g (x − x0). Let q = 2T and
+f (x) = 1
+2
+q∑
+j=T +1
+x2
+[j], g (x) = hq,1,1/√
+q(x),
+where hq,1,1/√q(·) follows Proposition A.1. It is clear from the construction t hat both f (·),g (·) are convex
+and 1-smooth. Furthermore, the optimal solution to Problem (1) d eﬁned by such f,g is the unique minimizer
+of g(x), given by x∗
+[j] = 1
+√q (1 − j
+q+1 ). We prove by induction on k that the test points {xk}T
+k=0 generated
+by A satisﬁes xk,[j] = 0 for 0 ≤ k ≤ T , T + 1 ≤ j ≤ 2T : Suppose for some k ≤ T , xi,[j] = 0 holds for
+0 ≤i ≤k − 1,T + 1 ≤j ≤ 2T , we have
+∇f (xi) = 0, 0 ≤i ≤k − 1.
+13
+
+The zero-respecting assumption of A (Assumption 3.4) leads to
+xk ∈ Span{∇f (x0), ∇g(x0), · · ·, ∇f (xk−1), ∇g(xk−1)}
+= Span{∇g(x0), · · ·, ∇g(xk−1)}.
+Since g(x) is a ﬁrst-order zero-chain, we conclude that
+xk,[j] = 0, k + 1 ≤j ≤ 2T.
+Consequently,f (xk) remains zero for all 0 ≤k ≤K. However,
+f ∗ = 1
+2
+2T∑
+j=T +1
+x∗2
+[j]
+= 1
+4T
+2T∑
+j=T +1
+(
+1 − j
+2T + 1
+)2
+= 1
+24 · T + 1
+2T + 1
+≥ 1
+48.
+Thus
+|f (xk) −f ∗| ≥ 1
+48, 1 ≤k ≤T.
+Proof of Theorem 4.2. Consider any ﬁrst-order algorithm A satisfying Assumption 3.4 that runs for T iter-
+ations. We similarly assume that the initial point of A is x0 = 0. Let q = 2T and
+f (x) = 1
+2
+2T∑
+j=T +1
+x2
+[j], g(x) = r2T,1,1(x),
+where r2T,1,1(·) follows the construction in Proposition A.2. Both g(·) and f (·) are convex and 1-Lipschitz
+in B(0, 1), and the unique minimizer x∗ = − 1
+√q 1 of g is the optimal solution to Problem (1) deﬁned by
+such f and g, with norm ‖x∗‖2 = 1 . Similar to the proof of Theorem 4.1, we prove by induction on k
+that there exist some adversarial subgradients {∂g (x0), · · ·,∂g (xk−1)} such that the test points {xk}T
+k=0
+generated by A satisﬁes xk,[j] = 0 for 0 ≤k ≤T,T + 1 ≤j ≤ 2T : Suppose for some k ≤T , xi,[j] = 0 holds
+for 0 ≤i ≤k − 1,T + 1 ≤j ≤ 2T , we have
+∇f (xi) = 0, 0 ≤i ≤k − 1.
+The zero-respecting assumption of A (Assumption 3.4) leads to
+xk ∈ Span{∇f (x0),∂g (x0), · · ·, ∇f (xk−1),∂g (xk−1)}
+= Span{∂g (x0), · · ·,∂g (xk−1)},
+where {∂g (x0), · · ·,∂g (xk−1)} are the subgradients returned by a black-box ﬁrst-order ora cle. Since g(x) is
+a ﬁrst-order zero-chain, we conclude that there exists some adversarial subgradients {∂g (x0), · · ·,∂g (xk−1)}
+such that
+xk,[j] = 0, k + 1 ≤j ≤ 2T.
+Consequently,f (xk) remains zero for all 0 ≤k ≤K. However, f ∗ =f (x∗) = 1
+4 . Thus
+|f (xk) −f ∗| ≥ 1
+4, 1 ≤k ≤T.
+14
+
+B Algorithm details
+B.1 Determining ˆg∗ and the initial interval
+To apply the two-step reformulation, we need to solve an appr oximate value of the lower-level problem ˆg∗
+such that g∗ ≤ ˆg∗ ≤ g∗ + ǫ
+2 . Furthermore, to conduct the bisection method of FC-BiO, it is necessary to
+ﬁrst determine an initial interval [ℓ,u ] that contains the minimal root of ψ∗(t), which is exactly ˆf ∗ (Lemma
+5.2). The following procedure is inspired by Wang et al. [27] : First, we apply optimal ﬁrst-order methods
+for single-level optimization problems – subgradient meth od (SGM) [4, Section 3.1] for Lipschitz functions,
+and accelerated gradient method (AGM) [19, Section 2.2] for smooth functions – to the lower-level objective
+g to obtain an approximate minimum point ˆxg ∈ Rn such that g∗ ≤g(ˆxg) ≤g∗ + ǫ
+2 . We set ˆg∗ =g(ˆxg) and
+deﬁne the relaxed constraint function ˜g(x) as in (4). We set u =f (ˆxg), then
+ψ∗(u) ≤ψ(u, ˆxg) = max {f (ˆxg) −u, ˜g(ˆxg)} = 0.
+Thusu is indeed an upper-bound of the minimal root of ψ∗(·) given that ψ∗(·) is decreasing.
+To derive a lower bound of the minimal root ˆf ∗, we can also apply the optimal single-level minimization
+methods to the upper-level objective f to ﬁnd an approximate global minimum point ˆxf ∈ Rn such thatp∗ ≤
+ˆp∗ ≜ f (ˆxf ) ≤p∗ + ǫ
+2 , where p∗ is the minimum value of f over the whole space Rn (i.e.,p∗ ≜ minx∈Rnf (x)).
+Then ℓ = ˆp∗ − ǫ
+2 is a valid lower bound of ˆf ∗ since
+ℓ = ˆp∗ − ǫ
+2 ≤p∗ ≤ ˆf ∗.
+Nevertheless, any lower bound for ˆf ∗ is acceptable, such as 0 when the upper-level objective f is non-negative.
+The complexity of applying the optimal single-level minimi zation methods to f and g separately is
+O
+(C 2
+f
+ǫ2D2 +
+C 2
+g
+ǫ2D2
+)
+(SGM for Lipschitz problems) or O
+(√
+Lf
+ǫ D +
+√
+Lg
+ǫ D
+)
+(AGM for smooth problems),
+which does not increase the total complexity established in Theorem 5.3 and 5.4.
+B.2 Warm-start strategy
+For the initial point of the subroutine M (SGM in FC-BiO Lip or generalized AGM in FC-BiO Sm ), we exploit
+the warm-start strategy, which uses the last point in the previous round (de noted by ¯x in Algorithm 1) as
+the initial point of the current round. Intuitively, the sub problem (i.e. minimizing max{f (x) −t,g (x)}) does
+not change signiﬁcantly in each round since the parameter t does not change too much as ℓ andu are getting
+closer. Thus the approximate solution of the last round is su pposed to be close to the optimal solution of
+the current round. Nevertheless, any initial point in B(x0,D ) does not change the complexity upper bound.
+Such a strategy is widely used in two-level optimization met hods [2, 9, 16].
+Similarly, we can use the approximate minimum point ˆxg ofg (as described in Appendix B.1) instead of
+x0 as the initial point of the ﬁrst round of the subroutine.
+C Proofs for Section 5
+C.1 Proofs of Theorem 5.1 and Theorem 5.2
+Recall the lower complexity bounds for single-level convex optimization problems:
+Lemma C.1 (Nesterov [19, Theorem 2.1.7]) . GivenL> 0,D> 0. For any ﬁrst-order algorithm A satisfying
+Assumption 3.4 and any initial point x0, there exists a convex and L-smooth function f such that the
+minimizer x∗ satisﬁes ‖x∗ − x0‖2 ≤D and
+f (xT ) −f (x∗) ≥ 3LD2
+32(T + 1)2,
+15
+
+Lemma C.2 (Nesterov [19, Theorem 3.2.1]) . GivenC >0,D> 0. For any ﬁrst-order algorithm A satisfying
+Assumption 3.4 and any initial point x0, there exists a convex function f that is C-Lipschitz in B(x0,D ),
+such that the minimizer x∗ satisﬁes ‖x∗ − x0‖2 ≤D and
+f (xT ) −f (x∗) ≥ CD
+2(1 +
+√
+T )
+,
+The “hard functions” f (·) in the previous lemmas are exactly the zero-chain h2T +1,L,D(·) and rT,C,D (·)
+as constructed in Proposition A.1 and Proposition A.2, resp ectively.
+For notational convenience, for any x ∈ Rn and 1 ≤ L ≤ R ≤ n, we deﬁne x[L,R] ∈ RR−L+1
+as x[L,R] = ( x[L], x[L+1], · · ·, x[R]). For any x ∈ Rn, y ∈ Rm, we deﬁne (x, y) ∈ Rn+m as (x, y) =
+(x[1], · · ·, x[n], y[1], · · ·, y[m]).
+Proof of Theorem 5.1. Consider any ﬁrst-order algorithm A satisfying Assumption 3.4 that runs for T itera-
+tions. Without loss of generality, we assume the initial poi nt of A is x0 = 0. Otherwise, we can translate the
+following construction to f (x − x0),g (x − x0). Let the upper-level and lower-level objective f,g : R4T +2 → R
+be:
+f (x) = h2T +1,Lf ,D(x[1,2T +1]),g (x) = h2T +1,Lg,D(x[2T +2,4T +2]).
+Let z∗
+f and z∗
+g be the minimizers of h2T +1,Lf ,D(·) andh2T +1,Lg,D(·) respectively. The optimal solution set of
+the lower-level problem is X ∗
+g = {x ∈ R4T +2 | x[2T +2,4T +2] = z∗
+g} withg∗ =h2T +1,Lg ,D(z∗
+g). And the optimal
+solution of Problem (1) deﬁned by f (·) and g(·) is x∗ = (z∗
+f, z∗
+g) with optimal value f ∗ =h2T +1,Lf ,D(z∗
+f ).
+For z1, z2 ∈ R2T +1, we have that ∇f (z1, z2) = ( ∇h2T +1,Lf ,D(z1), 02T +1) and ∇g(z1, z2) = ( 02T +1, ∇h2T +1,Lg,D(z2)).
+Then the zero-respecting assumption on A is equivalent to:
+xk+1 ∈
+{
+(z1, z2)
+⏐
+⏐
+⏐
+⏐ z1 ∈ Span{∇h2T +1,Lf ,D(x1,[1,2T +1]), · · ·, ∇h2T +1,Lf ,D(xk,[1,2T +1])},
+z2 ∈ Span{∇h2T +1,Lg,D(x1,[2T +2,4T +2]), · · ·, ∇h2T +1,Lg,D(xk,[2T +2,4T +2])}
+}
+.
+In this case, algorithm A is decoupled into two zero-respecting ﬁrst-order algorith ms which optimize f (x)
+on the ﬁrst half coordinates of x and optimize g(x) on the second half independently.
+From Lemma C.1, we have
+ǫf =f (xT ) −f ∗ ≥ 3LfD2
+32(T + 1)2,
+ǫg =g(xT ) −g∗ ≥ 3LgD2
+32(T + 1)2,
+which implies that any zero-respecting ﬁrst-order methods need at least
+T = Ω
+(
+max
+{√
+Lf
+ǫf
+,
+√
+Lg
+ǫg
+}
+D
+)
+iterations to solve a (ǫf,ǫ g)-weak optimal solution.
+Proof of Theorem 5.2. Consider any ﬁrst-order algorithm A satisfying Assumption 3.4 that runs for T itera-
+tions. We assume the initial point of A is x0 = 0. Let the upper-level and lower-level objective f,g : R2T → R
+be:
+f (x) = rT,L f ,D(x[1,T ]),g (x) = rT,L g ,D(x[T +1,2T ]).
+Let z∗
+f and z∗
+g be the minimizers of rT,L f ,D(·) and rT,L g ,D(·) respectively. The optimal solution set of the
+lower-level problem is X ∗
+g = {x ∈ R2T | x[T +1,2T ] = z∗
+g} with g∗ =rT,L g ,D(z∗
+g). And the optimal solution of
+Problem (1) deﬁne by f (·) and g(·) is x∗ = (z∗
+f, z∗
+g) with optimal value f ∗ =rT,L f ,D(z∗
+f ).
+16
+
+For z1, z2 ∈ RT , we have that ∂f (z1, z2) = (∂rT,L f ,D(z1), 0T ) and∂g (z1, z2) = ( 0T,∂r T,L g,D(z2)). Then
+the zero-respecting assumption on A is equivalent to:
+xk+1 ∈
+{
+(z1, z2)
+⏐
+⏐
+⏐
+⏐ z1 ∈ Span{∂rT,L f ,D(x1,[1,T ]), · · ·,∂r T,L f ,D(xk,[1,T ])},
+z2 ∈ Span{∂rT,L g ,D(x1,[T +1,2T ]), · · ·,∂r T,L g,D(xk,[T +1,2T ])}
+}
+.
+In this case, algorithm A is decoupled into two zero-respecting ﬁrst-order algorith ms which optimize f (x)
+on the ﬁrst half coordinates of x and optimize g(x) on the second half independently.
+From Lemma C.2, we have
+ǫf =f (xT ) −f ∗ ≥ CfD
+2(1 +
+√
+T )
+,
+ǫg =g(xT ) −g∗ ≥ CgD
+2(1 +
+√
+T )
+,
+which implies that any zero-respecting ﬁrst-order methods need at least
+T = Ω
+(
+max
+{
+C2
+f
+ǫ2
+f
+,C2
+g
+ǫ2
+g
+}
+D2
+)
+iterations to solve a (ǫf,ǫ g)-weak optimal solution.C.2 Proofs in Section 5.2 and 5.3
+Proof of Lemma 5.1. Any feasible solution to Problem (1) is also a feasible solut ion to Problem (4) as the
+optimal solution x∗ satisﬁes x∗ ∈ B (x0,D ), thus ˆf ∗ ≤f ∗. For any x that satisﬁes
+f (x) ≤ ˆf ∗ +ǫf, ˜g(x) ≤ ǫg
+2,
+we have
+f (x) ≤ ˆf ∗ +ǫf ≤f ∗ +ǫf,
+g(x) = ˜g(x) + ˆg∗ ≤ ǫg
+2 +g∗ + ǫg
+2 =g∗ +ǫg.
+Thus x is indeed a (ǫf,ǫ g)-weak optimal solution to Problem (1).
+Proof of Lemma 5.3. We ﬁrst show that ℓ is always a lower bound of ˆf ∗. The initial lower bound satisﬁes
+ℓ ≤ ˆf ∗. Furthermore, if (7) holds during the bisection process, we always have that ψ∗(ℓ) ≥ ˆψ∗(ℓ) − ǫ
+2 > 0.
+Given that ψ∗(·) is decreasing, and considering that ˆf ∗ is the minimal root of ψ∗ (Lemma 5.2), it follows
+that ℓ< ˆf ∗.
+As for the upper bound u, the initial upper bound satisﬁes
+ˆψ∗(u) = ψ(u, ˆxg) = max {f (ˆxg) −u, ˜g(ˆxg)} = max{0, 0} ≤ ǫ
+2.
+And during the bisection process, we also have that ˆψ∗(u) = max {f (ˆx(u)) −u, ˜g(ˆx(u))} ≤ ǫ
+2 .
+After N =
+⌈
+log2
+u−ℓ
+ǫ/2
+⌉
+bisection iterations, it holds that
+u −ℓ ≤ ǫ
+2.
+17
+
+Consider the output of Algorithm 1 ˆx = ˆx(u). Combining previous inequalities, we have
+f (ˆx) ≤u + ǫ
+2 ≤ℓ +ǫ ≤ ˆf ∗ +ǫ,
+˜g(ˆx) ≤ ǫ
+2.
+Some of the lemmas in this section are adapted from existing r esults [4, 19], but not exactly the same.
+We also provide a proof for these lemmas (Lemma 5.2, 5.4, 5.5) .
+Proof for Lemma 5.2. It’s clear the ψ∗(t) is continuous and decreasing. For any t ∈ R and ∆ > 0, we have
+ψ∗(t + ∆) = min
+x∈B(x0,D)
+{max{f (x) −t, ˜g(x) + ∆ }} − ∆
+≥ min
+x∈B(x0,D)
+{max{f (x) −t, ˜g(x)}} − ∆
+=ψ∗(t) − ∆ .
+Thusψ∗(t) is 1-Lipschitz.
+Let ˆx∗ be the optimal solution to Problem (4), then ˆf ∗ =f (ˆx∗). For any t ≥ ˆf ∗, it holds that
+ψ∗(t) ≤ψ∗( ˆf ∗) ≤ψ( ˆf ∗, ˆx∗) = max {f (ˆx∗) − ˆf ∗, ˜g(ˆx∗)} ≤ 0.
+Suppose that t< ˆf ∗ andψ∗(t) ≤ 0, then there exists a ˆx ∈ B (x0,D ) such that ˜g(ˆx) ≤ 0,f (ˆx) −t ≤ 0. Then
+ˆx is a feasible solution to Problem (4), with f (ˆx) ≤t< ˆf ∗, contradiction to the fact that ˆf ∗ is the optimal
+value to Problem (4). Thus for any t< ˆf ∗, it holds that ψ∗(t)> 0.
+Thus ˆf ∗ is the smallest root of ψ∗(t).
+Proof for Lemma 5.4. Theorem 3.2 in Bubeck et al. [4] states that applying subgrad ient method to any
+C-Lipschitz convex function h on a compact set Q with diameter R gives
+h( 1
+K
+K−1∑
+i=0
+xi) −h∗ ≤ RC√
+K
+.
+Here h(x) = ψ(t, x) = max( f (x) −t, ˜g(x)),R = 2D,C = max(Cf,C g). Then when K ≥ 16D2C 2
+ǫ2 , it holds
+that
+ˆψ∗(t) = ψ(t, 1
+K
+K−1∑
+i=0
+xi) ≤ψ∗(t) + ǫ
+2.
+Proof for Lemma 5.5. Theorem 2.3.5 in Nesterov [19] originally states that apply ing genearlized-gradient
+method to any µ-strong convex and L-smooth convex function h gives
+h(xK) −h∗ ≤ 4L
+(γ0 −µ)(K + 1)2 (f (x0) −f ∗ + γ0
+2 ‖x0 − x∗‖2
+2),
+where γ0 = α0(α0L−µ)
+1−α0
+. Here h(x) = ψ(t, x) = max(f (x) −t, ˜g(x)), L = max(Lf,L g),µ = 0,α0 = 1
+2,γ 0 = L
+2 .
+Then
+ψ(t, xK ) −ψ∗ ≤ 4L
+1
+2L(K + 1)1 (L
+2 ‖x0 − x∗‖2
+2 + L
+4 ‖x0 − x∗‖2
+2) ≤ 24LD2
+K 2 .
+Then when K ≥
+√
+48L
+ǫ D, it holds that
+ˆψ∗(t) = ψ(t, xK) ≤ψ∗(t) + ǫ
+2.
+18
+
+To prove Proposition 5.2, we ﬁrst present a lemma:
+Lemma C.3. For any strictly convex and continuous functions f , g : Rn → R, we deﬁne ϕ : Rn → R by
+ϕ(x) = max {f (x),g (x)}. Let x∗ be the unique minimizer of ϕ(·) on a convex and compact set Z ⊂ Rn, i.e.
+x∗ = arg minx∈Zϕ(x), and let x∗
+f , x∗
+g be the unique minimizer of f (·) andg(·) on Z respectively. If x∗ ⁄= x∗
+f
+and x∗ ⁄= x∗
+g, then f (x∗) = g(x∗).
+Proof. Below, we show that f (x∗) ⁄= g(x∗) leads to contradiction. Without loss of generality, assume
+f (x∗)>g (x∗). Due to the continuity of f and g, there exists some δ >0 such that for any 0<θ <δ ,
+f (x∗ +θ(x∗
+f − x∗))>g (x∗ +θ(x∗
+f − x∗)).
+Furthermore, for any θ ∈ (0, 1), we have that x∗ +θ(x∗
+f − x∗) ∈ Z and
+f (x∗ +θ(x∗
+f − x∗))<θf (x∗
+f ) + (1 −θ)f (x∗)<f (x∗),
+since f is strictly convex.
+Then for any θ ∈ (0, min(1,δ )),
+ϕ(x∗ +θ(x∗
+f − x∗)) = f (x∗ +θ(x∗
+f − x∗))<f (x∗) = ϕ(x∗).
+That contradicts the fact that x∗ is the minimizer of ϕ(·). Thus f (x∗) = g(x∗).
+The previous lemma demonstrates that the minimizer of maxx∈Z {f (x),g (x)} falls into one of three
+categories: the minimizer of f , the minimizer of g, or the case where the function values of f and g are the
+same. x1, x2, x3 in Proposition 5.2 corresponds to the three cases respectiv ely.
+Proof for Proposition 5.2. Deﬁne
+¯f (t, x; yk) ≜ f (yk) + ⟨∇f (yk), x − yk⟩ + L
+2 ‖x − yk‖2
+2 −t,
+¯g(x; yk) ≜ ˜g(yk) + ⟨∇g(yk), x − yk⟩ + L
+2 ‖x − yk‖2
+2,
+which can be written as
+¯f (t, x; yk) = f (yk) −t − 1
+2L ‖∇f (yk)‖2 + L
+2
+‖
+‖
+‖
+‖x − yk + 1
+L ∇f (yk)
+‖
+‖
+‖
+‖
+2
+,
+¯g(x; yk) = ˜g(yk) − 1
+2L ‖∇g(yk)‖2 + L
+2
+‖
+‖
+‖
+‖x − yk + 1
+L ∇g(yk)
+‖
+‖
+‖
+‖
+2
+.
+Thus
+x1 = arg min
+x∈B(x0,D)
+‖
+‖
+‖
+‖x − yk + 1
+L ∇f (yk)
+‖
+‖
+‖
+‖ = arg min
+x∈B(x0,D)
+¯f (t, x; yk),
+x2 = arg min
+x∈B(x0,D)
+‖
+‖
+‖
+‖x − yk + 1
+L ∇g(yk)
+‖
+‖
+‖
+‖ = arg min
+x∈B(x0,D)
+¯g(t, x; yk).
+Assume the minimizer xk+1 of ¯ψ(t, x; yk) satisﬁes xk+1 ⁄= x1 and xk+1 ⁄= x2, then Lemma C.3 implies that
+xk+1 ∈{x | ¯f (t, x; yk) = ¯g(x; yk)}
+={x | f (yk) − ˜g(yk) + ⟨∇f (yk) − ∇˜g(yk), x − yk⟩ −t = 0}
+=H.
+Note that H is a hyperplane. Since xk+1 minimizes ¯ψ(t, x; yk) over B(x0,D ),it also minimizes ¯ψ(t, x; yk)
+over the convex subset B(x0,D ) ∩ H. Given that ¯f (t, x; yk) = ¯g(x; yk) in this subset, we have
+xk+1 = arg min
+x∈B(x0,D)∩H
+¯ψ(t, x; yk)
+19
+
+= arg min
+x∈B(x0,D)∩H
+¯f (t, x; yk)
+= arg min
+x∈B(x0,D)∩H
+‖
+‖
+‖
+‖x − yk + 1
+L ∇f (yk)
+‖
+‖
+‖
+‖
+= x3.
+Thus we conclude that xk+1 can only be one of x1, x2, x3.
+Proof for Theorem 5.3. Combining Lemma 5.3 and Lemma 5.4, we directly get the result .
+Proof for Theorem 5.4. Combining Lemma 5.3 and Lemma 5.5, we directly get the result .
+Proof for Corollary 5.1. A (ǫf,ǫ g)-weak optimal solution to Problem (4) is equivalent to a (ǫf,ǫ f )-weak
+optimal solution to
+min
+x∈Rn
+f (x), s.t. ˜g◦(x) = ǫf
+ǫg
+˜g(x) ≤ 0. (14)
+Whenf andg areCf,C g-Lipschitz respectively, ˜g◦ is ǫf
+ǫg
+Cg-Lipschitz. According to Theorem 5.3, FC-BiO Lip
+ﬁnds a (ǫf,ǫ f )-weak optimal solution of Problem (14) in
+T = ˜O
+
+
+
+max{C2
+f,
+ǫ2
+f
+ǫ2
+g
+C2
+g }ǫ2
+f
+D2
+
+
+ = ˜O
+(
+max
+{
+C2
+f
+ǫ2
+f
+,C2
+g
+ǫ2
+g
+}
+D2
+)
+iterations. Similarly, when f andg areLf,L g-smooth respectively, ˜g◦ is ǫf
+ǫg
+Lg-smooth. According to Theorem
+5.3, FC-BiO sm ﬁnds a (ǫf,ǫ f )-weak optimal solution of Problem (14) in
+T = ˜O
+
+
+√
+max{Lf, ǫf
+ǫg
+Lg}
+ǫf
+D
+
+ = ˜O
+(
+max
+{√
+Lf
+ǫf
+,
+√
+Lg
+ǫg
+}
+D
+)
+iterations.
+Finally, we prove the claim at the end of Section 5 that our pro posed algorithms are zero-respecting
+algorithms.
+Proposition C.1. Both FC-BiO Lip and FC-BiO sm satisfy Assumption 3.4.
+Proof. Without loss of generality, we assume x0 = 0. Note that the warm-start strategy preserves the zero-
+respecting property in Assumption 3.4. Therefore, it suﬃce s to prove that the subroutines (Algorithm 2 and
+Algorithm 3) satisfy Assumption 3.4.
+For Algorithm 2, the subgradient s ∈∂xψ(t, x) lies in Span{∂f (x),∂g (x)} according to Proposition 5.1.
+And the projection onto B(0,D ) does not disrupt the zero-respecting property. Thus, Algor ithm 2 satisﬁes
+Assumption 3.4.
+For Algorithm 3, we only need to prove that the gradient mappi ng xk+1 satisﬁes
+xk+1 ∈ Span{∇f (x0), ∇g(x0), · · ·, ∇f (xk), ∇g(xk)}.
+We denote Sk = Span {∇f (x0), ∇g(x0), · · ·, ∇f (xk), ∇g(xk)}. According to Proposition 5.2, it suﬃces to
+prove that the three descent step candidates x1, x2 and x3 are in Sk. It is clear that
+yk − 1
+L ∇f (yk), yk − 1
+L ∇˜g(yk) ∈Sk.
+Then after projection onto B(0,D ), x1, x2 are still in Sk.
+20
+
+The case for x3 is slightly more complicated. Let z = yk − 1
+L ∇f (yk), w = ∇f (yk) − ∇ ˜g(yk), and
+b =f (yk) − ˜g(yk) − ⟨w, yk⟩ −t. Then H = {x | wT x +b = 0}. The point x3 is the solution to the following
+convex optimization problem:
+min
+x∈Rn
+‖x − z‖2
+s.t. ‖x‖2 ≤D2
+wT x +b = 0.
+The Lagrangian for this problem is:
+L(x,λ,µ ) = ‖x − z‖2 +λ(‖x‖2 −D2) +µ(w⊤x −b)
+where λ ≥ 0 and µ are dual variables. The KKT conditions give:
+∇xL(x,λ,µ )|x=x3 = 2(x3 − z) + 2λx3 +µw = 0.
+Thus
+x3 = 2z −µw
+2(1 +λ),
+implying that x3 is the linear combination of z and w. Since z, w ∈Sk, it follows that x3 ∈Sk.
+D Finding absolute optimal solutions under additional assu mptions
+In Section 4, we showed that, in general, it is intractable fo r any zero-respecting ﬁrst-order methods to ﬁnd an
+absolute optimal solution of Problem (1). However, it is pos sible to establish a lower bound for f (xk) −f ∗
+under additional assumptions. Hölderian error bound [20] i s a well-studied regularity condition in the
+optimization literature and is utilized by previous works t o establish the convergence rate of ﬁnding absolute
+optimal solutions [6, 12, 23]. Prior to our work, the best-kn own result is established by Cao et al. [6], whose
+method achieves a (ǫf,ǫ g)-absolute optimal solution for smooth problems in ˜O
+(
+max
+{
+1/ǫ
+2α − 1
+2
+f , 1/ǫ
+2α − 1
+2α
+g
+})
+iterations. Below we will show that our proposed methods als o work well with such an additional assumption
+and achieve superior convergence rates with regard to absol ute suboptimality.
+Assumption D.1. The lower-level objective g satisﬁes the Hölderian error bound condition for some α ≥ 1
+and β >0, i.e.
+β
+α dist(x, X ∗
+g )α ≤g(x) −g∗, ∀x ∈ Rn,
+where dist(x, X ∗
+g ) ≜ inf y∈X ∗
+g ‖x − y‖ for arbitrary norm ‖ · ‖.
+Intuitively, when the lower-level suboptimality g(ˆx) −g∗ is small, ˆx should be close to X ∗
+g if Hölderian
+error bound condition holds for g. Then we can lower bound f (ˆx) −f ∗ by the convexity of f . Jiang et al.
+[12] formalizes the idea in the following proposition:
+Proposition D.1 (Jiang et al. [12, Proposition 4.1]) . Assume that f is convex and g satisﬁes Assumption
+D.1. Deﬁne M = max x∈X ∗g {‖∇f (x)‖∗} where ‖ · ‖∗ is the dual norm of ‖ · ‖. Then it holds that
+f (ˆx) −f ∗ ≥ −M
+(α(g(ˆx) −g∗)
+β
+) 1
+α
+for any ˆx ∈ Rn.
+This proposition shows that when g(ˆx) −g∗ ≤
+(1
+Mǫf
+)α β
+α , it holds that f (ˆx) −f ∗ ≥ −ǫf . Combining
+with Corollary 5.1, we obtain:
+21
+
+Corollary D.1. Suppose Assumption 3.2 or Assumption 3.3 hold and g satisﬁes Assumption D.1. FC-
+BiOLip and FC-BiOsm ﬁnd a (ǫf,ǫ g)-absolute optimal solution within the complexity of ˜O
+(
+max
+{ C 2
+f
+ǫ2
+f
+,
+C 2
+g
+ǫ2
+g
+,
+C 2
+g M 2α α2β2ǫ2α
+f
+}
+D2
+)
+and ˜O
+(
+max
+{√
+Lf
+ǫf
+,
+√
+Lg
+ǫg
+,
+√ Lg M α α
+βǫα
+f
+}
+D
+)
+for Lipschitz and smooth problems, respectively.
+To our knowledge, this is the ﬁrst result that establishes a c onvergence rate concerning absolute subopti-
+mality for Lipschitz problems. In a smooth setting, our resu lt of ˜O
+(
+max
+{
+1/ǫ
+α
+2
+f , 1/ǫ
+1
+2
+g
+})
+is also superior to
+the convergence rate reported by Cao et al. [6] in both upper- level and lower-level.
+E Experiment details
+In this section, we provide more details of numerical experi ments in Section 6. All experiments are imple-
+mented using MATLAB R2022b on a PC running Windows 11 with a 12 th Gen Intel(R) Core(TM) i7-12700H
+CPU (2.30 GHz) and 16GB RAM.
+E.1 Problem (10)
+This problem is a (Lf,L g)-smooth problem with Lf = 1,L g =λmax(ATA).
+Experiment setting The original Wikipedia Math Essential dataset [21] contain s 1068 instances with 730
+attributes. Following the setting of Jiang et al. [12] and Ca o et al. [6], we randomly choose one of the columns
+as the outcome vector and let the rest be the new feature matri x. We uniformly sample 400 instances to
+make the lower-level regression problem over-parameteriz ed. In this case, the upper-level problem is actually
+equivalent to
+min
+x∈Rn
+1
+2 ‖x‖2
+2 s.t. Ax = b.
+The optimal solution x∗ for this problem can be explicitly solved via the Lagrange mu ltiplier method:
+(A O
+I A T
+)(x∗
+ν
+)
+=
+(b
+0
+)
+,
+where ν is the Lagrange multiplier. Then we use f ∗ = 1
+2 ‖x∗‖2
+2,g ∗ = 0 as the benchmark.
+Implementation details To be fair, all algorithms start from a random point x0 of unit length as the
+initial point. For our Algorithm 1, we take a slightly diﬀere nt implementation, that instead of setting the
+maximum number of iterations of the inner subroutine to be T ′ = T/N , we preset T ′ = 8000 . If current
+xk already satisﬁes ψ(t, xk) ≤ ǫ
+2 , then terminate the inner subroutine directly. We adopt the warm-start
+strategy as described in Appendix B.2. We set D = 2 and we set L = 0 since f (x) is nonnegative. For
+FC-BiOLip, we set η = 3 × 10−4. For AGM-BiO, we set γ = 1. For PB-APG, we set γ = 10 5. For Bi-SG, we
+set α = 0.75 and c = 1
+Lf
+. For a-IRG, we set η0 = 10 −3 and γ0 = 10 −3. For CG-BiO, we set Z = B(x0,D )
+andγk = 0.5/(k + 1). For Bisec-BiO, we set the maximum number of iterations of th e internal APG process
+to be T ′ = 10000 . For FC-BiO sm, FC-BiO Lip and Bisec-BiO, solving ˆg∗ takes 15000 iterations; for CG-BiO,
+solving ˆg∗ takes 10000 iterations. The results of such pretreatments are also plot ted in Figure 1.
+We remark that the output of our method satisﬁes that f (ˆx) < f∗. Thus although |f (ˆx) −f ∗| > ǫf ,
+indeed a (ǫf,ǫ g)-weak optimal solution is solved by FC-BiO sm.
+E.2 Problem (11)
+This problem is a (Lf,L g)-smooth problem with
+Lf = 1
+4mλmax((Aval)TAval), L g = 1
+4mλmax((Atr)TAtr).
+22
+
+Experiment setting In this experiment, a sample of 5000 instances is taken from the “rcv1.binary” dataset
+[8, 15] as the training set (Atr, btr); another 5000 instances is sampled as the validation set (Aval, bval). Each
+label btr
+i (or bval
+i ) is either +1 or −1. To the best of our knowledge, no existing solver could obtai n the
+exact value of f ∗ and g∗ of Problem (11). Thus we only plot function value f (xk) and g(xk), instead of
+suboptimality.
+Implementation details In this experiment, we set the initial point x0 = 0 for all methods. The imple-
+mentation of our Algorithm 1 is similar to that in the ﬁrst exp eriment. We set the maximum number of
+iterations of the subroutine to be T ′ = 500 and T ′ = 1000 for FC-BiO sm and FC-BiO Lip respectively. We
+set D = 300 . For FC-BiO Lip, we set η = 2 . For AGM-BiO, we set γ = 1/( 2Lg
+Lf
+T
+2
+3 + 2) as in [6, Theorem
+4.4]. For PB-APG, we set γ = 10 4. For Bi-SG, we set α = 0.75 and c = 1
+Lf
+. For a-IRG, we set η0 = 10 3
+and γ0 = 0.1. For CG-BiO, we set Z = B(x0,D ) and we set γk = 2
+k+2 . For FC-BiO sm, solving ˆg∗ takes
+1000 iterations; for FC-BiO Lip and CG-BiO, solving ˆg∗ takes 1500 iterations. As in the ﬁrst experiment, the
+results of such pretreatments are also plotted in Figure 2.
+23

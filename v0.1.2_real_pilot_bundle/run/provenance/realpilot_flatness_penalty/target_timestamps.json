@@ -1,0 +1,29 @@
+{
+  "arxiv": {
+    "api_url": "https://export.arxiv.org/api/query?id_list=2507.20400v1",
+    "arxiv_id": "2507.20400",
+    "published": "2025-07-27T19:49:15Z",
+    "title": "Beyond Value Functions: Single-Loop Bilevel Optimization under Flatness Conditions",
+    "version": "v1"
+  },
+  "cutoff_lag_days": 30,
+  "cutoff_provisional": true,
+  "cutoff_utc": "2024-11-07T18:23:29Z",
+  "effective_cutoff_lag_days": 180,
+  "first_public_at_utc": "2025-05-06T18:23:29Z",
+  "github": {
+    "api_url": "https://api.github.com/repos/Liuyuan999/PBGD_Free",
+    "created_at": "2025-05-06T18:23:29Z",
+    "default_branch": "main",
+    "reachable_commit_count": 8,
+    "repository": "https://github.com/Liuyuan999/PBGD_Free",
+    "root_commit": "415acbeab836b1ae7c7eb8c6fe79a1dcfee54d76",
+    "root_commit_date": "2025-05-06T18:23:29Z"
+  },
+  "openreview": {
+    "api_url": "https://api2.openreview.net/notes?id=dCGQlVRa2B",
+    "cutoff_policy": "exclude OpenReview and use conservative 180-day lag",
+    "reason": "official OpenReview API returned a browser challenge",
+    "status": "challenge_fallback"
+  }
+}

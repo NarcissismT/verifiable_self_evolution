@@ -1,0 +1,9 @@
+{
+  "api_url": "https://export.arxiv.org/api/query?id_list=2409.06530v1",
+  "arxiv_id": "2409.06530",
+  "declared_available_at_utc": "2024-09-10T14:05:12Z",
+  "published": "2024-09-10T14:05:12Z",
+  "timestamp_matches_declaration": true,
+  "title": "Functionally Constrained Algorithm Solves Convex Simple Bilevel Problems",
+  "version": "v1"
+}

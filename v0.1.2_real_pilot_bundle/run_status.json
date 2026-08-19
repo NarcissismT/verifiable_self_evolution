@@ -1,0 +1,27 @@
+{
+  "bundle_version": "0.1.2-real-pilot-1",
+  "repository_commit": "9bf1e2f9a25494e944a815dd9b0270ff929ffeaf",
+  "status": "blocked_pending_external_attestations",
+  "completed": [
+    "three_real_target_definitions",
+    "pre_cutoff_source_definitions",
+    "target_neutral_public_context",
+    "hydration_and_hashing_workflow",
+    "trusted_evaluator_implementation",
+    "provisional_qwen_engineering_rehearsal",
+    "semantic_review_workflow",
+    "stage_receipt_builder",
+    "formal_split_exclusion_check"
+  ],
+  "required_external_inputs": [
+    "networked_hydration_run",
+    "independent_semantic_reviewer_receipts",
+    "independent_evaluator_custodian_receipt",
+    "immutable_docker_image_digest",
+    "private_hmac_trust_key",
+    "frozen_model_and_tokenizer_digests",
+    "real_model_generated_proposals",
+    "three_network_disabled_stage_runs"
+  ],
+  "scope_after_pass": "real no-training vertical slice only; QLoRA remains gated by full freeze-check"
+}

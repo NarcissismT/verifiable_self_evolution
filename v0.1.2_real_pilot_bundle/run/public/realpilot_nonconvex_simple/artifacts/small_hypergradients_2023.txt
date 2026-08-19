@@ -1,0 +1,1829 @@
+arXiv:2301.00712v1  [math.OC]  2 Jan 2023
+On Bilevel Optimization without
+Lower-level Strong Convexity
+Lesi Chen * §
+lschen19@fudan.edu.cn
+Jing Xu * †
+xujing21@mails.tsinghua.edu.cn
+Jingzhao Zhang †
+jingzhaoz@mail.tsinghua.edu.cn
+Abstract
+Theoretical properties of bilevel problems are well studie d when the lower-level problem is strongly
+convex. In this work, we focus on bilevel optimization probl ems without the strong-convexity assumption.
+In these cases, we ﬁrst show that the common local optimality measures such as KKT condition or
+regularization can lead to undesired consequences. Then, w e aim to identify the mildest conditions
+that make bilevel problems tractable. We identify two class es of growth conditions on the lower-level
+objective that leads to continuity. Under these assumption s, we show that the local optimality of the
+bilevel problem can be deﬁned via the Goldstein stationarit y condition of the hyper-objective. We then
+propose the Inexact Gradient-Free Method (IGFM) to solve th e bilevel problem, using an approximate
+zeroth order oracle that is of independent interest. Our non -asymptotic analysis demonstrates that the
+proposed method can ﬁnd a (δ, ε ) Goldstein stationary point for bilevel problems with a zero th order
+oracle complexity that is polynomial in d, 1/δ and 1/ε .
+1 Introduction
+In this work, we consider bilevel optimization problems of t he form below:
+min
+x∈Rd,y ∈S(x)
+f (x, y), S(x) = arg min
+y∈Y
+g(x, y), (1)
+where Y ⊆ Rq is a closed convex set, f (x, y) and g(x, y) are continuous functions. We assume S(x) is a
+nonempty compact set for any x ∈ Rd. The goal is to minimize the upper-level function f (x, y), under the
+constraint that y is minimized with respect to the lower-level function g(x, y). Bilevel optimization in this
+form receives increasing attention due to its wide applicat ions in many machine learning problems, including
+meta-learning [16, 25, 59] , hyperparameter optimization [ 16, 22, 57], minimax optimization [19, 44, 45, 63],
+composite optimization [23], reinforcement learning [24, 39], game theory [17, 69], causal learning [34, 51].
+However, despite its popularity, bilevel optimization is n ot theoretically well-understood. We follow
+previous studies and focus on ﬁnding the (local) optimal sol utions to the hyper-objective
+ϕ(x) ≜ min
+y∈S(x)
+f (x, y).
+Compared with traditional constrained minimization probl ems, the major diﬃculty of bilevel optimization
+is that the minimization of the upper and lower-level object ives are intertwined via a complicated set-valued
+mapping S(x). Many existing works [7, 17, 23, 31, 32, 38, 43, 66, 74] allevi ate this diﬃculty by imposing the
+strong convexity assumption on the lower-level objective, i.e., assuming g(x, y) is strongly convex in y for
+every x. This makes the feasible set S(x) a singleton, and the hyper-objective ϕ(x) a smooth, diﬀerentiable
+function. In this case, gradient-based optimization metho ds can ﬁnd the approximate stationary point of
+the objective ϕ(x), i.e., x satisfying ‖∇ϕ(x)‖ ≤ ε for some small positive ε.
+However, these approaches cannot be easily adapted to the se tting where the lower-level strong convexity
+is absent. In fact, we can easily ﬁnd a pair of f (x, y) and g(x, y) such that the resulting objective ϕ(x) is
+*Equal contributions.
+§ School of Data Science, Fudan University, China.
+† Institute for Interdisciplinary Information Sciences, Ts inghua University, China.
+1
+
+discontinuous, even if g(x, y) is linear (See Example 3.1). This indicates that bilevel pro blems are in general
+intractable. Therefore, this paper starts with the followi ng question:
+Q1: What is a good deﬁnition of local optimality for bilevel o ptimization without lower-level strong
+convexity?
+Some recent works [53, 67, 75] try to address this problem by r esorting to relaxed versions of (1), such as
+adding regularization to the lower-level objective or refo rmulating it as a functional constrained optimization.
+We give a thorough discussion of these approaches in Section 3, and demonstrate with counterexamples
+that without additional structures, these relaxations wil l distort the original bilevel structure and exclude
+(approximately) optimal solutions to ϕ(x).
+We further prove in Theorem 4.1 that the continuity of ϕ(x) can be fully characterized by the continuity
+of the set constraint S(x) in Hausdorﬀ distance. Consequently, the discontinuity of ϕ(x) comes from the
+discontinuity of S(x), which may happen even if the lower-level objective is linea r and hence arbitrarily
+smooth (See Example 3.1). Therefore, the smoothness of lowe r-level objectives does not guarantee an easy
+deﬁnition for local optimality of the bilevel problem, and w e need to study a more structured function class.
+This raises the second question:
+Q2: When can local optimality be well deﬁned for bilevel prob lems?
+To answer this question, we identify two conditions that gua rantee the well-behavedness of ϕ(x). We
+demonstrate that if g(x, y) is a Lipschitz objective with weak sharp minimum (Assumptio n 4.2) or a smooth
+objective with dominant gradients (Assumption 4.3), ϕ(x) is indeed Lipschitz (Proposition C.3). These
+conditions hold for a few real-world applications, and stri ctly relax previous assumptions as they do not
+require S(x) to be a singleton.
+We then show that these two types of assumptions fall into a ge neral class of growth conditions (Propo-
+sition D.3). As shown in Section 4 and Section 5.2, growth con ditions serve as an important requirement for
+bilevel optimization and meanwhile preserves the structur e of the original problem, since the solution of the
+lower-level objective is still non-singleton. Therefore, these assumptions are much more general than strong
+convexity.
+For a general Lipschitz, nonsmooth, nonconvex function ϕ(x), it is impossible to deﬁne its local optimality
+via standard ﬁrst order stationery points, since ϕ(x) can be non-diﬀerentiable. Inspired by the recent
+developments of nonconvex, nonsmooth optimization analys is, we formalize the local optimality of bilevel
+problem (1) via the notion of Goldstein stationary point [18 , 76] of the hyper-objective ϕ(x). We show
+that Goldstein stationary point is a valid deﬁnition of loca l optimality. Unlike approximate KKT points,
+Goldstein stationary points subsume optimal solutions of b ilevel problems (Proposition 4.1 and 4.2).
+Based on these investigations, we are now ready to study the a lgorithms for solving (1), namely,
+Q3: How to ﬁnd a Goldstein stationary point for bilevel optimi zation without lower-level strong convexity?
+We propose a polynomial time algorithm (See Theorem 5.2) to ﬁ nd the Goldstein stationary point of the
+bilevel problem in Section 5.1. The proposed method, which i s named the Inexact Gradient-Free Method
+(IGFM), extends the recently developed zeroth order approa ches in nonsmooth optimization [46], by using
+a possibly biased zeroth order oracle of ϕ(x) to construct gradient estimates, and perform noisy gradien t
+descent on a smoothed version of ϕ(x).
+Unlike standard optimization problems, obtaining an eﬃcie nt zeroth order oracle for bilevel problem
+is not a trivial task. This corresponds to solving Problem (1 ) with a ﬁxed x, which is usually referred
+to as the simple bilevel problem in the literature [3, 37, 37, 61]. Despite its simplicity compared to the
+original problem in (1), we prove that simple bilevel proble ms with general convex lower-level objectives
+are still computationally intractable (Proposition 5.1). This again demonstrates the hardness of bilevel
+optimization and underscores the necessity of focusing on a more restrictive class of lower-level objectives.
+Fortunately, we show the possibility to provide a computati onally eﬃcient zeroth order oracle under the
+aforementioned growth conditions, i.e. under Assumption 4.2 or 4.3, in Proposition D.4. Observing t he
+shortcomings of previous methods for solving simple bileve l optimization, we propose switching gradient
+methods in Appendix E, which converges faster under milder c onditions compared with previous methods
+for simple bilevel problems. Finally, combining the IGFM fr amework and switching gradient methods as
+2
+
+Reference Assumption on g(x, · ) Convergence Non-Asymptotic? Stationary?
+[17, 23, 31, 74] strongly convex ‖∇ϕ(x)‖ → 0 √ √
+[2] Morse-Bott ‖∇xf (x, T (x, y))‖ → 0 × ×
+[75] PL & unique minimum KKT √ √ #
+[67] convex* KKT √ ×
+[48] convex † ϕk → ϕ × ×
+[49, 50] nonconvex ϕk → ϕ × ×
+This Paper convex & Assumption 5.1 dist(0, ∂δϕ(x)) → 0 √ √
+Table 1: Comparison of the convergence results together wit h properties required by lower-level problem
+between our methods and the existing bilevel algorithms in d iﬀerent scenarios. “Stationary?” means whether
+the algorithm can converge to a stationary point of ϕ. T denotes the gradient ﬂow deﬁned in [2]. “*” means
+[67] further assumes g(x, y) + ρ‖x‖2 is jointly convex with some constant ρ > 0. “ †” means that [48] requires
+f (x, · ) to be strongly convex. “ #” means although [75] did not show convergence to stationary point of ϕ,
+but it can be proved by further assuming λmax(∇2
+xyg(x, y)) < ∞ and λmin(∇2
+yy g(x, y)) > 0 in (2).
+a sub-solver, we are able to give the ﬁrst non-asymptotic analysis of ﬁnding stationary points of bilevel
+optimization without lower-level strong convexity. The comparison with previous work is shown in Table 1.
+We summarize our contributions as follows:
+• We establish various hardness results on solving bilevel o ptimization with general convex lower-level
+objective (See Example 3.1, 3.2, Proposition 5.1). We also d emonstrate that relaxations based on
+regularization or KKT points under functional constraint c an not yield locally optimal solutions (See
+Proposition 3.1, Example 3.3, 3.4).
+• We prove that under speciﬁc growth assumptions of the lower -level objective, the hyper-objective is
+Lipschitz, and its zeroth order oracle is tractable (See The orem 4.1, 4.2). Based on these observations,
+we propose to use Goldstein stationarity to characterize lo cal optimality in bilevel optimization (See
+deﬁnition 4.4).
+• We provide the IFGM method to solve bilevel optimization, w hich uses a computationally tractable
+zeroth order oracle as a subroutine. We give the non-asympto tic analysis of the proposed method
+under the setting of ﬁnding a Goldstein stationary point (Se e Theorem 5.1, 5.2).
+2 Related Works
+Bilevel Optimization with Lower-Level Strong Convexity . In this setting, the hyper-objective ϕ(x)
+is diﬀerentiable when Y = Rq, and its gradient can be expressed using implicit function t heorem:
+∇ϕ(x) = ∇xf (x, y∗(x)) − ∇2
+xyg(x, y∗(x))[∇2
+yy g(x, y∗(x))]−1∇yf (x, y∗(x)), (2)
+where y∗(x) ≜ arg miny∈Rq g(x, y) is well-deﬁned and unique due to the strong convexity. Based on this criti-
+cal observation, various gradient methods have been propos ed, including approximate implicit diﬀerentiation
+(AID) based methods [11, 16, 21, 31, 57], iterative diﬀerent iation (ITD) based methods [15, 17, 20, 57, 62],
+with various improvements [7, 24, 26, 28, 43], acceleration s [23, 27, 38, 74] and more in-depth analy-
+sis [29, 30, 32].
+Bilevel Optimization without Lower-Level Strong Convexit y . When the strong convexity assump-
+tion is absent, bilevel optimization becomes much more chal lenging since ϕ may have kinks and jumps as
+shown in Example 3.1 and our understanding of this problem is not as thorough as the strongly convex case.
+A line of work relaxed the strong convexity by considering a b roader function class. [75] proposed a novel
+method for a PL function class with a unique minimum. [2] show ed that when g(x, · ) satisﬁes the More-Bott
+3
+
+manifold assumption [13] on the set {y : ∇yf (x, y) = 0 }, we can generalize (2) by replacing the inverse with
+the Moore-Penrose inverse when y is a local minimum of g(x, · ):
+∇xf (x, T (x, y)) = ∇xf (x, y) − ∇2
+xyg(x, y)[∇2
+yy g(x, y)]†∇yf (x, y)
+where T (x, y) denotes the selection map given by a gradient ﬂow on the lower -level objective. However, only
+asymptotic result is shown in [2], and it may be diﬃcult to ide ntify the Morse-Bott assumption in practice.
+Plus, the stationary in [2] is not deﬁned on ϕ since T has no guarantee to converge to the solution to (8).
+Another line of work considers diﬀerent deﬁnitions of conve rgence compared with the strongly convex
+case. [49, 50] propose algorithms for general nonconvex obj ectives. [48] consider convex lower-level objec-
+tives g(x, · ) but additionally needs to assume the strong convexity of f (x, · ). The analysis in [48, 49, 50]
+shows how to generate a sequence ϕk to approximate ϕ asymptoticly but lacks characterization of the local
+optimality of the ﬁnal output xout. Some recent work [53, 67, 75] reformulates the bilevel prob lem into a
+functional constrained optimization problem, and develop non-asymptotic convergence to various notions of
+approximate KKT points. However, we show in Section 3.3 that approximate KKT points may not capture
+the local optimality of the hyper-objective ϕ.
+In addition, some researchers [42, 47, 72] also study pessim istic bilevel optimization formulated by
+minx∈Rd maxy∈S(x) f (x, y). Although our paper mainly focuses on form (1) known as optim istic bilevel
+optimization, our analysis can be extended to pessimistic b ilevel optimization (See Appendix F).
+Nonsmooth nonconvex Optimization. Without lower-level strong convexity, the hyper-objectiv e ϕ(x)
+is in general nonsmooth and nonconvex. Recent works [10, 35, 40, 68, 76] provides non-asymptotic analysis
+using the Goldstein subdiﬀerential. The IGFM method in this paper extends the approach in [46], which
+uses the zeroth order oracle to ﬁnd Goldstein stationary poi nts of Lipschitz functions.
+3 Local Optimality without Lower-level Strong Convexity
+In this section, we discuss the property of the hyper-object ive ϕ(x). We ﬁrst demonstrate that Problem (1)
+can be extremely ill-posed when the lower-level problem is c onvex but not strongly convex. Previous works
+try to overcome this intractability by studying various rel axations on (1), e.g., adding regularization to the
+lower-level objective or allowing inexact minimization of it. However, we demonstrate with counterexamples
+that these relaxations will distort the lower minimization structure and therefore fail to yield a locally optimal
+solution to the original problem (1).
+3.1 The Lack of Strong Convexity Leads to Discontinuity
+Many previous works [17, 23, 31, 66, 74] assume that g(x, y) is strongly convex in y. In this case, S(x) is
+a single value mapping and ϕ is continuously diﬀerentiable. Following the standard ana lysis in nonconvex
+optimization, the goal is to ﬁnd a near stationary point of ϕ(x), i.e., ‖∇ϕ(x)‖ ≤ ε. However, without the
+strong convexity, this goal is not suitable since S(x) becomes a set-valued mapping, and ϕ(x) can even be
+discontinuous. For instance, consider the following examp le.
+Example 3.1. Consider the bilevel problem given by
+min
+x∈R,y ∈S(x)
+(x2 + 1)y, S (x) = arg min
+y∈[−1, 1]
+−xy,
+where the lower-level problem is convex in y. Then we know that
+ϕ(x) = ( x2 + 1) sign( x),
+which is not continuous at the point x = 0.
+We remark that the stationary based on the Moreau envelope [8 ] also fails since ϕ is not weakly convex:
+Example 3.2. Take f (x, y) = xy, g(x, y) = 0 and Y = [−1, 1] in problem (1) then we have ϕ(x) = −|x|.
+The above two examples demonstrate that the hyper-objectiv e ϕ(x) is in general ill-behaved, which makes
+traditional deﬁnitions of stationarity inapplicable. One common remedy is to regularize g(x, y). However,
+we show in the next section that regularization will lead to u ndesired consequences.
+4
+
+3.2 Can Regularization Help?
+One natural way to tackle the ill-posedness of ϕ(x) is to add some small quadratic terms to make the lower-
+level problem strongly convex, i.e., let gλ (x, y) = g(x, y) + λ
+2 ‖y − y0‖2 for some y0 ∈ Rq, λ > 0. With this
+regularization, ϕλ (x) = min x∈Sλ (x) f (x, y) is diﬀerentiable, where Sλ (x) = arg min y∈Y gλ (x, y). Then we
+may try to ﬁnd the stationary point of ∇ϕλ (x). When λ is small, it seems like we can regard ϕλ (x) as a
+smooth approximation of ϕ(x).
+However, we want to mention that this method is, in general, i ncorrect since regularization turns S(x)
+from a set to a unique point, thus breaking the original struc ture of the problem. Even when λ is arbitrarily
+small, ϕ(x) and ϕλ (x) can be completely diﬀerent objectives. Below, we give a simple example showing that
+for a quadratic objective ϕ(x), ϕλ (x) can be a linear objective for any λ > 0.
+Proposition 3.1. Consider regularizing the lower-level problem as gλ (x, y) = g(x, y)+ λ
+2 ‖y−ˆy‖2 for some ˆy ∈
+Rq and λ > 0. There always exists a bilevel problem instance of form (1) , w here g(x, y) is convex in y, ϕ(x)
+is a quadratic function with stationary points, but ϕλ (x) = min x∈Sλ (x) f (x, y), S(x) = arg min y∈Y gλ (x, y) is
+a linear function without any stationary points. Additional ly, | minx ϕ(x) − minx′ ϕλ (x′)| = ∞.
+The proof can be found in the appendix. This example suggests that strongly convex objectives and
+merely convex objectives have distinct properties and regu larizing the lower-level function may fail without
+additional assumptions.
+3.3 Is KKT Condition a Good Relaxation?
+Another approach to deﬁne local optimality [49, 53, 67, 75] i s to reformulate (1) as a constrained optimization
+problem
+min
+x∈Rd,y ∈Rq
+f (x, y), s.t. g (x, y) ≤ min
+y∈Y
+g(x, y), (3)
+and leverage tools from nonconvex constrained optimizatio n to ﬁnd an approximate KKT point of (3).
+However, we show that KKT points can not reﬂect the local opti mality of the original problem (1) for the
+following reasons.
+The absence of Slater’s condition In the reformulation (3), we always have g(x, y) ≥ miny∈Y g(x, y),
+so the Slater’s condition never holds due to the empty interi or. As illustrated by the example below, this
+leads to the failure of KKT conditions, i.e., the points satisfying KKT conditions do not contain the opt imal
+solutions.
+Example 3.3. Consider the bilevel problem given by
+min
+x∈R,y ∈R
+−xy, s.t. y ∈ arg min
+y∈R
+(x + y − 2)2,
+where the lower-level problem is strongly convex in y. The KKT points of the constraint problem form (3)
+do not include any global or local minimum of ϕ(x).
+Approximate KKT points Due to the hardness of exactly minimizing the lower-level ob jective, many
+previous works [67, 75] propose to relax the lower constrain t and ﬁnd an approximate KKT point (x, y, λ)
+satisfying
+
+
+
+
+
+
+
+
+
+λ ≥ 0; Non-negativity of multiplier
+g(x, y) − g∗(x) = O(ε); Feasibility of constraint
+|λ(g(x, y) − g∗(x))| = O(ε); Complementary slackness
+dist(∇f (x, y) + λ(∇g(x, y) − ∇g∗(x)), −N (z; Z)) = O(ε); Stationary of Lagrange function ,
+where g∗(x) = min y∈Y g(x, y), N (z; Z) denotes the normal cone to the convex set Z = X × Y at point
+z = (x, y), and dist(v, V) := inf {‖v − v′‖ : v′ ∈ V} . For example, Proximal-PDBO [67] aims at ﬁnding such
+ε-KKT points, and BOME [75] ﬁnds weaker points by ignoring the complementary slackness condition.
+5
+
+By introducing an O(ε) gap to the constraint, the Slater’s condition can be satisﬁe d for approximate KKT
+points. However, we give a concrete example indicating that approximate KKT points can be problematic in
+the bilevel setting. The reason is that the local optimality of the reformulated problem (3) does not subsume
+the local optimality of the original problem (1), since the r elaxation breaks the structure of the original
+bilevel formulation.
+Example 3.4. Consider the bilevel problem given by:
+min
+x∈R,y ∈R
+x2 − 2εxy, s.t. y ∈ arg min
+y∈R
+ε3y2.
+where the lower-level problem is strongly convex in y. There exists inﬁnite O(ε)-KKT points (ˆx, ˆy, ˆλ) such
+that ‖∇ϕ(ˆx)‖ = Ω(1) .
+In the above example, we see that there are an inﬁnite number o f O(ε)-KKT points that have Ω(1)
+distance to the local minimum of ϕ. Therefore, an algorithm searching for approximate KKT poi nts can not
+give locally optimal solutions to the original problem. It c an be easily veriﬁed that the lower-level objective
+in the above example is also jointly convex in (x, y), so this example shows that the recently proposed method
+Proximal-PDBO [67] also fails to ﬁnd the local minimum of ϕ under the assumption in [67].
+4 Continuity and Local Optimality of Hyper-Objective
+As we have discussed, in general KKT conditions cannot reﬂec t the local optimality or stationary of ϕ(x).
+Therefore we resort to a diﬀerent way to deﬁne the local optim ality of the hyper-objective. To get a better
+understanding of the ill behavior of ϕ(x), we prove in Theorem 4.1 that the continuity behavior of ϕ(x) is
+intrinsically related to that of S(x) in Hausdorﬀ distance. Based on these observations, we intro duce the
+notion of Goldstein stationary point, which, as we show late r, serves as a valid stationary measure for bilevel
+optimization.
+4.1 Continuity of S(x) and ϕ (x)
+As shown in Example 3.1, ϕ can be discontinuous without the strong convexity of the low er-level problem.
+Unfortunately, optimizing a discontinuous function is imp ossible in general. In this section, we delve into
+the discontinuity issue and study the condition that can gua rantee the continuity of ϕ.
+Below we demonstrate that the Lipschitz continuity of the hy per-objective ϕ(x) is closed related to the
+Lipschitz continuity of the feasible set mapping S(x), in the sense of Hausdorﬀ distance.
+Deﬁnition 4.1 (Hausdorﬀ distance, [60]) . Let S1, S2 be two sets in Rd. Deﬁne the Hausdorﬀ distance of
+dist(S1, S2) by
+dist(S1, S2) = max
+{
+sup
+x1∈S1
+inf
+x2∈S2
+‖x1 − x2‖, sup
+x2∈S2
+inf
+x1∈S1
+‖x1 − x2‖
+}
+Based on the Hausdorﬀ distance, we deﬁne the local Lipschitz continuity of the set-valued mapping S(x).
+Deﬁnition 4.2. We call a set-valued mapping S(x) locally Lipschitz continuous if for any x ∈ Rd, there exists
+δ > 0 and L > 0 such that for any x′ ∈ Rd satisfying ‖x′ − x‖ ≤ δ, we have dist(S(x), S(x′)) ≤ L‖x − x′‖.
+As mentioned before, we assume the following nonemptiness a nd compactness of S(x) to ensure that the
+lower-level minimization is well deﬁned.
+Assumption 4.1. We suppose for any given x ∈ Rd the set S(x) is non-empty and compact.
+Below, we give a complete characterization of the local Lips chitz continuity of ϕ(x).
+Theorem 4.1. Suppose that Assumption 4.1 holds.
+• If f (x, y) and S(x) are locally Lipschitz continuous, then ϕ(x) is locally Lipschitz continuous.
+6
+
+• Conversely, if ϕ(x) is locally Lipschitz continuous for any locally Lipschitz c ontinuous f (x, y), then
+S(x) is locally Lipschitz continuous.
+The proof is deferred to Appendix C.2, where extensions to ge neral continuity and Lipschitz continuity
+are also provided. Theorem 4.1 demonstrates that the discon tinuity of ϕ(x) comes from the ill-behaved
+setting-valued mapping S(x). As shown in Example 3.1, the discontinuity of S(x) can not be resolved even
+when the lower-level objective g(x, y) is linear, and hence arbitrarily smooth in y.
+4.2 Tractable Objectives under Growth Conditions
+Now we aim to identify conditions when S(x) is continuous. Recalling Example 3.1, the nonsensitivenes s of
+g in the change of y at the point x = 0 causes the discontinuity of ϕ. Therefore, we may expect to g to have a
+certain structure that is not too ﬂat with respect to y for any give x. Below, we show two function classes for
+the lower-level problem that ensure the Lipschitz continui ty of S(x) and thus that of ϕ(x) . Intuitively, when
+g is Lipschitz in x, it should also grow linearly in y; and when g is smooth in x, it should grow quadraticly
+in y.
+We note that these two diﬀerent rates of growth is also known a s the weak sharp minimum condition [6]
+and gradient dominant condition [36, 58], formally deﬁned r espectively as follows.
+Assumption 4.2 (Lipschitz objective with weak sharp minimum) . Suppose for any x ∈ Rd the lower-level
+problem g satisﬁes the following properties:
+• Lipschitz in x for some constant L > 0:
+‖g(x, y) − g(x′, y)‖ ≤ L‖x − x′‖, ∀x, x′ ∈ Rd, y ∈ Y ;
+• the optimal set of g(x, · ) is the set of weak sharp minimum for some positive continuous f unction α(x):
+g(x, y) − min
+y′∈Y
+g(x, y′) ≥ 2α(x)‖y − yp(x)‖, ∀x ∈ Rd, y ∈ Y ,
+where yp(x) is the projection of y onto the optimal set arg miny′∈Y g(x, y′).
+We give an example that satisﬁes the above assumption.
+Example 4.1 (SVM). Consider the following overparameterized learning [33] for DrS VM [70]:
+min
+λ ∈R+,w ∈Rq
+m∑
+i=1
+max{1 − bia⊤
+i w, 0} + λ‖w‖2
+2,
+s.t. w ∈ arg min
+‖w′‖ 1≤c
+n∑
+i=1
+max{1 − b′
+ia′⊤
+i w′, 0},
+for some constant c > 0. It is a bilevel problem satisfying Assumption 4.2 with α(x) ≡ α.
+Remark 4.1. In Example 4.1 , we optimize the hyperparameter λ ∈ R+ under constraints. A simple variable
+substitution with λ = |x| transforms this problem into an unconstrained optimization problem of the form (1)
+in domain x ∈ R.
+Aside from the above condition, a diﬀerent assumption as fol lows can also guarantee continuity. This
+condition below is a generalization of the well-known Polya k-Łojasiewicz condition [36].
+Assumption 4.3 (smooth objective with dominant gradient) . Suppose that the lower-level problem g satisﬁes
+the following properties:
+• gradient Lipschitz for some L > 0:
+‖∇g(x, y) − ∇g(x′, y′)‖ ≤ L(‖x − x′‖ + ‖y − y′‖), ∀x, x′ ∈ Rd, y, y′ ∈ Y ;
+7
+
+• gradient dominant in y for some positives continuous α(x):
+L
+‖
+‖
+‖
+‖y − PY
+(
+y − 1
+L ∇yg(x, y)
+) ‖
+‖
+‖
+‖ ≥ α(x)‖y − yp(x)‖, ∀x ∈ Rd, y ∈ Y , (4)
+where PY ( · ) is the projection onto Y and yp(x) is the projection of y onto arg miny∈Y g(x, y).
+We show that a formulation of the robust least square problem falls into the function class deﬁned above.
+Example 4.2 (RLS). Consider the Stackelberg game [4] for robust least square wi th soft constraint [73]:
+min
+x∈Rd
+‖Ax − y‖2 + λ1‖x‖2
+s.t. y ∈ arg min
+y′∈Rq
+−‖Ax − y′‖2
+M + λ2‖y′ − y0‖2
+M
+for some λ1 > 0 and λ2 > 1 and some semi-deﬁnite matrix M . When M is not full rank, the lower-level
+problem is not strongly convex, but it is a bilevel problem sa tisfying Assumption 4.3 with α(x) ≡ α.
+We note that both Assumption 4.2 and 4.3 allow nonconvexity o f lower-level problem. Even when g(x, · )
+is convex, Assumption 4.2 and 4.3 allow multiple global mini ma in contrast to the unique minimum implied
+by strong convexity, therefore they are milder assumptions to add on g(x, y). These two types of assumptions
+lead to a locally Lipschitz continuous set-valued mapping S(x) as speciﬁed below.
+Theorem 4.2. Suppose that Assumption 4.1 holds.
+• Under either Assumption 4.2 or 4.3, S(x) is locally Lipschitz continuous.
+• Furthermore, when f (x, y) is locally Lipschitz continuous, then ϕ(x) is also locally Lipschitz continuous.
+Theorem 4.2 demonstrates that for these two typical problem classes, ϕ(x) is locally Lipschitz continuous.
+However, we remark that even in these settings, ϕ(x) can still be a nonsmooth nonconvex function in the
+absence of the strong convexity of lower-level problem g(x, y) (see Example 3.2).
+4.3 Goldstein Stationary Points
+The nonconvexity and nonsmoothness of ϕ motivate us to focus on ﬁnding a (δ, ε)-Goldstein stationary
+point [76] of the hyper-objective ϕ(x), which generalizes ε-stationary points of diﬀerentiable functions to
+locally Lipschitz functions. It relies on the deﬁnition of t he Clark subdiﬀerential.
+Deﬁnition 4.3 (Clark subdiﬀerential, [9]) . The Clarke subdiﬀerential of locally Lipschitz continuous f unction
+h at a point x ∈ Rd is deﬁned by
+∂h(x) := Conv
+{
+g : g = lim
+xk→x
+∇h(xk)
+}
+.
+Then we can use the Clark subdiﬀerential to deﬁne Goldstein s tationary points.
+Deﬁnition 4.4 (Goldstein stationary point, [76]) . Given a locally Lipschitz continuous function h, we say
+x ∈ Rd is a (δ, ε)-Goldstein stationary point if
+min
+{
+‖g‖ : g ∈ Conv
+{
+∪x′∈Bδ (x)∂h(x′)
+}}
+≤ ε,
+where ∂h(x) is the Clark subdiﬀerential and Bδ(x) denotes Euclidean ball centered at point x with radius δ.
+Below, we discuss why Goldstein stationary is more reasonab le than KKT points since it reﬂects the local
+optimality of hyper-objective.
+Proposition 4.1. A local minimum of ϕ must be a (0, δ)-Goldstein stationary point for any δ > 0, but it is
+unnecessarily a KKT point. This statement is true even when the lower-level objective is strongly convex in
+y.
+8
+
+Algorithm 1 IGFM
+1: for t = 0, 1, · · · , T − 1
+2: Sample ut ∈ Rd uniformly from the unit sphere in Rd
+3: Estimate ˜ϕ(xt + δut) and ˜ϕ(xt − δut) by subroutine A
+4: ˜G(xt) = d
+2δ ( ˜ϕ(xt + δut) − ˜ϕ(xt − δut)) ut
+5: xt+1 = xt − η ˜G(xt)
+6: end for
+7: return ¯x uniformly chosen from {xt}T −1
+t=0
+Additionally, the (ε, δ)-Goldstein stationary strictly generalizes the notion of ‖∇ϕ(x)‖ ≤ ε as is commonly
+used for strongly convex lower-level objectives [17, 31], b ut the notion of ε-KKT points does not.
+Proposition 4.2. When ϕ is gradient Lipschitz, there exists some δ′ > 0 such any (δ, ε)-Goldstein stationary
+point with 0 < δ ≤ δ′ satisﬁes ‖∇ϕ(x)‖ ≤ 3ε. However, the ε-KKT points with any ε > 0 may have
+‖∇ϕ(x)‖ ≥ 1. This statement is true even when the lower-level objective is strongly convex in y.
+5 Non-asymptotic Convergence Analysis
+In this section, we provide non-asymptotic convergence ana lysis for ﬁnding a Goldstein stationary point of
+ϕ when it is Lipschitz continuous. Firstly, we propose an inex act gradient-free framework that requires a
+black box outputting the estimated function value of ϕ. Secondly, we show simple gradient-based methods
+can implement the black box under either Assumption 4.2 or 4. 3.
+5.1 The Inexact Gradient-Free Method
+Without the lower-level strong convexity, the hyper-gradi ent ∇ϕ may not have an explicit closed form as
+(2). Therefore, we resort to zeroth order method for estimat ing the hyper-gradient. We propose the Inexact
+Gradient-Free Method (IGFM) in Algorithm 1, which generali zes the recently proposed zeroth order method
+for nonsmooth nonconvex optimization [46]. The “inexactne ss” in zeroth order oracle comes from that the
+lower-level problem can not be exactly solved.
+Theorem 5.1 (IGFM). Suppose ϕ is Mϕ -Lipschitz. Suppose the subroutine A in Algorithm 1 can output
+an approximate function value ϕ(x) satisfying
+ω ≜ | ˜ϕ(x) − ϕ(x)| = O
+( δε2
+dMϕ
+)
+(5)
+for any x ∈ Rd and any ε ≲ Mϕ . Let ∆ = ϕ(x0) − inf x∈Rd ϕ(x). Set the learning rate to
+η = Θ
+( √
+δ(∆ + δMϕ )
+cd3/ 2M 3ϕ T
+)
+. (6)
+Then Algorithm 1 can output ¯x satisfying
+E min
+{
+‖g‖ : g ∈ ∪ x′∈Bδ (x)∂h(x′)
+}
+≤ ε,
+which is a (δ, ε)-Goldstein stationary point in expectation, within the numb er of iterations no more than
+T = O
+(
+d3/ 2
+(
+M 4
+ϕ
+ε4 + ∆ M 3
+ϕ
+δε4
+))
+. (7)
+The IGFM is a general framework and it can also deal with nonco nvex lower-level objective as long as an
+eﬃcient subroutine A exists. Next, we show that for convex lower-level objective s under either Assumption
+4.2 or 4.3, we can choose A as simple variants of the switching gradient methods [56].
+9
+
+5.2 The Accessibility of Zeroth Order Oracle
+The goal of (5) is to solve the following problem for a given x ∈ Rd:
+min
+y∈Rq
+f (x, y), s.t. y ∈
+{
+S(x) ≜ arg min
+y∈Y
+g(x, y)
+}
+. (8)
+This problem is usually referred to as the simple bilevel pro blem in the literature [3, 37, 37, 61], since it
+involves only one variable y. However, it is a non-trivial problem and the following theo rem demonstrates it
+is intractable for general convex objectives. The proof is d eferred in Appendix D.1 where lower bounds for
+convex Lipschitz lower-level objectives are also provided .
+Proposition 5.1. Fix an x. For any K ∈ N+, there exists q ∈ N+, such that for any y0 ∈ Rq, there exist 1-
+Lipschitz linear function f (x, · ) and 1-smooth convex function g(x, · ) with dist
+(
+y0, arg miny∈S(x) f (x, y)
+)
+≤√
+2 ,such that for any ﬁrst order algorithm A that generates a sequence of test points {yk} with
+yk ∈ y0 + Span{∇yf (x, y0), ∇yg(x, y0), · · · , ∇yf (x, yk−1), ∇yg(x, yk−1)}, k ≥ 1,
+for all 0 ≤ k ≤ K it always holds that |f (x, yk) − ϕ(x)| ≥ 1.
+Fortunately, the growth conditions in Assumption 4.2 or 4.3 exclude the hard instance in Proposition 5.1.
+Under these conditions, we can show the existence of an eﬃcie nt oracle A, which leads to a polynomial time
+complexity for IGFM. To summarize, we describe the assumpti on and convergence result formally.
+Assumption 5.1. We suppose problem (1) has the following structures:
+• both f (x, · ) and g(x, · ) are convex;
+• f (x, y) is Lipschitz;
+• Y is compact;
+• one of the following claims holds true:
+(i) g satisﬁes Assumption 4.2 with α(x) ≡ α;
+(ii) g satisﬁes Assumption 4.3 with α(x) ≡ α ; f (x, · ) is gradient Lipschitz.
+Theorem 5.2. Under Assumption 5.1, there exists a subroutine A to achieve (5) within O(poly(1/ω)) ﬁrst
+order oracle complexity, where ω is deﬁned in (5).
+Therefore, Algorithm 1 can ﬁnd a (δ, ǫ)-Goldstein stationary point in expectation within O(poly(d, 1/δ, 1/ǫ))
+ﬁrst and zeroth order oracle complexity, where d is the dimension of variable x.
+We can set A to be simple variants of switching gradient methods, as deta iled in Appendix E.
+6 Conclusions and Future Directions
+In this paper, we investigate the local optimality of bileve l optimization without lower-level strong convexity.
+We demonstrate that Goldstein stationary point can charact erize the optimality for a general problem class,
+and propose the IGFM Algorithm for ﬁnding a Goldstein statio nary point in polynomial time.
+We provide several concluding remarks. Firstly, the comple xity of the proposed method has a possibly
+heavy dependency on d and 1/ε. It would be interesting to apply acceleration methods on th e outer gradient-
+free method as well as the lower zeroth order oracle evaluati on. Secondly, this paper mainly focuses on the
+zeroth order approach in general bilevel optimization. The ﬁrst order approaches, although widely adopted
+in previous works, are hard to apply in the absence of lower-l evel strong convexity. The major diﬃculty
+lies in the hardness of obtaining an eﬃcient ﬁrst order oracl e, due to the nested structure of (1) and the
+possible nondiﬀerentiability of the hyper-objective. As s hown in section 5.2, it is highly nontrivial even to
+obtain a zeroth order oracle. It would be a worthwhile direct ion to propose an eﬃcient ﬁrst order algorithm
+for ﬁnding Goldstein stationary points in bilevel problems , or establishing corresponding hardness results.
+Thirdly, we remark that the IGFM framework is also suitable f or general non-convex objectives, as long as
+an eﬃcient zeroth order oracle exists. Therefore, it is wort h considering relaxing the convexity assumption
+of the lower-level objective. Other future directions incl ude more general settings such as stochastic case
+and variational inequalities problems with variational in equality constraints.
+10
+
+References
+[1] Ahmet Alacaoglu and Yura Malitsky. Stochastic variance reduction for variational inequality methods.
+In COLT, 2022.
+[2] Michael Arbel and Julien Mairal. Non-convex bilevel gam es with critical point selection maps. arXiv
+preprint arXiv:2207.04888, 2022.
+[3] Amir Beck and Shoham Sabach. A ﬁrst order method for ﬁndin g minimal norm-like solutions of convex
+optimization problems. Mathematical Programming, 147(1):25–46, 2014.
+[4] Michael Brückner and Tobias Scheﬀer. Stackelberg games for adversarial prediction problems. In
+SIGKDD, 2011.
+[5] Sébastien Bubeck et al. Convex optimization: Algorithm s and complexity. Foundations and Trends®
+in Machine Learning , 8(3-4):231–357, 2015.
+[6] James V Burke and Michael C Ferris. Weak sharp minima in ma thematical programming. SIAM
+Journal on Control and Optimization , 31(5):1340–1359, 1993.
+[7] Tianyi Chen, Yuejiao Sun, and Wotao Yin. A single-timesc ale stochastic bilevel optimization method.
+arXiv preprint arXiv:2102.04671 , 2021.
+[8] Frank H Clarke. Nonsmooth analysis and optimization. In Proceedings of the international congress of
+mathematicians, volume 5, pages 847–853, 1983.
+[9] Frank H. Clarke. Optimization and nonsmooth analysis . SIAM, 1990.
+[10] Damek Davis and Dmitriy Drusvyatskiy. A gradient sampl ing method with complexity guarantees for
+general lipschitz functions. arXiv preprint arXiv:2112.06969 , 2021.
+[11] Justin Domke. Generic methods for optimization-based modeling. In AISTATS, 2012.
+[12] Dmitriy Drusvyatskiy and Adrian S Lewis. Error bounds, quadratic growth, and linear convergence of
+proximal methods. Mathematics of Operations Research , 43(3):919–948, 2018.
+[13] Paul Feehan. On the morse–bott property of analytic fun ctions on banach spaces with łojasiewicz
+exponent one half. Calculus of Variations and Partial Diﬀerential Equations , 59(2):1–50, 2020.
+[14] Abraham D Flaxman, Adam Tauman Kalai, and H. Brendan McM ahan. Online convex optimization
+in the bandit setting: gradient descent without a gradient. arXiv preprint cs/0408007 , 2004.
+[15] Luca Franceschi, Michele Donini, Paolo Frasconi, and M assimiliano Pontil. Forward and reverse gradient-
+based hyperparameter optimization. In ICML, 2017.
+[16] Luca Franceschi, Paolo Frasconi, Saverio Salzo, Ricca rdo Grazzi, and Massimiliano Pontil. Bilevel
+programming for hyperparameter optimization and meta-lea rning. In ICML, 2018.
+[17] Saeed Ghadimi and Mengdi Wang. Approximation methods f or bilevel programming. arXiv preprint
+arXiv:1802.02246, 2018.
+[18] A. Goldstein. Optimization of lipschitz continuous fu nctions. Mathematical Programming, 13(1):14–22,
+1977.
+[19] Ian Goodfellow, Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron
+Courville, and Yoshua Bengio. Generative adversarial netw orks. Communications of the ACM , 63(11):
+139–144, 2020.
+[20] Stephen Gould, Basura Fernando, Anoop Cherian, Peter A nderson, Rodrigo Santa Cruz, and Edison
+Guo. On diﬀerentiating parameterized argmin and argmax pro blems with application to bi-level opti-
+mization. arXiv preprint arXiv:1607.05447 , 2016.
+11
+
+[21] Riccardo Grazzi, Luca Franceschi, Massimiliano Ponti l, and Saverio Salzo. On the iteration complexity
+of hypergradient computation. In ICML, 2020.
+[22] Bin Gu, Guodong Liu, Yanfu Zhang, Xiang Geng, and Heng Hu ang. Optimizing large-scale hyperpa-
+rameters via automated learning algorithm. arXiv preprint arXiv:2102.09026 , 2021.
+[23] Zhishuai Guo, Quanqi Hu, Lijun Zhang, and Tianbao Yang. Randomized stochastic variance-reduced
+methods for multi-task stochastic bilevel optimization. arXiv preprint arXiv:2105.02266 , 2021.
+[24] Mingyi Hong, Hoi-To Wai, Zhaoran Wang, and Zhuoran Yang . A two-timescale framework for bilevel
+optimization: Complexity analysis and application to acto r-critic. arXiv preprint arXiv:2007.05170 ,
+2020.
+[25] Timothy Hospedales, Antreas Antoniou, Paul Micaelli, and Amos Storkey. Meta-learning in neural
+networks: A survey. IEEE transactions on pattern analysis and machine intelligen ce, 44(9):5149–5169,
+2021.
+[26] Xiaoyin Hu, Nachuan Xiao, Xin Liu, and Kim-Chuan Toh. An improved unconstrained approach for
+bilevel optimization. arXiv preprint arXiv:2208.00732 , 2022.
+[27] Feihu Huang and Heng Huang. Biadam: Fast adaptive bilev el optimization methods. arXiv preprint
+arXiv:2106.11396, 2021.
+[28] Feihu Huang and Heng Huang. Enhanced bilevel optimizat ion via bregman distance. arXiv preprint
+arXiv:2107.12301, 2021.
+[29] Minhui Huang, Kaiyi Ji, Shiqian Ma, and Lifeng Lai. Eﬃci ently escaping saddle points in bilevel
+optimization. arXiv preprint arXiv:2202.03684 , 2022.
+[30] Kaiyi Ji and Yingbin Liang. Lower bounds and accelerate d algorithms for bilevel optimization. arXiv
+preprint arXiv:2102.03926, 2021.
+[31] Kaiyi Ji, Junjie Yang, and Yingbin Liang. Bilevel optim ization: Convergence analysis and enhanced
+design. In ICML, 2021.
+[32] Kaiyi Ji, Mingrui Liu, Yingbin Liang, and Lei Ying. Will bilevel optimizers beneﬁt from loops. arXiv
+preprint arXiv:2205.14224, 2022.
+[33] Ruichen Jiang, Nazanin Abolfazli, Aryan Mokhtari, and Erfan Yazdandoost Hamedani. Generalized
+frank-wolfe algorithm for bilevel optimization. arXiv preprint arXiv:2206.08868 , 2022.
+[34] Yibo Jiang and Victor Veitch. Invariant and transporta ble representations for anti-causal domain shifts.
+arXiv preprint arXiv:2207.01603 , 2022.
+[35] Michael I Jordan, Tianyi Lin, and Manolis Zampetakis. O n the complexity of deterministic nonsmooth
+and nonconvex optimization. arXiv preprint arXiv:2209.12463 , 2022.
+[36] Hamed Karimi, Julie Nutini, and Mark Schmidt. Linear co nvergence of gradient and proximal-gradient
+methods under the Polyak-Łojasiewicz condition. In Joint European conference on machine learning
+and knowledge discovery in databases , 2016.
+[37] Harshal D Kaushik and Farzad Youseﬁan. A method with con vergence rates for optimization problems
+with variational inequality constraints. SIAM Journal on Optimization , 2021.
+[38] Prashant Khanduri, Siliang Zeng, Mingyi Hong, Hoi-To W ai, Zhaoran Wang, and Zhuoran Yang. A
+near-optimal algorithm for stochastic bilevel optimizati on via double-momentum. In Advances in Neural
+Information Processing Systems , 2021.
+[39] Vijay Konda and John Tsitsiklis. Actor-critic algorit hms. In NeurIPS, 1999.
+12
+
+[40] Guy Kornowski and Ohad Shamir. Oracle complexity in non smooth nonconvex optimization. In
+NeurIPS, 2021.
+[41] Galina M Korpelevich. The extragradient method for ﬁnd ing saddle points and other problems. Matecon,
+12:747–756, 1976.
+[42] Lorenzo Lampariello, Simone Sagratella, and Oliver St ein. The standard pessimistic bilevel problem.
+SIAM Journal on Optimization , 29(2):1634–1656, 2019.
+[43] Junyi Li, Bin Gu, and Heng Huang. A fully single loop algo rithm for bilevel optimization without
+hessian inverse. In AAAI, 2022.
+[44] Tianyi Lin, Chi Jin, and Michael Jordan. On gradient des cent ascent for nonconvex-concave minimax
+problems. In ICML, 2020.
+[45] Tianyi Lin, Chi Jin, and Michael I Jordan. Near-optimal algorithms for minimax optimization. In
+COLT, 2020.
+[46] Tianyi Lin, Zeyu Zheng, and Michael I. Jordan. Gradient -free methods for deterministic and stochastic
+nonsmooth nonconvex optimization. arXiv preprint arXiv:2209.05045 , 2022.
+[47] June Liu, Yuxin Fan, Zhong Chen, and Yue Zheng. Pessimis tic bilevel optimization: a survey. Interna-
+tional Journal of Computational Intelligence Systems , 11(1):725–736, 2018.
+[48] Risheng Liu, Pan Mu, Xiaoming Yuan, Shangzhi Zeng, and J in Zhang. A generic ﬁrst-order algorithmic
+framework for bi-level programming beyond lower-level sin gleton. In ICML, 2020.
+[49] Risheng Liu, Xuan Liu, Xiaoming Yuan, Shangzhi Zeng, an d Jin Zhang. A value-function-based interior-
+point method for non-convex bi-level optimization. In ICML, 2021.
+[50] Risheng Liu, Yaohua Liu, Shangzhi Zeng, and Jin Zhang. T owards gradient-based bilevel optimization
+with non-convex followers and beyond. NeurIPS, 2021.
+[51] Lars Lorch, Scott Sussex, Jonas Rothfuss, Andreas Krau se, and Bernhard Schölkopf. Amortized infer-
+ence for causal structure learning. arXiv preprint arXiv:2205.12934 , 2022.
+[52] Yura Malitsky. Chambolle-pock and tseng’s methods: re lationship and extension to the bilevel opti-
+mization. arXiv preprint arXiv:1706.02602 , 2017.
+[53] Akshay Mehra and Jihun Hamm. Penalty method for inversi on-free deep bilevel optimization. In Asian
+Conference on Machine Learning , 2021.
+[54] Konstantin Mishchenko, Dmitry Kovalev, Egor Shulgin, Peter Richtárik, and Yura Malitsky. Revisiting
+stochastic extragradient. In AISTATS, 2020.
+[55] Arkadi Nemirovski. Prox-method with rate of convergen ce O(1/t) for variational inequalities with
+lipschitz continuous monotone operators and smooth convex -concave saddle point problems. SIAM
+Journal on Optimization , 15(1):229–251, 2004.
+[56] Yurii Nesterov. Lectures on convex optimization , volume 137. Springer, 2018.
+[57] Fabian Pedregosa. Hyperparameter optimization with a pproximate gradient. In ICML, 2016.
+[58] Boris Teodorovich Polyak. Gradient methods for minimi zing functionals. Zhurnal Vychislitel’noi Matem-
+atiki i Matematicheskoi Fiziki , 3(4):643–653, 1963.
+[59] Sachin Ravi and Hugo Larochelle. Optimization as a mode l for few-shot learning. 2016.
+[60] R. Tyrrell Rockafellar and Roger J-B Wets. Variational analysis , volume 317. Springer Science &
+Business Media, 2009.
+13
+
+[61] Shoham Sabach and Shimrit Shtern. A ﬁrst order method fo r solving convex bilevel optimization
+problems. SIAM Journal on Optimization , 27(2):640–660, 2017.
+[62] Amirreza Shaban, Ching-An Cheng, Nathan Hatch, and Byr on Boots. Truncated back-propagation for
+bilevel optimization. In AISTATS, 2019.
+[63] Aman Sinha, Hongseok Namkoong, and John Duchi. Certify ing some distributional robustness with
+principled adversarial training. In ICLR, 2018.
+[64] Mikhail Solodov. An explicit descent method for bileve l convex optimization. Journal of Convex Analysis ,
+14(2):227, 2007.
+[65] MikhailV Solodov. A bundle method for a class of bilevel nonsmooth convex minimization problems.
+SIAM Journal on Optimization , 18(1):242–259, 2007.
+[66] Daouda Sow, Kaiyi Ji, and Yingbin Liang. Es-based jacob ian enables faster bilevel optimization. arXiv
+preprint arXiv:2110.07004, 2021.
+[67] Daouda Sow, Kaiyi Ji, Ziwei Guan, and Yingbin Liang. A co nstrained optimization approach to bilevel
+optimization with multiple inner minima. arXiv preprint arXiv:2203.01123 , 2022.
+[68] Lai Tian, Kaiwen Zhou, and Anthony Man-Cho So. On the ﬁni te-time complexity and practical com-
+putation of approximate stationarity concepts of lipschit z functions. In ICML, 2022.
+[69] Jiali Wang, He Chen, Rujun Jiang, Xudong Li, and Zihao Li . Fast algorithms for stackelberg prediction
+game with least squares loss. In ICML, 2021.
+[70] Li Wang, Ji Zhu, and Hui Zou. The doubly regularized supp ort vector machine. Statistica Sinica, pages
+589–615, 2006.
+[71] Zhe Wang, Kaiyi Ji, Yi Zhou, Yingbin Liang, and Vahid Tar okh. Spiderboost and momentum: Faster
+variance reduction algorithms. NeurIPS, 2019.
+[72] Wolfram Wiesemann, Angelos Tsoukalas, Polyxeni-Marg arita Kleniati, and Berç Rustem. Pessimistic
+bilevel optimization. SIAM Journal on Optimization , 23(1):353–380, 2013.
+[73] Junchi Yang, Negar Kiyavash, and Niao He. Global conver gence and variance reduction for a class of
+nonconvex-nonconcave minimax problems. NeurIPS, 2020.
+[74] Junjie Yang, Kaiyi Ji, and Yingbin Liang. Provably fast er algorithms for bilevel optimization. NeurIPS,
+2021.
+[75] Mao Ye, Bo Liu, Stephen Wright, Peter Stone, and Qiang Li u. Bome! bilevel optimization made easy:
+A simple ﬁrst-order approach. arXiv preprint arXiv:2209.08709 , 2022.
+[76] Jingzhao Zhang, Hongzhou Lin, Stefanie Jegelka, Suvri t Sra, and Ali Jadbabaie. Complexity of ﬁnding
+stationary points of nonsmooth nonconvex functions. In ICML, 2020.
+14
+
+A Notation
+The deﬁnition of S, g∗, ϕ are listed in Table 2. We use ‖ · ‖ to denote the ℓ2-norm throughout this paper.
+We use z[j] to denote the j-th coordinate of a vector z ∈ Rq. We use Bδ(x) ≜ {x′ : ‖x′ − x‖ ≤ δ} to
+denote the ℓ2-ball centered at x with radius δ. The distance between a set and a vector is deﬁned as
+dist(v, S) = inf v′∈S ‖v − v′‖. The distance between two set is deﬁned by the Hausdorﬀ dista nce (Deﬁnition
+4.1). ∂h denotes the Clark subdiﬀerentiable for a locally Lipschitz function (Deﬁnition 4.3), when h is a
+convex function, it is equivalent to the subgradient.
+Notation Deﬁnition
+S(x) arg min y∈Y g(x, y)
+g∗(x) min y∈Y g(x, y)
+ϕ(x) min y∈S(x) f (x, y)
+Table 2: Deﬁnition of S, g∗, ϕ
+B Proofs for Motivating Counterexamples in Section 3:
+In this appendix, we analyze the motivating counter example s in our paper.
+Proposition 3.1. Consider regularizing the lower-level problem as gλ (x, y) = g(x, y)+ λ
+2 ‖y−ˆy‖2 for some ˆy ∈
+Rq and λ > 0. There always exists a bilevel problem instance of form (1) , w here g(x, y) is convex in y, ϕ(x)
+is a quadratic function with stationary points, but ϕλ (x) = min x∈Sλ (x) f (x, y), S(x) = arg min y∈Y gλ (x, y) is
+a linear function without any stationary points. Additional ly, | minx ϕ(x) − minx′ ϕλ (x′)| = ∞.
+Proof. We distinguish two diﬀerent cases by whether it holds true th at ˆy[1] = 0 , where y[i] denotes the ith
+coordinate of a variable y.
+When we are given a center point ˆy with ˆy[1] ⁄= 0, consider the problem given by
+min
+x∈R,y ∈S(x)
+y2
+[1] − 2xy[1], s.t. S (x) = arg min
+y∈R2
+(y[2] − ˆy[2])2.
+We know that ϕ(x) = −x2 with the origin as a stationary point . However, using regula rization, we have
+Sλ (x) = arg min
+y∈R2
+(y[2] − ˆy[2])2 + λ
+2 ‖y − ˆy‖2
+with a close form of Sλ (x) = {ˆy}. Hence, we know ϕλ (x) = ˆy2
+[1] − 2xˆy[1]. In this example , ϕ(x) is a quadratic
+function but ϕλ (x) is a linear function. Thus ϕ(x) and ϕλ (x) are completely diﬀerent functions. Also, ϕλ (x)
+has no stationary point since ∇ϕλ (x) = −2ˆy[1].
+When ˆy[1] = 0, consider the problem given by
+min
+x∈R,y ∈S(x)
+(y[1] + 1)2 − 2x(y[1] + 1), s.t. S (x) = arg min
+y∈R2
+(y[2] − ˆy[2])2.
+We still have ϕ(x) = −x2, with the origin as a stationary point. However, using regul arization, we have
+Sλ (x) = {0} and thus ϕλ (x) = 1 − 2x. Also, ϕλ (x) has no stationary point.
+In both two cases, it is easy to verify that | minx ϕ(x) − minx′ ϕλ (x′)| = ∞.
+Example 3.3. Consider the bilevel problem given by
+min
+x∈R,y ∈R
+−xy, s.t. y ∈ arg min
+y∈R
+(x + y − 2)2,
+where the lower-level problem is strongly convex in y. The KKT points of the constraint problem form (3)
+do not include any global or local minimum of ϕ(x).
+15
+
+Proof. We know that the constraint is y = 2 − x, so the problem is equivalent to minx∈R x(x − 2) with
+optimal value achieved at x∗ = y∗ = 1. However, if rewrite the problem as
+min
+x∈R,y ∈R
+−xy, s.t. (x + y − 2)2 ≤ 0.
+and using the KKT condition with multiplier λ:
+y − 2λ(x + y − 2) = 0;
+x − 2λ(x + y − 2) = 0;
+λ(x + y − 2)2 = 0;
+(x + y − 2)2 ≤ 0, λ ≥ 0.
+when λ > 0, there is no (x, y) satisfying the KKT condition; when λ = 0, we get x = y = 0, which is clearly
+not the optimal choice of x, y;
+Example 3.4. Consider the bilevel problem given by:
+min
+x∈R,y ∈R
+x2 − 2εxy, s.t. y ∈ arg min
+y∈R
+ε3y2.
+where the lower-level problem is strongly convex in y. There exists inﬁnite O(ε)-KKT points (ˆx, ˆy, ˆλ) such
+that ‖∇ϕ(ˆx)‖ = Ω(1) .
+Proof. It is clear that ϕ(x) = x2 and the optimal solution is x∗ = y∗ = 0 and we also know that g∗(x) = 0 .
+For any 0 ≤ ˆλ ≤ O (1), ˆx = εˆy and |ˆy| = Θ( ε−1), we know that (ˆx, ˆy, ˆλ) is an ε-KKT pair of this problem
+since:
+• g(ˆx, ˆy) − g∗(ˆx) = ε3 ˆy2 = O(ε);
+• |ˆλ(g(ˆx, ˆy) − g∗(ˆx))| = ˆλε3 ˆy2 = O(ε);
+• ∇xf (ˆx, ˆy) + ˆλ(∇xg(ˆx, ˆy) − ∇xg∗(ˆx)) = 2(ˆx − εˆy) = 0 ;
+• |∇yf (ˆx, ˆy) + ˆλ∇yg(ˆx, ˆy)| = 2|ˆλε3 ˆy − εˆx| = O(ε).
+However, since |ˆy| = Θ( ε−1), we have |ˆx| = Θ(1) and we know that ˆx must be Ω(1) far away from the unique
+minimum x∗ in this example.
+C Proofs in Section 4
+Before we give the formal proofs, we present some classical d eﬁnitions in constrained optimization [56].
+C.1 Technical Backgrounds for Constrained Optimization
+Deﬁnition C.1 (projection). We deﬁne the projection onto a closed convex set Y as:
+PY ( · ) = arg min
+y∈Y
+‖y − · ‖ .
+Proposition C.1 (non-expansiveness, Corollary 2.2.3 in [56]) . The projection operator PY ( · ) is 1-Lipschitz:
+‖PY(y) − PY (y′)‖ ≤ ‖ y − y′‖, ∀y, y′ ∈ Y .
+The following deﬁnition generalizes gradient for constrai nt optimization.
+16
+
+Assumption Conclusion Reference
+f is continuous ϕ is continuous ⇔ S is continuous Theorem C.1
+f is Lipschitz ϕ is Lipschitz ⇔ S is Lipschitz Theorem C.2
+f is locally Lipschitz ϕ is locally Lipschitz ⇔ S is locally Lipschitz Theorem 4.1
+Table 3: Relationships between the continuity of f , S and ϕ.
+Deﬁnition C.2 (generalized gradient) . When g(x, · ) is L-smooth for any given x ∈ Rd, i.e.
+‖∇yg(x, y) − ∇yg(x, y′)‖ ≤ L‖y − y′‖, ∀y, y′ ∈ Y ,
+we deﬁne the generalized gradient with respect to y as:
+G(y; x) ≜ L
+(
+y − PY
+(
+y − 1
+L ∇yg(x, y)
+))
+.
+Proposition C.2 (Fact 1 in [71]) . It holds that G(y∗(x); x) = 0 for any y∗(x) ∈ arg miny∈Y g(x, y).
+Proposition C.3. When g is L-smooth, the generalized gradient G(y; · ) is L-Lipschitz:
+‖G(y; x) − G(y; x′)‖ ≤ L‖x − x′‖, ∀x, x′ ∈ Rd.
+Proof. It is a immediate result of the non-expansiveness of project ion and smoothness:
+‖G(y; x) − G(y; x′)‖
+≤ L
+‖
+‖
+‖
+‖PY
+(
+y − 1
+L ∇yg(x, y)
+)
+− PY
+(
+y − 1
+L ∇yg(x′, y)
+) ‖
+‖
+‖
+‖
+≤ ‖∇ yg(x, y) − ∇yg(x′, y)‖
+≤ L‖x − x′‖.
+C.2 Continuity of the Hyper-Objective
+Now we are ready to give the proofs about the important proper ties of hyper-objective. Although we mainly
+discuss the local Lipschitz continuity in the main text, her e we also provide discussions about the general
+continuity and the global Lipschitz continuity, deﬁned as f ollows.
+Deﬁnition C.3. We call a set-valued mapping S(x) continuous if for any x ∈ Rd and any ε > 0, there
+exists δ > 0, such that for any x′ ∈ Rd satisfying ‖x′ − x‖ ≤ δ, we have dist(S(x), S(x′)) ≤ ε.
+Deﬁnition C.4. We call the set-valued mapping S(x) L-Lipschitz if
+dist(S(x1), S(x2)) ≤ L‖x1 − x2‖, ∀x1, x2 ∈ Rd.
+The main results in this section about the relationship of th e continuity for f , S and ϕ are presented in
+Table 3, together with the following theorems.
+Theorem C.1. Suppose that Assumption 4.1 holds.
+If f (x, y) and S(x) are continuous, we have that ϕ(x) is also continuous.
+Conversely, ϕ(x) if continuous for any continuous f (x, y), we can conclude that S(x) is continuous.
+Theorem C.2. Suppose that Assumption 4.1 holds.
+If f is Cf -Lipschitz and S(x) is κ-Lipschitz, we have that ϕ(x) is Lipschitz with coeﬃcient L = (κ+ 1)Cf .
+Conversely, if ϕ(x) is L-Lipschitz for any f (x, y) which is Cf -Lipschitz , we can conclude that S(x) is
+Lipschitz with coeﬃcient κ = L/Cf .
+17
+
+Theorem 4.1. Suppose that Assumption 4.1 holds.
+• If f (x, y) and S(x) are locally Lipschitz continuous, then ϕ(x) is locally Lipschitz continuous.
+• Conversely, if ϕ(x) is locally Lipschitz continuous for any locally Lipschitz c ontinuous f (x, y), then
+S(x) is locally Lipschitz continuous.
+Proof of Theorem C.1. Due to the compactness of S(x), we can replace sup and inf with max and min in
+the deﬁnition of Hausdorﬀ distance. Below we prove the suﬃci ency and then the necessity.
+Suﬃciency: We want to show that for any x1 ∈ Rd and ε > 0, there exists some constant δ > 0 such
+that it holds
+|ϕ(x1) − ϕ(x2)| ≤ ε, ∀‖x1 − x2‖ ≤ δ. (9)
+Since S(x1), S(x2) are nonempty compact sets, we can pick
+y1 ∈ arg min
+y∈S(x1)
+f (x1, y), y 2 ∈ arg min
+y∈S(x2)
+f (x2, y).
+We can bound |ϕ(x1) − ϕ(x2)| as
+ϕ(x1) − ϕ(x2) ≤ f (x1, y′
+1) − f (x2, y2)/bracehtipupleft /bracehtipdownright/bracehtipdownleft /bracehtipupright
+(i)
+, ∀y′
+1 ∈ S (x1);
+ϕ(x2) − ϕ(x1) ≤ f (x2, y′
+2) − f (x1, y1)/bracehtipupleft /bracehtipdownright/bracehtipdownleft /bracehtipupright
+(ii)
+, ∀y′
+2 ∈ S (x2).
+Next, we use the continuity of f (x, y) and S(x) to bound (i) and (ii) for an appropriate choice of y′
+1 y′
+2.
+Firstly, the continuity of S(x) at x1 implies that there exists δ1 > 0 and C1 > 0, such that dist(S(x1), S(x)) ≤
+C1 holds for any ‖x − x1‖ ≤ δ1. The compactness of S(x) and the deﬁnition of Hausdorﬀ distance further
+implies that set {(x, y) : ‖x1 − x‖ ≤ δ1, y ∈ S (x)} is bounded, and is therefore a subset of compact set T (x1).
+Since f (x, y) is continuous and T (x1) is compact, we conclude that f (x, y) is uniformly continuous on T (x1).
+Secondly, let ‖x2 − x1‖ ≤ δ1. By the uniform continuity of f (x, y) on T (x1), we know that for any ε > 0,
+there exists some constant δ2 > 0 such that both (i) and (ii) are smaller than ε once we have
+max {‖x1 − x2‖, ‖y′
+1 − y2‖, ‖y1 − y′
+2‖} ≤ δ2. (10)
+Thirdly, by the continuity of set-valued mapping S(x) at x1, we know that for any δ2 > 0, there exists
+some constant δ3 > 0 such that for any x2 satisfying ‖x1 − x2‖ ≤ δ3 it holds dist(S(x1), S(x2)) ≤ δ2. This
+implies that there exists y′
+1 ∈ S (x1) and y′
+2 ∈ S (x2) such that ‖y′
+1 − y2‖ ≤ δ2 and ‖y1 − y′
+2‖ ≤ δ2.
+Therefore, for any ε > 0, we can take δ = min {δ1, δ2, δ3} and conclude that for any x2 satisfying
+‖x1 − x2‖ ≤ δ, (10) always holds and thus (9) follows.
+Necessity: It suﬃces to show for any given x1 ∈ Rd and any ε > 0, there exists δ > 0 such that for any
+x2 satisfying ‖x1 − x2‖ ≤ δ it holds
+max
+
+
+
+
+
+
+
+
+
+max
+y2∈S(x2)
+min
+y1∈S(x1)
+‖y1 − y2‖
+/bracehtipupleft
+/bracehtipdownright/bracehtipdownleft /bracehtipupright
+(a)
+, max
+y1∈S(x1)
+min
+y2∈S(x2)
+‖y1 − y2‖
+/bracehtipupleft /bracehtipdownright/bracehtipdownleft /bracehtipupright
+(b)
+
+
+
+
+
+
+
+
+
+≤ ε. (11)
+Firstly, choose f (x, y) = − miny1∈S(x1) ‖y − y1‖. By the continuity of ϕ(x) at x1, we know that for given
+ε > 0, there exists δ1 > 0, such that for any x2 satisfying ‖x1 − x2‖ ≤ δ1, we have (a) = ϕ(x1) − ϕ(x2) ≤ ε.
+Secondly, choose f (x, y) = max y1∈S(x1) ‖y − y1‖. By the continuity of ϕ(x) at x1, we know that for given
+ε > 0, there exists δ2 > 0, such that for any x2 satisfying ‖x1 − x2‖ ≤ δ2, we have (b) ≤ ϕ(x2) − ϕ(x1) ≤ ε,
+where we use the minimax inequality to change the order of min and max in (b).
+Finally, we take δ = min {δ1, δ2} and conclude that once ‖x1 − x2‖ ≤ δ we have (a) and (b) are both
+smaller than ε, implying the continuity of S(x).
+18
+
+Proof of Theorem C.2. The proof mainly follows the proof of Theorem C.1.
+Suﬃciency: Similar to previous proof, we pick
+y1 ∈ arg min
+y∈S(x1)
+f (x1, y), y 2 ∈ arg min
+y∈S(x2)
+f (x2, y).
+Then the Lipschitz continuity of S(x) implies there exist y′
+1 ∈ S (x1) and y′
+2 ∈ S (x2) such that
+ϕ(x1) − ϕ(x2) ≤ f (x1, y′
+1) − f (x2, y2) ≤ Cf (‖x1 − x2‖ + ‖y2 − y′
+1‖) ≤ (κ + 1)Cf ‖x1 − x2‖,
+ϕ(x2) − ϕ(x1) ≤ f (x2, y′
+2) − f (x1, y1) ≤ Cf (‖x1 − x2‖ + ‖y1 − y′
+2‖) ≤ (κ + 1)Cf ‖x1 − x2‖,
+This establishes the Lipschitz continuity of ϕ.
+Necessity: We reuse the function f (x, y) in the proof of Theorem C.1 to bound (a) and (b) deﬁned in
+(11). Without loss of generality, we assume Cf = 1. Firstly, choosing f (x, y) = − miny1∈S(x1) ‖y − y1‖ results
+(a) = ϕ(x1) − ϕ(x2) ≤ L‖x1 − x2‖.
+Secondly, choosing f (x, y) = max y1∈S(x1) ‖y − y1‖ results
+(b) ≤ ϕ(x2) − ϕ(x1) ≤ L‖x1 − x2‖.
+Together, recalling the deﬁnition of (a) and (b) in (11), we h ave already shown that
+dist(S(x1), S(x2)) ≤ L‖x1 − x2‖, ∀x1, x2 ∈ Rd.
+For general Cf > 0, the proof can also be done by scaling f (x, y) with Cf and then following similar steps.
+Proof of Theorem 4.1. The proof is similar to the case of global Lipschitz property , but requries additional
+care for the local argument.
+Suﬃciency: Deﬁne the open neighbourhood ball as Bδ ≜ {x′ : ‖x′ − x‖ < δ } and Bδ(x, y) ≜ {(x′, y′) :
+‖x′ − x‖ < δ, ‖y′ − y‖ < δ } . For a given x1 ∈ Rd and any y ∈ S (x1), the local Lipschitz continuity of f ( · , · )
+implies that there exists δy > 0 and Ly > 0 such that f ( · , · ) is Ly-Lipschitz in Bδy (x1, y). Note that the
+set ∪yBδy (x1, y) forms an open cover of the set x1 × S (x1). The compactness of set S(x1) guarantees the
+compactness of x1 × S (x1) and further the existence of a ﬁnite subcover ∪n
+k=0Bδyk
+(x1, yk). Therefore, we
+can conclude that there exists δ1 > 0, such that f ( · , · ) is L1-Lipschitz in a δ1 neighbourhood of x1 × S(x1),
+deﬁned as Bδ1 (x1, S(x1)) ≜ {(x′, y′) : ‖x′ − x‖ < δ 1, miny∈S(x1) ‖y′ − y‖ < δ 1}, where L1 = max k Lyk .
+Next, the local Lipschitz continuity of S( · ) implies the existence of δ2 > 0 and L2 > 0 such that S( · ) is
+L2-Lipschitz in Bδ2 (x1). Take δ = min {δ1, δ2, δ1/L2}. The choice of δ ensures (x2, y2) ∈ Bδ1 (x1, S(x1)) for
+any x2 ∈ Bδ(x1), y2 ∈ S (x2). For any x2 ∈ Bδ(x1), we follow the proof of Theorem C.1 and pick
+y1 ∈ arg min
+y∈S(x1)
+f (x1, y), y 2 ∈ arg min
+y∈S(x2)
+f (x2, y).
+The Lipschitz continuity of f ( · , · ) in Bδ1 (x1, S(x1)) and the Lipschitz continuity of S( · ) in Bδ2 (x1) implies
+there exist y′
+1 ∈ S (x1) and y′
+2 ∈ S (x2) such that
+ϕ(x1) − ϕ(x2) ≤ f (x1, y′
+1) − f (x2, y2) ≤ L1 (‖x1 − x2‖ + ‖y2 − y′
+1‖) ≤ (L2 + 1)L1‖x1 − x2‖;
+ϕ(x2) − ϕ(x1) ≤ f (x2, y′
+2) − f (x1, y1) ≤ L1 (‖x1 − x2‖ + ‖y1 − y′
+2‖) ≤ (L2 + 1)L1‖x1 − x2‖;
+hold for any x2 ∈ Bδ(x1), implying the locally Lipschitz property of ϕ.
+Necessity: We again use the function f (x, y) in the proof of Theorem C.1 to bound (a) and (b) deﬁned
+in (11). Firstly, choosing f (x, y) = − miny1∈S(x1) ‖y − y1‖ gives the existence for some δ1 > 0 and L1 > 0
+such that
+(a) = ϕ(x1) − ϕ(x2) ≤ L1‖x1 − x2‖, , ∀‖x1 − x2‖ ≤ δ1
+Secondly, choosing f (x, y) = max y1∈S(x1) ‖y − y1‖ gives the exsitence of some δ2 > 0 and L2 > 0 such
+that
+(b) ≤ ϕ(x2) − ϕ(x1) ≤ L2‖x1 − x2‖, ∀‖x1 − x2‖ ≤ δ2
+19
+
+Together, taking δ = min{δ1, δ2} and L = max{L1, L2} and recalling the deﬁnition of (a) and (b) in (11),
+we can show that there exists some δ > 0 such that it holds
+dist(S(x1), S(x2)) ≤ L‖x1 − x2‖, , ∀‖x1 − x2‖ ≤ δ,
+which implies the local Lipschitz property of S.
+C.3 Conditions on Lower-Level Objectives and Related Probl ems
+We give related problems satisfying the growth conditions.
+Example 4.1 (SVM). Consider the following overparameterized learning [33] for DrS VM [70]:
+min
+λ ∈R+,w ∈Rq
+m∑
+i=1
+max{1 − bia⊤
+i w, 0} + λ‖w‖2
+2,
+s.t. w ∈ arg min
+‖w′‖ 1≤c
+n∑
+i=1
+max{1 − b′
+ia′⊤
+i w′, 0},
+for some constant c > 0. It is a bilevel problem satisfying Assumption 4.2 with α(x) ≡ α.
+Proof. We can rewrite the lower-level problem into the following li near program:
+min
+w,t
+t
+s.t. t ≥ 0;
+t ≥ 1 − bia⊤
+i w, i = 1, · · · , n;
+c ≥ wj ≥ −c, j = 1, · · · , q;
+whose solution set satisﬁes the assumption of weak sharp min imum according to Theorem 3.5 in [6].
+Example 4.2 (RLS). Consider the Stackelberg game [4] for robust least square wi th soft constraint [73]:
+min
+x∈Rd
+‖Ax − y‖2 + λ1‖x‖2
+s.t. y ∈ arg min
+y′∈Rq
+−‖Ax − y′‖2
+M + λ2‖y′ − y0‖2
+M
+for some λ1 > 0 and λ2 > 1 and some semi-deﬁnite matrix M . When M is not full rank, the lower-level
+problem is not strongly convex, but it is a bilevel problem sa tisfying Assumption 4.3 with α(x) ≡ α.
+Proof. We can show the following PL inequality holds for variable y by the conclusion in “relevant problems:
+strongly-convex composed with linear” in Appendix B of [36] :
+‖∇yg(x, y)‖2 ≥ 2α
+{
+g(x, y) − min
+y′∈Y
+g(x, y′)
+}
+, ∀x ∈ Rd, y ∈ Y ,
+where α is the smallest singular value of matrix M .
+Next, we use Theorem 2 in [36] to show (4) by the conclusion “PL implies EB” such that
+‖∇yg(x, y)‖ ≥ α‖y − yp(x)‖, ∀x ∈ Rd, y ∈ Y .
+The following theorem demonstrates that ϕ(x) in above examples are locally Lipschitz continuous.
+Theorem 4.2. Suppose that Assumption 4.1 holds.
+• Under either Assumption 4.2 or 4.3, S(x) is locally Lipschitz continuous.
+20
+
+• Furthermore, when f (x, y) is locally Lipschitz continuous, then ϕ(x) is also locally Lipschitz continuous.
+Proof. In the following proof, we will show that S(x) is locally-Lipschitz continuous under either one of these
+assumptions. Invoking Theorem 4.1, we can conclude that ϕ is locally Lipschitz continuous.
+We begin from a simple case when α(x) ≡ α, where we can show the global Lipschitz continuity for S(x).
+Under Assumption 4.2: for ∀y1 ∈ S (x1), ∃y2 ∈ S (x2), it holds that
+2α‖y1 − y2‖
+≤ g(x2, y1) − g(x2, y2)
+≤ g(x1, y1) − g(x1, y2) + 2L‖x1 − x2‖
+≤ 2L‖x1 − x2‖,
+where we use the Lipschitzness in the second last line and g(x1, y2) ≤ g(x1, y2) in the last one.
+Under Assumption 4.3: for ∀y1 ∈ S (x1), ∃y2 ∈ S (x2), it holds that
+α‖y1 − y2‖ ≤ ‖G (y1; x2)‖ = ‖G(y1; x2) − G(y1; x1)‖ ≤ L‖x1 − x2‖,
+where we use Proposition C.2 in the second one and Propositio n C.3 in the third one.
+Finally, when α(x) is not a constant function, the above statements are only cor rect in a δ-neighborhood
+of a given x0 ∈ Rd. Denote such neighborhood as Bδ(x0), its compactness and the strict positiveness of
+α(x) guarantees that α(x) must have a lower bound α > 0 in Bδ(x0). Therefore S(x) is locally Lipschitz
+continuous.
+C.4 Comparison between Goldstein Stationary Points and KKT Points
+Proposition 4.1. A local minimum of ϕ must be a (0, δ)-Goldstein stationary point for any δ > 0, but it is
+unnecessarily a KKT point. This statement is true even when the lower-level objective is strongly convex in
+y.
+Proof. Readers can ﬁnd why the (0, δ)-Goldstein stationary is a necessary condition for local mi nimum of ϕ
+in Proposition 2.1 [18]. For the failure of KKT points, count erexamples are given in Example 3.3.
+Proposition 4.2. When ϕ is gradient Lipschitz, there exists some δ′ > 0 such any (δ, ε)-Goldstein stationary
+point with 0 < δ ≤ δ′ satisﬁes ‖∇ϕ(x)‖ ≤ 3ε. However, the ε-KKT points with any ε > 0 may have
+‖∇ϕ(x)‖ ≥ 1. This statement is true even when the lower-level objective is strongly convex in y.
+Proof. Suppose ϕ is diﬀerentiable with Lϕ -Lipschitz gradient for some constant Lϕ > 0. Then we use
+Proposition 6 in [76] to conclude that any (ε/Lϕ , ε)-Goldstein stationary point is a 3ε-stationary point of ϕ.
+For the failure of KKT points, counterexample is given in Exa mple 3.4 where ϕ(x) = x2.
+D Proofs in Section 5
+D.1 The Lower Complexity Bound
+Our lower bound is suitable for the linear span ﬁrst-order al gorithm [56], deﬁned as follows:
+Deﬁnition D.1. Given an initial point z0, a linear-span ﬁrst order algorithm A is deﬁned as a measurable
+mapping from functions {fi}n
+i=1 to a sequence of point satisfying
+zt+1 ∈ Span{z0, · · · , xt, ∇f1(z1), · · · , ∇f1(zt), · · · , fn(z1), · · · , ∇fn(zt)}
+Gradient Descent and Accelerated Gradient Descent (AGD) [5 6] for minimizing a given function belongs
+to the class of linear-span algorithms for {f } and n = 1 . For bilevel problems, algorithms can query the
+oracles for two functions {f, g} with n = 2 in the above deﬁnition.
+Our lower bounds is based on the ﬁrst order zero-chain [56].
+21
+
+Deﬁnition D.2 (zero-chain). We call a function h : Rq → R a ﬁrst order zero-chain if for any sequence
+{zk}k≥1 satisfying
+zi ∈ Span{∇h(z0), · · · , ∇h(zi−1)}, i ≥ 1; z0 = 0 (12)
+it holds that zi, [j] = 0, i + 1 ≤ j ≤ q.
+We remark that in the construction of a zero chain, we can alwa ys assume z0 = 0 without loss of generality,
+since otherwise we can translate the function to h(z − z0). Below, we introduce two convex zero-chains from
+[56].
+Deﬁnition D.3 (smooth zero-chain, [56]) . Consider the family of functions:
+hq(z) = 1
+8 (z[1] − 1)2 + 1
+8
+q−1∑
+j=1
+(
+z[j+1] − z[j]
+) 2
+.
+The following properties hold for any hq(z) with q ∈ N+:
+• It is a ﬁrst order zero-chain.
+• It has a unique minimizer z∗ = 1.
+• It is 1-smooth.
+For nonsmooth convex function, we can easily generalize the deﬁnitions of linear-span ﬁrst order algorithm
+and zero-chain by replacing gradient with subgradient in De ﬁnition D.1 and D.2. Formal deﬁnitions can be
+found in [56] and we omit them here.
+Deﬁnition D.4 (Lipschitz zero-chain, [56]) . Consider the family of functions:
+hq(z) =
+√
+q
+2 + √q max
+1≤j≤q
+z[j] + 1
+2
+(
+2 + √q
+) ‖z‖2,
+The following properties hold for any hq(z) with q ∈ N+:
+• It is a ﬁrst order zero-chain.
+• It has a unique minimizer z∗ = −1/√q.
+• It is 1-Lipschitz in the unit Euclidean ball B(z∗) ≜ {z : ‖z − z∗‖ ≤ 1}.
+In bilevel problems, it is crucial to ﬁnd iterate y that is close to S(x), instead of just achieving small
+optimality gap g(x, y) − miny g(x, y). However, classical hardness results in convex optimizati on states that
+it is intractable to “locate” the minimizers of general conv ex functions. This is exactly why bilevel problems
+without lower-level strong convexity is intractable, even for simple bilevel problem as shown below.
+Proposition D.1. For any K ∈ N+, L > 0 and R > 0, there exists q ∈ N+, such that for any y0 ∈ Rq,
+there exists a 1-Lipschitz linear function f (y) and a L-smooth convex function g(y) with ‖y0 − y∗‖ ≤ R, such
+that for any ﬁrst order algorithm A that generates a sequence of test points {yk} with
+yk ∈ y0 + Span{∇f (y0), ∇g(y0), · · · , ∇f (yk−1), ∇g(yk−1)}, k ≥ 1,
+for all 0 ≤ k ≤ K it holds that
+|f (yk) − f ∗| ≥ R√
+2 ,
+where y∗ is the solution to
+f ∗ = min
+y∈Rq
+f (y), s.t. y ′ ∈ arg min
+y′∈Rq
+g(y).
+22
+
+Proof. Without loss of generality, we assume y0 = 0. Let q = 2K, σ = R/√q and
+f (y) = 1√
+K
+q∑
+j=K+1
+y[j], g (y) = Lσ2hq(y/σ),
+where hq(y) follows Deﬁnition D.3. Then we can verify that g is a L-smooth zero-chain with ‖y0 − y∗‖ = R
+and f ∗ = R/
+√
+2. The property of zero-chain leads to
+yy, [j] = 0, ∇f (yk) = 0 , ∀k + 1 ≤ j ≤ q, 0 ≤ k ≤ K.
+Therefore f (yk) remains zero for all 0 ≤ k ≤ K.
+An immediate corollary suggests that we can not obtain an eﬃc ient zeroth order oracle of ϕ(x) for general
+convex objectives. This justiﬁes the importance of the grow th conditions.
+Proposition 5.1. Fix an x. For any K ∈ N+, there exists q ∈ N+, such that for any y0 ∈ Rq, there exist 1-
+Lipschitz linear function f (x, · ) and 1-smooth convex function g(x, · ) with dist
+(
+y0, arg miny∈S(x) f (x, y)
+)
+≤√
+2 ,such that for any ﬁrst order algorithm A that generates a sequence of test points {yk} with
+yk ∈ y0 + Span{∇yf (x, y0), ∇yg(x, y0), · · · , ∇yf (x, yk−1), ∇yg(x, yk−1)}, k ≥ 1,
+for all 0 ≤ k ≤ K it always holds that |f (x, yk) − ϕ(x)| ≥ 1.
+Similar lower bounds can be constructed for Lipschitz conve x objectives.
+Proposition D.2. For any K ∈ N+, L > 0 and R > 0, there exists q ∈ N+, such that for any z0 ∈ Rq,
+there exists a 1-Lipschitz linear function f (y) and a L-Lipschitz convex function g(y) on BR(y∗) satisfying
+y0 ∈ BR(y∗), such that for any ﬁrst order algorithm A that generates a sequence of test points {yk} with
+yk ∈ y0 + Span{∂f (y0), ∂g(y0), · · · , ∂f (yk−1), ∂g(yk−1)}, k ≥ 1,
+for all 0 ≤ k ≤ K it holds that
+|f (yk) − f ∗| ≥ R√
+2
+,
+for some adversary choice of subgradient, where y∗ is the solution to
+f ∗ = min
+y∈Rq
+f (y), s.t. y ′ ∈ arg min
+y′∈Rq
+g(y).
+Proof. Without loss of generality, we assume z0 = 0. Let q = 2K and
+f (y) = − 1√
+K
+q∑
+j=K+1
+y[j], g (y) = LR h q(y/R),
+where hq(y) follows Deﬁnition D.4. Then we can verify that g is a zero-chain with ‖y0 − y∗‖ = R and
+f ∗ = R/
+√
+2. Also, g is L-Lipschitz on BR(y∗). Suppose that f always return a zero subgradient at the origin,
+then the property of zero-chain leads to
+yy, [j] = 0, ∂f (yk) = 0 , ∀k + 1 ≤ j ≤ q, 0 ≤ k ≤ K.
+Therefore f (yk) remains zero for all 0 ≤ k ≤ K.
+We remark that projection onto the ℓ2 ball centered at the origin will not produce additional nonz ero
+entries. Therefore, the possible projection operation in t he algorithm will not distort the zero-chain structure.
+23
+
+D.2 The Upper Complexity Bound: Outer Loop
+Our framework is motivated by the Gradient-Free Method (GFM ) proposed by Lin et al. [46] for nonsmooth
+nonconvex objectives. The idea is to exploit the relationsh ip between Goldstein subdiﬀerential and uniform
+smoothing in a unit ball.
+Deﬁnition D.5 (Goldstein subdiﬀerential, [18]) . Given δ > 0, the Goldstein δ-subdiﬀerential of Lipschitz
+function h at a point x ∈ Rd is deﬁned by
+∂δh(x) := Conv
+{
+∪x′∈Bδ (x)∂h(x′)
+}
+.
+where ∂h is the Clark subdiﬀerential.
+Lemma D.1 (Theorem 3.1 in [46]) . Suppose ϕ is locally Lipschitz and let ϕδ = Ev∼Pv [ϕ(x + δv)], where Pv
+is a uniform distribution on a unit ball in ℓ2-norm. Then for any x ∈ Rd, we have ∇ϕδ(x) ∈ ∂ϕδ(x), where
+∂ϕδ(x) denotes the δ-Goldstein subdiﬀerential of ϕ.
+The GFM uses the two-point zeroth-order method to construct an unbiased estimator for ∇ϕδ(x):
+G(x) = d
+2δ (ϕ(x + δu) − ϕ(x − δu))u, u ∈ Pu (13)
+where Pu is a uniform distribution on the unit sphere in l2-norm. Flaxman et al. [14] showed that it
+satisﬁes Eu∼Pu[G( · )] = ∇ϕδ( · ) and recently Lin et al. [46] showed that applying gradient de scent step
+xt+1 = xt − ηG(xt) can ﬁnd a (δ, ǫ)-Goldstein stationary point.
+Motivated by the GFM, we analyze the inexact version of the GF M (Inexact Gradient-Free Method) in
+Algorithm 1, the idea is to maintain an approximation of ϕ(x) with ˜ϕ(x) with some algorithm A giving the
+following approximate zeroth-order oracle satisfying
+| ˜ϕ(x) − ϕ(x)| ≤ ω
+for any given x ∈ Rd and suﬃciently small precision ω > 0. With ˜ϕ in hand, it is natural to replace every
+ϕ( · ) with ˜ϕ( · ) in (13) to get the following estimator in the IGFM:
+˜G(x) = d
+2δ ( ˜ϕ(x + δu) − ˜ϕ(x − δu))u, u ∈ Pu, (14)
+where Pu is a uniform distribution on the unit sphere in ℓ2-norm. The following theorem shows setting ω
+according to (5) can yield similar convergence result as in [ 46].
+Theorem 5.1 (IGFM). Suppose ϕ is Mϕ -Lipschitz. Suppose the subroutine A in Algorithm 1 can output
+an approximate function value ϕ(x) satisfying
+ω ≜ | ˜ϕ(x) − ϕ(x)| = O
+( δε2
+dMϕ
+)
+(5)
+for any x ∈ Rd and any ε ≲ Mϕ . Let ∆ = ϕ(x0) − inf x∈Rd ϕ(x). Set the learning rate to
+η = Θ
+( √
+δ(∆ + δMϕ )
+cd3/ 2M 3ϕ T
+)
+. (6)
+Then Algorithm 1 can output ¯x satisfying
+E min
+{
+‖g‖ : g ∈ ∪ x′∈Bδ (x)∂h(x′)
+}
+≤ ε,
+which is a (δ, ε)-Goldstein stationary point in expectation, within the numb er of iterations no more than
+T = O
+(
+d3/ 2
+(
+M 4
+ϕ
+ε4 + ∆ M 3
+ϕ
+δε4
+))
+. (7)
+24
+
+Proof. According to Lemma D.1 in [46], we know that the exact zeroth- order oracle (13) satisﬁes
+Eut∼Pu[G(xt) | xt] = ∇ϕδ(xt), Eut∼Pu
+[
+‖G(xt)‖2 | xt
+]
+≤ 16
+√
+2πdM 2
+ϕ ,
+where Pu is a uniform distribution on a ℓ2 unit sphere. Then we know that
+Eut∼Pu
+[
+‖G(xt) − ˜G(xt)‖ | xt
+]
+≤ dω
+δ Eut∼Pu‖u‖ = dω
+δ ≤ c4ε2
+Mϕ
+(15)
+and
+Eut∼Pu
+[
+‖ ˜G(xt)‖2 | xt
+]
+≤ 2Eut∼Pu
+[
+‖G(xt)‖2 | xt
+]
++ 2Eut∼Pu
+[
+‖G(xt) − ˜G(xt)‖2 | xt
+]
+≤ 2Eut∼Pu
+[
+‖G(xt)‖2 | xt
+]
++ 2d2ω2
+δ2 Eut∼Pu‖u‖2
+≤ 32
+√
+2πdM 2
+ϕ + 2d2ω2
+δ2
+≤ c1dM 2
+ϕ
+(16)
+for some positive constant c1, c4 > 0. Then we use the results of (15), (16) as well as the standard a nalysis
+of gradient descent to obtain
+E [ϕδ(xt+1) | xt] ≤ ϕδ(xt) − η⟨∇ϕδ (xt), E[ ˜G(xt) | xt]⟩ + c2η2Mϕ
+√
+d
+2δ E
+[
+‖ ˜G(xt)‖2 | xt
+]
+≤ ϕδ(xt) − η‖∇ϕδ(xt)‖2 + ηMϕ dω
+δ + c2η2Mϕ
+√
+d
+2δ E
+[
+‖ ˜G(xt)‖2 | xt
+]
+≤ ϕδ(xt) − η‖∇ϕδ(xt)‖2 + c3η2M 3
+ϕ d3/ 2
+δ + ηc4ε2,
+where we use Proposition 2.3 in [46] that ϕδ is diﬀerentiable and Mϕ -Lipschitz with the (c2Mϕ
+√
+d/δ)-Lipschitz
+gradient where c2 > 0 is a positive constant and we deﬁne c3 = 2c1c2.
+Telescoping for t = 0, 1, · · · , T , we obtain
+E‖∇ϕδ(¯x)‖2 ≤ ∆ + δMϕ
+ηT + c3ηM 3
+ϕ d3/ 2
+δ + c4ε2,
+where we use |ϕδ(x) − ϕ(x)| ≤ δMϕ for any x ∈ Rd by Proposition 2.3 in [46].
+Lastly, plugging the value of η, T in (6) and (7) and noting that ∇ϕ(¯x) ∈ ∂δϕ(¯x) as stated in Lemma D.1,
+we arrive at the conclusion that the output ¯x is a (δ, ε)-Goldstein stationary point in expectation.
+Therefore, we know that the iteration complexity of the oute r loop is O(poly(d, 1/ε, 1/δ)). Next, we show
+that the complexity of the inner loop is O(poly(1/ω)) = O(poly(d, 1/ε, 1/δ)).
+D.3 The Upper Complexity Bound: Inner Loop
+In Appendix E we will provide the switching gradient methods that can solve the simple bilevel problem (8)
+under either Assumption 4.2 or Assumption 4.3 with the follo wing (εf , εg)-suboptimality measurement.
+Deﬁnition D.6. Given a point x ∈ Rd and some εf , εg > 0, we say ˆy ∈ Rq is an (εf , εg)-suboptimal solution
+to problem (8) if it holds that
+f (x, ˆy) − ϕ(x) ≤ εf , g (x, ˆy) − min
+y∈Y
+g(x, y) ≤ εg.
+However, a point ˆy satisfying Deﬁnition D.6 may not lead to a desired zeroth ord er oracle in the outer
+loop since the quantity f (x, ˆy)−ϕ(x) may be negative and far away from zero. Fortunately, we can sh ow that
+under either Assumption 4.2 or 4.3, this can not happen by sho wing the Hölderian error bound condition.
+25
+
+Deﬁnition D.7 (Hölderian error bound) . We say a function g(x, · ) satisﬁes the rth order Hölderian error
+bound condition in set Y for some ν > 0 with order r ≥ 1 if
+ν
+r dist(y, S(x))r ≤ g(x, y) − min
+y′∈Y
+g(x, y′), ∀y ∈ Y .
+Proposition D.3. Suppose g(x, · ) is convex. Assumption 4.2 implies the 1st error bound conditi on of
+function g(x, · ) with coeﬃcient ν = α; Assumption 4.3 implies the 2rd error bound condition of func tion
+g(x, · ) with any ν < α .
+Proof. The notation of weak sharp minimum Assumption 4.2 is the 1st order Hölderian error bound condition
+with coeﬃcient ν = α. And for Assumption 4.3, when g(x, · ) is smooth and convex, the gradient dominant
+condition implies the 2rd order Hölderian error bound condition (also known as quad ratic growth condition)
+with any ν < α due to Corollary 3.6 in [12].
+The following proposition tells us that under the Hölderian error bound condition, a small precision of
+εg for solving the lower-level objective gives us a good approx imation of the solution to problem (8).
+Proposition D.4 (Corollary 4.4 (i) in [33]) . Assume that g(x, · ) satisﬁes the Hölderian error bound in
+Deﬁnition D.7 with ν > 0 and r ≥ 1, f (x, · ) is convex, and deﬁne M = max y∈S(x) ‖∂yf (x, y)‖. If we set
+εg = ν
+r
+( εf
+M
+) r
+, then an (εf , εg) point ˆy in Deﬁnition D.6 implies:
+|f (x, ˆy) − ϕ(x)| ≤ εf .
+Lastly, by setting εf = ω and then the compactness of Y, the uniform bound of α(x) ≡ α, the uniform
+bound of the Lipschitz constant implies the ﬁrst-oracle com plexity of A in Appendix E only depends on
+O(poly(1/ω)) = O(poly(d, 1/ε, 1/δ)) in (5). Therefore, we conclude that Algorithm 1 can output a (δ, ε)-
+Goldstein stationary point within O(poly(d, 1/ε, 1/δ)) number of oracle calls.
+E Switching Gradient Methods for Simple Bilevel Problems
+The optimization of simple bilevel problem is of independen t interest and therefore we put the analysis in this
+independent section. We propose method converges at the rat e of O(ε−2) for Lipschitz objectives and O(ε−1)
+for smooth objectives, matching the rates of gradient desce nt method without the lower-level constraint.
+E.1 Problem Deﬁnition and Basic Ideas
+We consider the following bilevel optimization problem:
+min
+y∈Y
+F (y), s.t. y ∈ arg min
+y′∈Y
+G(y′), (17)
+with the structure given by the following assumption.
+Assumption E.1. For problem (17), we suppose
+• both F and G are convex;
+• Y ⊆ Rq is a closed convex set;
+• there exists an optimal solution y∗;
+• we have access to an initial point y0 such that ‖y0 − y∗‖ ≤ R;
+Denote F ∗ be the optimal value of (17); G∗ be the optimal value of the inner problem. Our goal is the
+ﬁnd an O(ε)-suboptimal solution deﬁned as follows.
+Deﬁnition E.1 (approximate suboptimal solution) . We say ˆy is an ε-suboptimal solution to problem (17)
+if
+F (ˆy) − F ∗ ≤ ε, G (ˆy) − G∗ ≤ ε.
+26
+
+Method F G Y Complexity Reference
+MNG SC, diﬀerentiable C, smooth Closed Asymptotic [3]
+Big-SAM SC, smooth C, smooth Closed Asymptotic [61]
+Tseng’s Method C, smooth C, smooth Closed Asymptotic [52]
+Penalty Method C, smooth C, smooth Closed Asymptotic [64]
+Bundle Method C C Closed Asymptotic [65]
+a-IRG C, Lipschitz C, Lipschitz Compact O(ε−4) [37]
+Switching Subgradient C, Lipschitz C, Lipschitz Closed O(ε−2) Theorem E.1
+GBFW* C, smooth C, smooth Compact O(ε−1) [33]
+Switching Extragradient C, smooth C, smooth Closed O(ε−1) Theorem E.2
+Table 4: Complexity for ﬁnding F (y) − F ∗ ≤ ε, G(y) − G∗ ≤ ε for problem (17). The abbreviations “SC”
+and “C” stand for “strongly convex” and “convex”, respectiv ely. “*” means that the complexity of method
+GBFW [33] is calculated by the Frank-Wolfe linear oracle.
+Algorithm 2 Switching Subgradient Descent (F, G, y0, ε)
+1: initialize ˆG∗ − G∗ ≤ 2ε by applying subgradient descent on G
+2: set K =
+⌈
+4R2L2
+ε2
+⌉
+, τ = R
+L
+√
+K
+3: I = ∅
+4: for k = 0, 1, · · · , K − 1
+5: if G(yk) − ˆG∗ ≤ 2ε
+6: yk+1 = P(yk − τ ∂F (yk))
+7: I = I ∪ { k}
+8: else
+9: yk+1 = P(yk − τ ∂G(yk))
+10: end for
+11: return ¯y = 1
+|I|
+∑
+k∈I yk
+In this section, we show that the switching gradient methods [56] can ﬁnd an O(ε)-suboptimal solution
+in ﬁnite time. To the best of our knowledge, it is the ﬁrst know n non-asymptotic convergence result for
+problem (17) without the compactness of Y. See Table 4 for the comparison with previous work.
+The basic idea of the switching gradient methods lies in:
+• when the current point y violates the constraint too much, we apply subgradient/ext ragradient descent
+on G to enforce y lies in the constraint set;
+• when the current point y violates the constraint too much, we can safely apply subgra dient/extragradient
+descent on F to decrease the suboptimality gap and add the point into inde x set I.
+Finally, the algorithm outputs an average point in set I satisfying a O(ε)-suboptimal solution.
+E.2 Lipschitz Setting
+In this section, we assume that both F, G are Lipschitz:
+Assumption E.2. We assume that both F, G are L-Lipschitz, i.e. for any y, y′ ∈ Rq, we have
+|F (y) − F (y′)| ≤ L‖y − y′‖;
+|G(y) − G(y′)| ≤ L‖y − y′‖;
+And we propose Algorithm 2 by applying projected subgradien t descent in the switching scheme.
+For projected subgradient descent, we have the following st andard lemma.
+27
+
+Algorithm 3 Switching Extragradient Descent (F, G, y0, ε)
+1: initialize ˆG∗ − G∗ ≤ 2ε by applying gradient descent on G
+2: set K =
+⌈
+R2L
+ε
+⌉
+, τ = 1
+L
+3: I = ∅
+4: for k = 0, 1, · · · , K − 1
+5: wk = P(yk − τ ∇G(yk))
+6: if G(wk) − ˆG∗ ≤ 2ε
+7: yk+1/ 2 = P(yk − τ ∇F (yk))
+8: yk+1 = P(yk − τ ∇F (yk+1/ 2))
+9: I = I ∪ { k}
+10: else
+11: yk+1/ 2 = wk
+12: yk+1 = P(yk − τ ∇G(yk+1/ 2))
+13: end for
+14: return ¯y = 1
+|I|
+∑
+k∈I yk+1/ 2
+Lemma E.1 (subgradient descent). Suppose H is convex and L-Lipschitz; let P denotes the projection onto
+a closed convex set Y; if we let y+ = P(y − τ ∂H(y)) for any subgradient at point y, then for any y, z ∈ Y it
+holds that
+H(y) − H(z) ≤ 1
+2τ (‖y − z‖2 − ‖y+ − z‖2) + τ L2
+2 .
+Using this lemma, we show the convergence of Algorithm 2.
+Theorem E.1 (switching gradient method , Lipschitz case) . Under Assumption E.1 and E.2, the output of
+Algorithm 2 satisﬁes
+F (¯y) − F ∗ ≤ ε, G (¯y) − G∗ ≤ 4ε.
+And the number of subgradient calls is bounded by O(R2L2ε−2).
+E.3 Smooth Setting
+In this section, we suppose F, G are both diﬀerentiable and smooth.
+Assumption E.3. We suppose both F, G are diﬀerentiable and L-smooth, i.e. for any y, y′ ∈ Rq , we have
+‖∇F (y) − ∇F (y′)‖ ≤ L‖y − y′‖;
+‖∇G(y) − ∇G(y′)‖ ≤ L‖y − y′‖;
+Under the smoothness assumption, we propose Algorithm 3 whi ch combines the switching scheme and
+extragradient step [1, 41, 54, 55]. In the algorithm, for eve ry current point y, we ﬁrst try an attempted step
+from y to w towards the negative gradient direction of G. After that, we calculate the function value of
+G(w) to decide either to switch or not: when G(w) is small enough, we apply extragradient step on F and
+otherwise on G. Our analysis is based on the following lemma for extragradi ent method.
+Lemma E.2 (projected extragradient) . Suppose H is convex and with L-gradient Lipschitz; let P denotes
+the projection onto a closed convex set Y; if we let
+w = P(y − τ ∇H(y)); y+ = P(y − τ ∇H(w)),
+with some 0 < τ ≤ 1/L, then for any y, z ∈ Y it holds that
+H(w) − H(z) ≤ 1
+2τ (‖y − z‖2 − ‖y+ − z‖2).
+28
+
+Using this lemma, we show the convergence of Algorithm 3.
+Theorem E.2 (switching gradient method , smooth case) . Under Assumption E.1 and E.3, the output of
+Algorithm 3 satisﬁes
+F (¯y) − F ∗ ≤ ε, G (¯y) − G∗ ≤ 4ε.
+And the number of gradient calls is bounded by O(R2Lε−1).
+E.4 Missing Proofs for Switching Gradient Methods
+Lemma E.1 (subgradient descent). Suppose H is convex and L-Lipschitz; let P denotes the projection onto
+a closed convex set Y; if we let y+ = P(y − τ ∂H(y)) for any subgradient at point y, then for any y, z ∈ Y it
+holds that
+H(y) − H(z) ≤ 1
+2τ (‖y − z‖2 − ‖y+ − z‖2) + τ L2
+2 .
+Proof. Denote w = y − τ ∂H(y), then we know that P(w) = y+.
+H(y) − H(z)
+≤ ∂H (y)⊤(y − z)
+= 1
+τ (y − w)⊤(y − z)
+= 1
+2τ (‖y − w‖2 + ‖y − z‖2 − ‖w − z‖2)
+≤ 1
+2τ (‖y − z‖2 − ‖y+ − z‖2) + τ L2
+2 .
+Above, the ﬁrst line is due to the deﬁnition of subgradient; t he second line is by the deﬁnition of w; the third
+line uses the identity a⊤b = 1
+2 ‖a‖2 + 1
+2 ‖b‖2 − 1
+2 ‖a − b‖2; the last line follows from the non-expansiveness
+of projection that ‖y+ − z‖ ≤ ‖ w − z‖ and the relationship of subgradient and Lipschitz constant that
+‖∂H (y)‖ ≤ L.
+Theorem E.1 (switching gradient method , Lipschitz case) . Under Assumption E.1 and E.2, the output of
+Algorithm 2 satisﬁes
+F (¯y) − F ∗ ≤ ε, G (¯y) − G∗ ≤ 4ε.
+And the number of subgradient calls is bounded by O(R2L2ε−2).
+Proof. Note that the initialization can be ﬁnished within a complex ity of O(R2L2ε−2) (Theorem 3.2 in [5]).
+According to Lemma E.1 we obtain
+F (yk) − F ∗ ≤ 1
+2τ (‖yk − y∗‖2 − ‖yk+1 − y∗‖2) + τ L2
+2 , k ∈ I ;
+G(yk) − G∗ ≤ 1
+2τ (‖yk − y∗‖2 − ‖yk+1 − y∗‖2) + τ L2
+2 , k / ∈ I ;
+Combing them together yields
+1
+K
+∑
+k∈I
+F (yk) − F ∗ + 1
+K
+∑
+k /∈I
+G(yk) − G∗ ≤ R2
+2τ K + τ L2
+2 = RL√
+K
+. (18)
+With inequality (18) in hand, it is suﬃcient to show the resul t.
+Firstly, we show that I ⁄= ∅, and thus output ¯y is well-deﬁned. Otherwise, we would have
+2ε ≤ 1
+K
+K−1∑
+k=0
+G(yk) − ˆG∗ ≤ 1
+K
+K−1∑
+k=0
+G(yk) − G∗ ≤ RL√
+K
+≤ ε
+2 ,
+29
+
+which is a contradiction. Secondly, we show that the output w ill not violate the constraint too much by:
+G(¯y) − G∗ ≤ 1
+|I|
+∑
+k∈I
+(G(yk) − ˆG∗) + ( ˆG∗ − G∗) ≤ 4ε.
+Thirdly, we show that F (¯y) − F ∗ ≤ ε. It is trivial when ∑
+k∈I F (yk) − F ∗ ≤ 0 since it is an immediate result
+of Jensen’s inequality. Therefore we can only focus on the ca se when ∑
+k∈I F (yk) − F ∗ > 0. In this case, we
+can show that |I| ≥ K/2, otherwise we would have
+ε < 1
+K
+∑
+k /∈I
+G(yk) − ˆG∗ ≤ 1
+K
+∑
+k /∈I
+G(yk) − G∗ ≤ RL√
+K
+≤ ε
+2 ,
+which also leads to a contradiction. Hence we must have |I| ≥ K/2, therefore, we obtain nn
+F (¯y) − F ∗ ≤ 1
+|I|
+∑
+k∈I
+F (yk) − F ∗ ≤ 2
+K
+∑
+k∈I
+F (yk) − F ∗ ≤ 2RL√
+K
+≤ ε.
+In conclusion, Algorithm 2 can make sure
+F (¯y) − F ∗ ≤ ε, G (¯y) − G∗ ≤ 4ε,
+within a complexity of O(R2L2ε−2).
+Lemma E.2 (projected extragradient) . Suppose H is convex and with L-gradient Lipschitz; let P denotes
+the projection onto a closed convex set Y; if we let
+w = P(y − τ ∇H(y)); y+ = P(y − τ ∇H(w)),
+with some 0 < τ ≤ 1/L, then for any y, z ∈ Y it holds that
+H(w) − H(z) ≤ 1
+2τ (‖y − z‖2 − ‖y+ − z‖2).
+Proof. In our proof, we denote
+˜w = y − τ ∇H(y), ˜y+ = y − τ ∇H(w)
+and it is clear that y+ = P(˜y+) and w = P( ˜w). Then the property of projection tells us:
+( ˜w − w)⊤(w − z′) ≥ 0, ∀z′ ∈ Y ;
+(˜y+ − y+)⊤(y+ − z′) ≥ 0, ∀z′ ∈ Y .
+(19)
+Furthermore,
+H(w) − H(z)
+≤ ∇H(w)⊤(w − z)
+= 1
+τ (y − ˜y+)⊤(w − z)
+= 1
+τ (y − ˜y+)⊤(y+ − z) + 1
+τ (y − ˜y+)⊤(w − y+)
+= 1
+τ (y − ˜y+)⊤(y+ − z) + 1
+τ (y − ˜w)⊤(w − y+) + 1
+τ ( ˜w − ˜y+)⊤(w − y+)
+= 1
+τ (y − ˜y+)⊤(y+ − z) + 1
+τ (y − ˜w)⊤(w − y+) + (∇H(w) − ∇H(y))⊤(w − y+)
+≤ 1
+τ (y − y+)⊤(y+ − z) + 1
+τ (y − w)⊤(w − y+) + ‖∇H(w) − ∇H(y)‖‖w − y+‖
+30
+
+= 1
+2τ (‖y − z‖2 − ‖y − y+‖2 − ‖y+ − z‖2)
++ 1
+2τ (‖y − y+‖2 − ‖y − w‖2 − ‖w − y+‖2)
++ ‖∇H(w) − ∇H(y)‖‖w − y+‖
+≤ 1
+2τ (‖y − z‖2 − ‖y − y+‖2 − ‖y+ − z‖2)
++ 1
+2τ (‖y − y+‖2 − ‖y − z‖2 − ‖w − y+‖2)
++ τ L2
+2 ‖y − w‖2 + 1
+2τ ‖w − y+‖2
+= 1
+2τ (‖y − z‖2 − ‖y+ − z‖2) − 1 − τ 2L2
+2τ ‖w − y+‖2.
+Above, the ﬁrst inequality uses the convexity of H; the second one is due to (19) and Cauthy-Schwarz
+inequality; the third one uses the L-smoothness of H and Young’s inequality. Finally, using that the stepsize
+satisﬁes τ ≤ 1/L to drop the last term completes the proof.
+Theorem E.2 (switching gradient method , smooth case) . Under Assumption E.1 and E.3, the output of
+Algorithm 3 satisﬁes
+F (¯y) − F ∗ ≤ ε, G (¯y) − G∗ ≤ 4ε.
+And the number of gradient calls is bounded by O(R2Lε−1).
+Proof. Note that the initialization can be ﬁnished within a complex ity of O(R2Lε−1) (Theorem 3.3 in [5]).
+According to Lemma E.2 we obtain
+F (yk+1/ 2) − F ∗ ≤ 1
+2τ (‖yk − y∗‖2 − ‖yk+1 − y∗‖2), k ∈ I ;
+G(yk+1/ 2) − G∗ ≤ 1
+2τ (‖yk − y∗‖2 − ‖yk+1 − y∗‖2), k / ∈ I ;
+Combing them together and plugging int τ = 1/L yields
+1
+K
+∑
+k∈I
+F (yk+1/ 2) − F ∗ + 1
+K
+∑
+k /∈I
+G(yk+1/ 2) − G∗ ≤ R2L
+2K (20)
+With inequality (20) in hand, it is suﬃcient to show the resul t.
+Firstly, we show that I ⁄= ∅, and thus output ¯y is well-deﬁned. Otherwise, we would have
+2ε ≤ 1
+K
+K−1∑
+k=0
+G(yk+1/ 2) − ˆG∗ ≤ 1
+K
+K−1∑
+k=0
+G(yk+1/ 2) − G∗ ≤ R2L
+2K ≤ ε
+2 ,
+which is a contradiction. Secondly, we show that the output w ill not violate the constraint too much by:
+G(¯y) − G∗ ≤ 1
+|I|
+∑
+k∈I
+(G(yk+1/ 2) − ˆG∗) + ( ˆG∗ − G∗) ≤ 4ε.
+Thirdly, we show that F (¯y) − F ∗ ≤ ε. It is trivial when ∑
+k∈I F (yk+1/ 2) − F ∗ ≤ 0 since it is an immediate
+result of Jensen’s inequality. Therefore we can only focus o n the case when ∑
+k∈I F (yk+1/ 2) − F ∗ > 0. In
+this case, we can show that |I| ≥ K/2, otherwise we would have
+ε < 1
+K
+∑
+k /∈I
+G(yk+1/ 2) − ˆG∗ ≤ 1
+K
+∑
+k /∈I
+G(yk+1/ 2) − G∗ ≤ R2L
+2K ≤ ε
+2 ,
+31
+
+which also leads to a contradiction. Hence we must have |I| ≥ K/2, therefore, we obtain
+F (¯y) − F ∗ ≤ 1
+|I|
+∑
+k∈I
+F (yk+1/ 2) − F ∗ ≤ 2
+K
+∑
+k∈I
+F (yk+1/ 2) − F ∗ ≤ R2L
+K ≤ ε.
+In conclusion, Algorithm 3 can make sure
+F (¯y) − F ∗ ≤ ε, G (¯y) − G∗ ≤ 4ε,
+within a complexity of O(R2Lε−1).
+F Extension to Pessimistic Bilevel Problems
+Compared with optimistic bilevel problem with the form (1), the pessimistic bilevel problem takes the form
+min
+x∈Rd
+{
+ϕ(x) ≜ max
+y∈S(x)
+f (x, y)
+}
+.
+In this section, we extend our main results to pessimistic bi level problems.
+First of all, we remark that similar counterexamples can als o be constructed for pessimistic bilevel
+problems by following the same way in Section 3. We leave it as an exercise for interested readers.
+Secondly, in section 4, the conditions that guarantee the co ntinuity of ϕ mainly rely on the continuity
+of S(x), which is independent of whether max or min is taken on set S(x). Other assumptions including
+Assumption 4.2 and 4.3 are imposed on inner loss g and thus independent of the optimistic or pessimistic
+form.
+Thirdly, the main diﬀerence we need to change is the convexit y assumption on f (x, · ) in Section 5.2 into
+concavity for pessimistic bilevel problems. The concavity assumption is also standard for global convergence
+for minimax problems [44, 45]. Then for the sub-solver in Sec tion 5.2, we need to solve the following simple
+bilevel problem as:
+min
+y∈Y
+−f (x, y), s.t. y ∈ arg min
+y′∈Y
+g(x, y′).
+And we can then again apply the switching gradient methods in Appendix E.
+32

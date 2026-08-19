@@ -1,0 +1,9 @@
+{
+  "api_url": "https://export.arxiv.org/api/query?id_list=2301.01716v1",
+  "arxiv_id": "2301.01716",
+  "declared_available_at_utc": "2023-01-04T17:29:04Z",
+  "published": "2023-01-04T17:29:04Z",
+  "timestamp_matches_declaration": true,
+  "title": "First-order penalty methods for bilevel optimization",
+  "version": "v1"
+}

@@ -1,0 +1,14 @@
+{
+  "case_id": "realpilot_flatness_penalty",
+  "evaluation_digest": "1d24bf92a96f92dda1a366559f464a9575fd934fe17684aa494f1355b563c02e",
+  "execution_digest": "41cf9f72f47bb3c4095891b0fa34a910eca27d8034e7e2664473d763ccc6191c",
+  "failures": [],
+  "hard_pass": true,
+  "schema_version": 1,
+  "thresholds": {
+    "lower_residual": 0.03,
+    "primal_feasibility": 1e-12,
+    "upper_regret": 0.08
+  },
+  "vds_score": 0.9999992736727572
+}

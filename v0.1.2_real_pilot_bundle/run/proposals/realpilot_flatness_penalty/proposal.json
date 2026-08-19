@@ -1,0 +1,17 @@
+{
+  "algorithm_family": "Adaptive Flatness Penalty Method",
+  "case_id": "realpilot_flatness_penalty",
+  "hyperparameters": {},
+  "hypothesis": "This method dynamically adjusts the penalty coefficient to balance lower feasibility and upper progress while ensuring finite outputs and seed reproducibility.",
+  "implementation": "qwen_solution.py",
+  "implementation_sha256": "8b03a0afdd1577ce0d587aaf4a974758ff0c89e300a711a373039c2b38114053",
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "oracle_budget": 4000,
+  "schema_version": 1,
+  "seeds": [
+    1031,
+    2063,
+    4099,
+    8191
+  ]
+}

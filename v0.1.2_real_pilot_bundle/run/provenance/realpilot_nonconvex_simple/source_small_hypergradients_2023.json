@@ -1,0 +1,9 @@
+{
+  "api_url": "https://export.arxiv.org/api/query?id_list=2301.00712v1",
+  "arxiv_id": "2301.00712",
+  "declared_available_at_utc": "2023-01-02T15:09:12Z",
+  "published": "2023-01-02T15:09:12Z",
+  "timestamp_matches_declaration": true,
+  "title": "On Bilevel Optimization without Lower-level Strong Convexity",
+  "version": "v1"
+}

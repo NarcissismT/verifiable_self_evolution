@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "reason": "real engineering vertical-slice targets; permanently excluded from train, dev, promotion, final_id, final_ood and reserve",
+  "targets": [
+    {
+      "target_id": "neurips2025_beyond_value_functions_flatness",
+      "title": "Beyond Value Functions: Single-Loop Bilevel Optimization under Flatness Conditions",
+      "identifiers": ["2507.20400", "dCGQlVRa2B", "https://github.com/Liuyuan999/PBGD_Free"]
+    },
+    {
+      "target_id": "neurips2025_nonconvex_simple_stationarity",
+      "title": "On the Complexity of Finding Stationary Points in Nonconvex Simple Bilevel Optimization",
+      "identifiers": ["2507.23155", "sedMS4kPz2", "https://github.com/jimz7/On-the-Complexity-of-Finding-Stationary-Points-in-Nonconvex-Simple-Bilevel-Optimization"]
+    },
+    {
+      "target_id": "neurips2025_linearly_constrained_bilevel",
+      "title": "A Single-Loop First-Order Algorithm for Linearly Constrained Bilevel Optimization",
+      "identifiers": ["2510.24710", "IMzol5Ywsr", "https://github.com/ShenGroup/SFLCB"]
+    }
+  ]
+}

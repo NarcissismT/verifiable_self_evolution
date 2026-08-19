@@ -3,6 +3,11 @@
   "pilot_id": "bilevel_vertical_slice_v0_1",
   "trust_anchor_digest": "sha256-of-private-trusted-producer-key",
   "trusted_test_runtime": false,
+  "stage_container_digests": {
+    "generation": "sha256:generation-image",
+    "execution": "sha256:evaluator-image",
+    "evaluation": "sha256:evaluator-image"
+  },
   "cases": [
     {
       "case_id": "pilot_case_01",
@@ -19,7 +24,10 @@
       "evaluation_producer_receipt": "pilot_case_01/evaluation_producer_receipt.json",
       "generation_producer_receipt_digest": "sha256",
       "execution_producer_receipt_digest": "sha256",
-      "evaluation_producer_receipt_digest": "sha256"
+      "evaluation_producer_receipt_digest": "sha256",
+      "generation_artifact": "proposals/pilot_case_01/proposal.json",
+      "execution_artifact": "pilot_case_01/execution_output.json",
+      "evaluation_artifact": "pilot_case_01/evaluation_output.json"
     },
     {
       "case_id": "pilot_case_02",
@@ -36,7 +44,10 @@
       "evaluation_producer_receipt": "pilot_case_02/evaluation_producer_receipt.json",
       "generation_producer_receipt_digest": "sha256",
       "execution_producer_receipt_digest": "sha256",
-      "evaluation_producer_receipt_digest": "sha256"
+      "evaluation_producer_receipt_digest": "sha256",
+      "generation_artifact": "proposals/pilot_case_02/proposal.json",
+      "execution_artifact": "pilot_case_02/execution_output.json",
+      "evaluation_artifact": "pilot_case_02/evaluation_output.json"
     },
     {
       "case_id": "pilot_case_03",
@@ -53,7 +64,10 @@
       "evaluation_producer_receipt": "pilot_case_03/evaluation_producer_receipt.json",
       "generation_producer_receipt_digest": "sha256",
       "execution_producer_receipt_digest": "sha256",
-      "evaluation_producer_receipt_digest": "sha256"
+      "evaluation_producer_receipt_digest": "sha256",
+      "generation_artifact": "proposals/pilot_case_03/proposal.json",
+      "execution_artifact": "pilot_case_03/execution_output.json",
+      "evaluation_artifact": "pilot_case_03/evaluation_output.json"
     }
   ]
 }

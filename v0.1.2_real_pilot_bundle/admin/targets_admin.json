@@ -1,0 +1,228 @@
+{
+  "schema_version": 1,
+  "bundle_id": "vse-real-paper-pilot-v0.1.2",
+  "field": "bilevel_stackelberg_alignment_optimization",
+  "cutoff_lag_days": 30,
+  "cases": [
+    {
+      "case_id": "realpilot_flatness_penalty",
+      "target": {
+        "target_id": "neurips2025_beyond_value_functions_flatness",
+        "title": "Beyond Value Functions: Single-Loop Bilevel Optimization under Flatness Conditions",
+        "authors": ["Liuyuan Jiang", "Quan Xiao", "Lisha Chen", "Tianyi Chen"],
+        "arxiv_id": "2507.20400",
+        "arxiv_v1_url": "https://arxiv.org/pdf/2507.20400v1",
+        "openreview_id": "dCGQlVRa2B",
+        "openreview_url": "https://openreview.net/forum?id=dCGQlVRa2B",
+        "proceedings_url": "https://proceedings.neurips.cc/paper_files/paper/2025/hash/4aa5e0b33e6f774c0d34ab2e1bc3bced-Abstract-Conference.html",
+        "code_repository": "https://github.com/Liuyuan999/PBGD_Free",
+        "algorithm_names": ["PBGD-Free"],
+        "forbidden_terms": ["penalty-based gradient descent free of lower-level loops"],
+        "hidden_claims": [
+          {
+            "claim_id": "flatness_01",
+            "claim": "A single-loop first-order penalty method can avoid a value-function construction and a lower-level inner loop under relaxed flatness conditions.",
+            "metric": "joint_stationarity_under_gradient_budget"
+          }
+        ],
+        "hidden_result_spec": {
+          "trusted_scorer": "trusted_evaluator.py:realpilot_flatness_penalty",
+          "metric_rules": ["lower_gap", "upper_stationarity", "gradient_calls", "reproducibility"]
+        },
+        "distinctive_phrases": ["beyond value functions", "under flatness conditions"],
+        "numeric_fingerprints": [],
+        "code_fingerprints": []
+      },
+      "prior_sources": [
+        {
+          "artifact_id": "penalty_bgd_2023",
+          "title": "On Penalty-based Bilevel Gradient Descent Method",
+          "arxiv_id": "2302.05185",
+          "version": "v1",
+          "available_at_utc": "2023-02-10T07:45:56Z",
+          "url": "https://arxiv.org/pdf/2302.05185v1"
+        },
+        {
+          "artifact_id": "penalty_nonconvex_2023",
+          "title": "On Penalty Methods for Nonconvex Bilevel Optimization and First-Order Stochastic Approximation",
+          "arxiv_id": "2309.01753",
+          "version": "v1",
+          "available_at_utc": "2023-09-04T18:25:43Z",
+          "url": "https://arxiv.org/pdf/2309.01753v1"
+        },
+        {
+          "artifact_id": "fully_first_order_2023",
+          "title": "A Fully First-Order Method for Stochastic Bilevel Optimization",
+          "arxiv_id": "2301.10945",
+          "version": "v1",
+          "available_at_utc": "2023-01-26T01:10:23Z",
+          "url": "https://arxiv.org/pdf/2301.10945v1"
+        }
+      ],
+      "public_context": {
+        "research_question": "Can a target-neutral, fully first-order penalty procedure achieve stable upper-level stationarity when the lower-level problem is smooth but not strongly convex?",
+        "formal_problem": "Minimize a smooth upper objective F(x,y) subject to y belonging to the solution set of a smooth lower objective G(x,·). The supplied test family has a non-singleton or weakly curved lower solution geometry; the method may use first-order oracles only and is scored at a fixed oracle budget.",
+        "assumptions": [
+          "Upper and lower objectives are differentiable and have Lipschitz gradients on the bounded test domain.",
+          "The lower solution set is nonempty, but lower-level strong convexity is not assumed.",
+          "Only function values and first-order derivatives of the supplied instance are available."
+        ],
+        "known_results": [
+          {"claim_id": "known_flat_01", "summary": "Pre-cutoff penalty formulations provide fully first-order routes for several nonconvex bilevel settings."},
+          {"claim_id": "known_flat_02", "summary": "Without lower-level strong convexity, hyper-objective stationarity can be hard or ill posed, so evaluation should include lower-level residuals rather than only a hyper-gradient."}
+        ],
+        "known_failures_and_conflicts": [
+          {"failure_id": "flat_failure_01", "summary": "A fixed penalty coefficient can trade lower feasibility against upper progress and may stall on weakly curved directions."}
+        ],
+        "candidate_metrics": ["lower_gap", "upper_stationarity", "gradient_calls", "seed_reproducibility"]
+      }
+    },
+    {
+      "case_id": "realpilot_nonconvex_simple",
+      "target": {
+        "target_id": "neurips2025_nonconvex_simple_stationarity",
+        "title": "On the Complexity of Finding Stationary Points in Nonconvex Simple Bilevel Optimization",
+        "authors": ["Jincheng Cao", "Ruichen Jiang", "Erfan Yazdandoost Hamedani", "Aryan Mokhtari"],
+        "arxiv_id": "2507.23155",
+        "arxiv_v1_url": "https://arxiv.org/pdf/2507.23155v1",
+        "openreview_id": "sedMS4kPz2",
+        "openreview_url": "https://openreview.net/forum?id=sedMS4kPz2",
+        "proceedings_url": "https://proceedings.neurips.cc/paper_files/paper/2025/hash/2e2ac035e8f2c4e357e6242805540423-Abstract-Conference.html",
+        "code_repository": "https://github.com/jimz7/On-the-Complexity-of-Finding-Stationary-Points-in-Nonconvex-Simple-Bilevel-Optimization",
+        "algorithm_names": [],
+        "forbidden_terms": ["DBGD variant for joint stationarity in nonconvex simple bilevel optimization"],
+        "hidden_claims": [
+          {
+            "claim_id": "simple_01",
+            "claim": "A first-order method can find an approximate joint-stationary solution of a smooth nonconvex simple bilevel problem in polynomially many iterations under the stated regularity conditions.",
+            "metric": "joint_epsilon_f_epsilon_g_stationarity"
+          }
+        ],
+        "hidden_result_spec": {
+          "trusted_scorer": "trusted_evaluator.py:realpilot_nonconvex_simple",
+          "metric_rules": ["upper_residual", "lower_residual", "oracle_calls", "reproducibility"]
+        },
+        "distinctive_phrases": [],
+        "numeric_fingerprints": [],
+        "code_fingerprints": []
+      },
+      "prior_sources": [
+        {
+          "artifact_id": "functional_constraint_2024",
+          "title": "Functionally Constrained Algorithm Solves Convex Simple Bilevel Problems",
+          "arxiv_id": "2409.06530",
+          "version": "v1",
+          "available_at_utc": "2024-09-10T14:05:12Z",
+          "url": "https://arxiv.org/pdf/2409.06530v1"
+        },
+        {
+          "artifact_id": "near_optimal_simple_2024",
+          "title": "A Near-Optimal Algorithm for Convex Simple Bilevel Optimization under Weak Assumptions",
+          "arxiv_id": "2409.08948",
+          "version": "v1",
+          "available_at_utc": "2024-09-13T16:07:48Z",
+          "url": "https://arxiv.org/pdf/2409.08948v1"
+        },
+        {
+          "artifact_id": "small_hypergradients_2023",
+          "title": "On Finding Small Hyper-Gradients in Bilevel Optimization: Hardness Results and Improved Analysis",
+          "arxiv_id": "2301.00712",
+          "version": "v1",
+          "available_at_utc": "2023-01-02T15:09:12Z",
+          "url": "https://arxiv.org/pdf/2301.00712v1"
+        }
+      ],
+      "public_context": {
+        "research_question": "How should a first-order method balance upper and lower objectives to reach a reproducible joint-stationary point when both objectives are nonconvex?",
+        "formal_problem": "Given smooth nonconvex functions f and g, minimize f(z) over points that minimize g(z). A candidate returns one point per seed after a fixed number of first-order oracle calls. The evaluator separately measures upper descent residual and lower stationarity residual.",
+        "assumptions": [
+          "Both objectives are differentiable with Lipschitz gradients on a bounded domain.",
+          "The lower objective has a nonempty solution set, but convexity is not assumed.",
+          "The algorithm receives first-order oracle access and a fixed oracle-call budget."
+        ],
+        "known_results": [
+          {"claim_id": "known_simple_01", "summary": "Pre-cutoff methods for convex simple bilevel problems use weak solution concepts and functional constraints to avoid an unavailable exact lower optimum."},
+          {"claim_id": "known_simple_02", "summary": "Pre-cutoff hardness results show that a small hyper-gradient alone is not a reliable universal target without additional structure."}
+        ],
+        "known_failures_and_conflicts": [
+          {"failure_id": "simple_failure_01", "summary": "Optimizing only the lower objective can converge to a lower stationary point with poor upper objective value."},
+          {"failure_id": "simple_failure_02", "summary": "Optimizing only the upper objective can violate the lower optimality requirement."}
+        ],
+        "candidate_metrics": ["upper_residual", "lower_residual", "oracle_calls", "seed_reproducibility"]
+      }
+    },
+    {
+      "case_id": "realpilot_linear_coupling",
+      "target": {
+        "target_id": "neurips2025_linearly_constrained_bilevel",
+        "title": "A Single-Loop First-Order Algorithm for Linearly Constrained Bilevel Optimization",
+        "authors": ["Wei Shen", "Jiawei Zhang", "Minhui Huang", "Cong Shen"],
+        "arxiv_id": "2510.24710",
+        "arxiv_v1_url": "https://arxiv.org/pdf/2510.24710v1",
+        "openreview_id": "IMzol5Ywsr",
+        "openreview_url": "https://openreview.net/forum?id=IMzol5Ywsr",
+        "proceedings_url": "https://proceedings.neurips.cc/paper_files/paper/2025/hash/532b828bc342a6af6c7dc01cfa719cd3-Abstract-Conference.html",
+        "code_repository": "https://github.com/ShenGroup/SFLCB",
+        "algorithm_names": ["SFLCB"],
+        "forbidden_terms": ["single-loop first-order algorithm for linearly constrained bilevel optimization"],
+        "hidden_claims": [
+          {
+            "claim_id": "linear_01",
+            "claim": "A fully first-order single-loop procedure can control stationarity and coupled linear feasibility in a linearly constrained bilevel problem.",
+            "metric": "kkt_feasibility_under_oracle_budget"
+          }
+        ],
+        "hidden_result_spec": {
+          "trusted_scorer": "trusted_evaluator.py:realpilot_linear_coupling",
+          "metric_rules": ["primal_feasibility", "kkt_residual", "outer_objective", "oracle_calls"]
+        },
+        "distinctive_phrases": [],
+        "numeric_fingerprints": [],
+        "code_fingerprints": []
+      },
+      "prior_sources": [
+        {
+          "artifact_id": "first_order_penalty_2023",
+          "title": "First-order penalty methods for bilevel optimization",
+          "arxiv_id": "2301.01716",
+          "version": "v1",
+          "available_at_utc": "2023-01-04T17:29:04Z",
+          "url": "https://arxiv.org/pdf/2301.01716v1"
+        },
+        {
+          "artifact_id": "coupled_constraints_2024",
+          "title": "A Primal-Dual-Assisted Penalty Approach to Bilevel Optimization with Coupled Constraints",
+          "arxiv_id": "2406.10148",
+          "version": "v1",
+          "available_at_utc": "2024-06-14T15:59:36Z",
+          "url": "https://arxiv.org/pdf/2406.10148v1"
+        },
+        {
+          "artifact_id": "stochastic_linear_2025",
+          "title": "A Doubly Stochastically Perturbed Algorithm for Linearly Constrained Bilevel Optimization",
+          "arxiv_id": "2504.04545",
+          "version": "v1",
+          "available_at_utc": "2025-04-06T16:46:03Z",
+          "url": "https://arxiv.org/pdf/2504.04545v1"
+        }
+      ],
+      "public_context": {
+        "research_question": "Can a target-neutral first-order procedure make upper-level progress while maintaining lower optimality and coupled linear feasibility within a fixed oracle budget?",
+        "formal_problem": "Minimize a smooth upper objective F(x,y), where y solves a smooth lower problem and (x,y) must satisfy supplied linear inequalities. Candidate methods receive first-order oracle access and projections onto a box; evaluation uses hidden feasible instances and KKT-style residuals.",
+        "assumptions": [
+          "Objectives are differentiable with Lipschitz gradients on a bounded box.",
+          "The lower objective is strongly convex in the lower variable for the engineering test instances.",
+          "Coupled constraints are linear and the hidden instances satisfy a strict-feasibility margin."
+        ],
+        "known_results": [
+          {"claim_id": "known_linear_01", "summary": "Pre-cutoff penalty and primal-dual-assisted methods address coupled constraints using first-order information."},
+          {"claim_id": "known_linear_02", "summary": "Stochastic perturbation is one pre-cutoff route for linearly constrained bilevel problems."}
+        ],
+        "known_failures_and_conflicts": [
+          {"failure_id": "linear_failure_01", "summary": "A penalty-only method can report a low objective while remaining infeasible if feasibility is not a hard evaluation gate."}
+        ],
+        "candidate_metrics": ["primal_feasibility", "kkt_residual", "outer_objective", "oracle_calls"]
+      }
+    }
+  ]
+}

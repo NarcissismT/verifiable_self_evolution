@@ -1,0 +1,4854 @@
+A Doubly Stochastically Perturbed Algorithm for Linearly
+Constrained Bilevel Optimization
+Prashant Khanduri†,⋄, Ioannis Tsaknakis‡,⋄, Yihua Zhang∗,
+Sijia Liu∗, and Mingyi Hong ‡
+†Department of Computer Science,
+Wayne State University, MI
+‡Department of Electrical and Computer Engineering,
+University of Minnesota, MN
+∗Department of Computer Science,
+Michigan State University, MI
+Email: khanduri.prashant@wayne.edu , tsakn001@umn.edu,
+{zhan1908, liusiji5}@msu.edu, mhong@umn.edu
+Abstract
+In this work, we develop analysis and algorithms for a class of (stochastic) bilevel op-
+timization problems whose lower-level (LL) problem is strongly convex and linearly con-
+strained. Most existing approaches for solving such problems rely on unrealistic assumptions
+or penalty function-based approximate reformulations that are not necessarily equivalent
+to the original problem. In this work, we develop a stochastic algorithm based on an im-
+plicit gradient approach, suitable for data-intensive applications. It is well-known that for
+the class of problems of interest, the implicit function is nonsmooth. To circumvent this
+difficulty, we apply a smoothing technique that involves adding small random (linear) per-
+turbations to the LL objective and then taking the expectation of the implicit objective over
+these perturbations. This approach gives rise to a novel stochastic formulation that ensures
+the differentiability of the implicit function and leads to the design of a novel and efficient
+doubly stochastic algorithm. We show that the proposed algorithm converges to an ( ϵ,δ)-
+Goldstein stationary point of the stochastic objective in eO(ϵ−4δ
+−1
+) iterations. Moreover,
+under certain additional assumptions, we establish the same convergence guarantee for the
+algorithm to achieve a (3 ϵ,δ +O(ϵ))-Goldstein stationary point of the original objective.
+Finally, we perform experiments on adversarial training (AT) tasks to showcase the utility
+of the proposed algorithm.
+Index terms— bilevel optimization, constrained bilevel optimization, stochastic optimiza-
+tion, perturbation-based smoothing
+1 Introduction
+Bilevel optimization [1] is an important class of problem with two levels of hierarchy, commonly
+referred to as upper-level (UL) and the lower-level (LL) . This class of problems can be used
+⋄These authors contributed equally to this work.
+1
+arXiv:2504.04545v1  [math.OC]  6 Apr 2025
+
+to formulate many contemporary applications in machine learning such as meta-learning [2, 3],
+data hyper-cleaning [4], hyperparameter optimization [3, 5–7], adversarial learning [8–10], as
+well as in other domains including network optimization [11], economics [12], and transport
+research [13, 14]. In this work, we focus on a special class of (stochastic) bilevel problems
+expressed below, where the LL problem consists of a strongly convex objective over a set of
+coupled linear inequality constraints:
+Bilevel optimization with coupled linear constraints
+min
+x∈Rdu
+F (x) :=f(x, y∗(x)) (1a)
+s.t. y∗(x) = arg min
+y∈Y⊂Rdℓ
+g(x, y) withY :={y :Ay +Bx≤ b}, (1b)
+where f : Rdu× Rdℓ → R is given by a stochastic function expressed as f(x, y∗(x)) :=
+Eξ∼Df [ef(x, y∗(x);ξ)] withξ∼D f representing a sample off(·,·) drawn fromDf;g : Rdu×Rdℓ→
+R is a function strongly convex in y; A∈ Rk×dℓ,B ∈ Rk×Rdu
+and b∈ Rk define the coupled
+linear constraints. Throughout the paper, we refer to (1a) as the UL, and (1b) as the LL prob-
+lem, respectively, andF (x) is referred to as the implicit function. Note that although we do not
+explicitly define g(·) as a stochastic function, our analysis and algorithm work for this case as
+well. The choice of writing g(·) as a deterministic function is made to simplify the presentation
+of the paper.
+The gradient of F (x), referred to as the implicit gradient, is given by:
+∇F (x) :=∇f(x, y∗(x)) =∇xf(x, y∗(x)) + [∇y∗(x)]⊤∇yf(x, y∗(x)).
+Computing this gradient requires access to the (exact) LL optimal solution y∗(x) and the dif-
+ferentiability of the map y∗(x) : Rdu→ Rdℓ. The former requirement can typically be relaxed
+to having an approximate solution by(x)≈ y∗(x), which leads to an approximated implicit gra-
+dient [15]. However, the latter requirement is often not easy to satisfy, as the solution mapping
+y∗(x) may not be differentiable for every x∈ Rdu.
+It is known that when the LL problem is strongly convex and unconstrained, then by the
+Implicit Function Theorem [15] we can derive an explicit expression for ∇y∗(x) for every x∈
+Rdu. For this reason, the majority of recent works have focused on developing algorithms for
+unconstrained bilevel problems [15–19]. However, when the LL problem is constrained, y∗(x)
+might not be differentiable.
+A few works have tackled the bilevel problem with specific types of LL constraints [20–28].
+For example, the work in [25] solves bilevel problems with linear equality constraints, the
+works in [24, 26, 27] address bilevel problems with linear inequality constraints, and the works
+[20–23,28] tackle bilevel problems with general constraints in the LL problem. For linear equality-
+constrained problems, differentiability of the map y∗(x) can be established under standard
+assumptions [25, Lemma 2]; however, for linear inequality constrained problems, it may be non-
+differentiable. The work [27] imposes restrictive assumptions (such as strict complementarity)
+that guarantee differentiability of y∗(x) while the authors in [24] establish almost sure differ-
+entiability of y∗(x) by introducing a small linear perturbation in the LL problem. In contrast
+to [24, 27], the authors in [26] do not rely on ensuring differentiability of y∗(x), they instead
+develop first-order (Hessian free) algorithms building upon the theory of non-smooth optimiza-
+tion [29–31]. All these works aim to develop implicit gradient methods with finite-time (or
+2
+
+Table 1: Comparison of existing algorithms for constrained LL problems. “Stationarity” refers
+to the condition∥∇f∥≤ ϵ for a differentiable objective f and Clarke’s stationarity of Definition
+2.2 for a non-differentiable objective. “Goldstein” refers to the ( ϵ,δ)-Goldstein stationarity
+condition of Definition 2.3. “Moreau env.” denotes the gradient of the Moreau envelope. The
+highlighted rows show algorithms that tackle the same problem as our work. The abbreviations
+used are defined as, LE: Linear equality constraints, LI: Linear inequality constraints, GC:
+General convex constraints IG: Implicit gradient-based approach, Penalty: Penalty function-
+based approach, CONS: Constraints, CONV: Convergence. The notation eO omits logarithmic
+factors in a typical big- eO notation.
+ALGORITHM CONS SETTING APPROACH MEASURE CONV
+AiPOD [25] LE Stochastic IG Stationarity O (ϵ−4 )
+[S]SIGD 1 [24] LI Stochastic IG Moreau env. O (ϵ−4 )
+[D]SIGD [24] LI Deterministic IG Stationarity Asymptotic
+[26, Algorithm 3] LI Deterministic IG Goldstein O (duϵ−3δ
+−1
+)
+Perturbed Inexact GD [26] LI Deterministic IG Goldstein O (ϵ−4δ
+−1
+)
+IGBA 2 [28] GC + LE Deterministic IG Stationarity O (ϵ−2 )
+L V-HBA [22] GC Deterministic Penalty KKT O (ϵ−2 )
+BLOCC [23] GC Deterministic Penalty KKT O (ϵ−5 )
+GAM [20] GC Deterministic IG Stationarity Asymptotic
+DS-BLO(Ours) 3 LI Stochastic IG Goldstein eO (ϵ−4δ
+−1
+)
+DS-BLO(Ours) 4 LI Stochastic IG Goldstein eO (ϵ−4 bδ −1 )
+1Under the assumption that the implicit function F (x) is weakly convex.
+2Utilizes log-barrier penalty for the linear inequality constraint to reformulate the problem to a bilevel problem
+with linear equality constraints in the LL and provides convergence for the reformulated problem.
+3This convergence result refers to the reformulated problem (2).
+4This convergence result refers to the convergence to an (3 ϵ, bδ)-Goldstein solution of the original problem (1)
+under Assumption 6 with bδ =δ +ϵ/eLFq where eLFq is defined in Lemma A.5.
+asymptotic) guarantees for solving constrained bilevel problems. However, a major drawback of
+these works is that they either require restrictive assumptions [27], do not provide finite-time
+guarantees without imposing non-verifiable assumptions (like weak convexity) on the implicit
+function [24], yield dimension-dependent guarantees or require restrictive assumptions (precise
+access to dual variables and boundedness of dual variables) to get dimension-free guarantees [26],
+and only focus on deterministic algorithms [24,26,27].
+Finally, the algorithms developed in [20–23, 28] have also addressed deterministic bilevel
+problems with non-linear and convex constraints in the LL. The majority of these works including
+[21–23,28] rely on penalty-based reformulations with the aim of computing the KKT stationary
+point. However, it is known that these KKT conditions are not necessary conditions for a local
+minimum of the original objective (1), for example, see [32, Example A.1]. The work in [20]
+develops a gradient approximation scheme to compute the descent direction with asymptotic
+performance guarantees for solving general constrained bilevel problems. Reference [28] employs
+a log-barrier penalty for the LL problem and measures stationarity using the standard implicit
+gradient norm. Please see Table 1 for a comparison.
+3
+
+Contributions of this work. In this work, we study the stochastic bilevel problem (1),
+where the LL task has a strongly convex objective and linear constraints that couple both the
+UL and the LL variables. This is a challenging problem, and due to its stochasticity and non-
+smoothness of the implicit function, so far we are not aware of any work that has developed sat-
+isfactory algorithms for it. Comparing to the guarantees developed in the above-referred works,
+we design algorithms with the following characteristics: ① Dimension-independent and non-
+asymptotic convergence guarantees unlike [26] and [20], respectively; ② Stationarity measures
+defined directly based on both the perturbed and the original implicit functions, unlike [21–23];
+③ No restrictive assumptions such as strict complementarity [27], weak convexity on the implicit
+objective [24] or having access and boundedness of the dual parameters to guarantee conver-
+gence [26], and ④ Stochastic objective function in contrast to majority of works discussed above
+that only work under the deterministic setting [20–24, 26–28]. Specifically, the contributions of
+this work are:
+• We propose a random perturbation-based smoothing technique that makes the implicit
+objective F (x) almost surely differentiable. Then, taking the expectation of F (x) over these
+perturbations leads to a novel stochastic formulation that guarantees the differentiability of
+the (stochastic) implicit function. Additionally, a closed-form expression is obtained for the
+stochastic implicit gradient that facilitates the development of gradient-based algorithms.
+• The stochastic problem is challenging since the smoothed stochastic implicit objective does
+not have Lipschitz continuous gradients. As a result, conventional gradient-based algorithms
+may fail. To address this, we propose DS-BLO, a doubly stochastic method for solving linearly
+constrained stochastic bilevel optimization problems that utilizes two perturbations, one for
+tackling non-differentiability and the other for non-Lipschitz smoothness of the implicit objective.
+We establish finite-time convergence guarantees provided by DS-BLO and show that it converges
+to an (ϵ,δ)-stationary solution of the perturbed problem in eO(ϵ−4δ
+−1
+) iterations. Importantly,
+under an additional set of assumptions we establish the same convergence guarantee to achieve
+an (3ϵ,bδ)-Goldstein stationary solution of the original problem (1) with bδ = δ +ϵ/eLFq where
+eLFq is defined in Lemma A.5. To our knowledge, this is the first algorithm that guarantees
+(finite-time) convergence for stochastic bilevel problems with LL constraints without directly
+imposing any assumptions on the implicit function.
+• Finally, we assess the effectiveness of the proposed method through experiments on an
+adversarial learning problem. Our experiments show that DS-BLO demonstrates improved
+performance against existing bilevel approaches while providing competitive performance against
+popular adversarial learning baselines even though DS-BLO is not customized for adversarial
+learning problems.
+Comparison with the conference version [24]. This work significantly extends and im-
+proves upon the formulation and algorithms presented in its conference version [24], as explained
+below. ① In [24], a perturbed deterministic problem is tackled, whereas this work proposes a
+more general stochastic formulation where the expectation over the random perturbations (and
+stochastic samples) is computed, making the objective function differentiable. ② The formu-
+lation in [24] utilized a single perturbation throughout the execution of the algorithm which
+required restrictive assumptions on the problem such as (weak) convexity to develop algorithms
+with finite-time convergence guarantees. In contrast, this work treats the perturbation as sam-
+pled from certain distributions, allowing us to develop algorithms with finite-time convergence
+guarantees without imposing restrictive assumptions on the implicit function class. ③ In [24],
+without restrictive assumptions, only asymptotic convergence is provided by directly leveraging
+4
+
+existing Armijo line-search algorithm, while in this work, we develop a novel algorithm and con-
+duct extensive analysis to establish finite-time guarantees. ④ This work rigorously establishes
+the relation between the stationary solution of the perturbed and that of the original problem,
+further justifying the utility of the proposed reformulation. Finally, to distinguish the contri-
+butions of this work compared to [24], we will clearly mention the results that we will utilize
+from [24]. Moreover, all the technical proofs in the current paper are new.
+2 Smoothing by stochastic perturbation
+Let us consider the following perturbation-based smoothing, where for any fixed x∈ Rdu, the LL
+objectiveg(x, y) is augmented by a linear perturbationq⊤y, where q is a random vector sampled
+from some continuous distributionQ. We then define the followingstochastically perturbed bilevel
+optimization problem as a surrogate to solve problem (1):
+Stochastically perturbed bilevel problem with linear constraints
+min
+x∈Rdu
+F (x) := Eq∼Q[Fq(x)] := Eq∼Q[f(x, y∗
+q(x))] (2a)
+s.t. y∗
+q(x) = arg min
+y∈Y
+gq(x, y) withY ={y :Ay +Bx≤ b}, (2b)
+wheregq(x, y) :=g(x, y) +q⊤y with perturbation q∼Q chosen from a continuous distribution
+Q. To justify the reformulation in (2), we first analyze the approximation error incurred in
+solving (2) compared to (1). Later, in Section 2.2 we discuss how perturbing the LL problem
+ensures (local) differentiability of the stochastic implicit objective,Fq(·), and thereby the implicit
+objective F (·). We first introduce some basic assumptions.
+Assumption 1. The following conditions hold for problems (1) and (2):
+(a) f(x, y) is once and g(x, y) is twice continuously differentiable.
+(b) Y :=
+
+y∈ Rdℓ
+ Ay +Bx≤ b
+	
+is a compact set , ∀x∈ Rdu.
+(c) g(x, y) is µg-strongly convex in y,∀x∈ Rdu.
+Assumption 1 is standard in bilevel optimization [16, 24, 26]. Specifically, Assumption 1(a)
+ensures that the (partial) gradients of the UL objective f(·,·) and the (partial) gradients and
+Hessians (Jacobians) of the LL objectiveg(·,·) exist. Assumptions 1(b), (c) ensure the continuity
+of the implicit objective, F (x), and uniqueness of the LL problem’s solution, respectively. This
+implies that the implicit function F (x) (and F (x)) is well defined.
+Assumption 2. The following hold for problem (1), ∀ x, x∈ Rdu, y, y∈ Rdℓ:
+(a) f has bounded gradients, i.e., ∥∇f(x, y)∥≤ Lf.
+(b) f has Lipschitz gradients, i.e.,∥∇f(x, y)−∇f(x, y)∥≤ Lf∥[x; y]− [x; y]∥.
+(c) g has Lipschitz gradient, i.e.,∥∇yg(x, y)−∇yg(x, y)∥≤ Lg∥[x; y]− [x; y]∥.
+(d) g has Lipschitz Hessian in y, i.e.,∥∇2
+yyg(x, y)−∇ 2
+yyg(x, y)∥≤ Lgyy∥[x; y]− [x; y]∥.
+5
+
+(e) g has Lipschitz Jacobian, i.e.,∥∇2
+xyg(x, y)−∇ 2
+xyg(x, y)∥≤ Lgxy∥[x; y]− [x; y]∥.
+(f) g has a bounded Jacobian, ∥∇2
+xyg(x, y)∥≤ Lgxy.
+Assumption 2 is standard in bilevel optimization literature [15, 16, 18, 33] and is utilized
+to derive some useful properties of the (approximate) implicit gradient (see, e.g., Lemma 2.4 in
+Appendix A.1.1). Note that Assumptions 1(a),(c) and 2 also hold for the perturbed LL objective
+gq(·) in problem (2). Next, we compute an upper bound on the approximation error between
+the objectives of problems (1) and (2).
+Proposition 2.1. Under Assumptions 1 and 2, we have:
+|F (x)−F (x)|≤ Lf· sup
+q∼Q
+∥q∥
+µg
+, ∀ x∈ Rdu,
+whereF (x) and F (x) are defined in (1) and (2), respectively.
+Proof. The proof follows directly from [24, Prop. 3.2].
+Intuitively, the size of perturbation sup q∈Q∥q∥ determines the difference between the orig-
+inal and the perturbed implicit functions. We note that the only requirement on q is that it
+is generated from some continuous measure. Therefore we can always choose a distribution
+with small support such that sup q∈Q∥q∥ is arbitrarily small without essentially changing the
+landscape of the original problem (1) [34, pg. 5]. Next, we discuss how the objective in (2) is
+differentiable.
+2.1 The non-smoothness of problem (1)
+It can be easily shown that under Assumptions 1 and 2, the LL solution map y∗(x), and thus
+the implicit function F (x) of problem (1) are both continuous (see [24, Proposition 2.2]), but
+not differentiable in general [24, Section 2.1]. This implies that the implicit function, F (x),
+for problem (1) is generally non-smooth. Therefore, the standard notion of stationarity (cf.
+Definition 2.1) is not suitable for problem (1). In the following, we introduce the notions
+of stationarity utilized in (non)smooth optimization literature and existing efforts that design
+algorithms to compute them in the context of bilevel optimization.
+First, we introduce the standard notion of stationarity.
+Definition 2.1. A point x is an ϵ-stationary point of a differentiable function ℓ(·) if it satisfies
+∥∇ℓ(x)∥≤ ϵ.
+To minimize general Lipschitz functions that are not necessarily smooth, a widely used
+measure of stationarity is defined using Clarke’s subdifferential. It is referred to as Clarke’s
+stationarity [35] defined below.
+Definition 2.2. A point x is an ϵ-Clarke’s stationary point of a Lipschitz function ℓ(·) if
+dist(0,∂ℓ (x))≤ϵ, where ∂ℓ(x) is the Clarke subdifferential [35]:
+∂ℓ(x) := Conv
+n
+lim
+i→∞
+∇ℓ(xi) :∃xi→ x,∇ℓ(xi) exists
+o
+,
+where Conv(Z) is the convex hull of the set Z.
+6
+
+Clarke’s subdifferential becomes the standard subdifferential for convex functions, while for
+differentiable functions ∂ℓ(x) = ∇ℓ(x). The authors in [29] established that achieving an ϵ-
+Clarke’s stationary point by (sub)gradient-based methods in finite time is impossible when
+minimizing general Lipschitz functions. For minimizing Lipschitz functions satisfying weak con-
+vexity, the authors in [36] utilized Moreau envelope-based analysis and established that an
+ϵ-Clarke’s stationary point can be achieved in finite-time. The ideas developed in [36] were uti-
+lized by [S]SIGD developed in [24] for solving linearly constrained bilevel optimization problems.
+[S]SIGD provided finite time guarantees for linearly constrained bilevel optimization under the
+assumption that the implicit function is weakly convex. However, this is an uncheckable as-
+sumption, as verifying the weak convexity of the implicit function in bilevel optimization with
+LL constraints is generally not feasible.
+Motivated by the need to develop (sub)gradient-based algorithms with finite time guarantees,
+recently, a series of works have adopted a slightly relaxed notion of stationarity referred to as
+(ϵ,δ)-Goldstein stationarity [37] which is defined as:
+Definition 2.3. A point x is an (ϵ,δ)-Goldstein’s stationary point of a Lipschitz function ℓ(·)
+if it satisfies: dist(0,∂δℓ(x))≤ϵ, where ∂δℓ(x) is the Goldstein’s δ subdifferential [37] defined as
+(Bδ(x) is the ball of radius δ centered around x):
+∂δℓ(x) := Conv
+n [
+z∈Bδ(x)
+∂ℓ(z)
+o
+.
+For minimizing general non-smooth Lipschitz functions, initial attempts to develop (sub)
+gradient-based methods to obtain (ϵ,δ)-Goldstein stationary points relied on gradient sampling
+methods [38], which suffered from dimension dependence, i.e., the developed convergence guar-
+antees relied on the problem dimension. Recently, a series of works, including [29–31], have devel-
+oped perturbation-based algorithms for minimizing single-level non-smooth Lipschitz functions
+and established finite-time dimension-free guarantees to achieve an ( ϵ,δ)-Goldstein stationary
+point. Very recently, the authors in [39] considered the problem of minimizing non-smooth Lips-
+chitz functions and established that this additional perturbation is necessary to obtain finite-time
+dimension-free convergence guarantees to reach an (ϵ,δ)-Goldstein stationary point.
+First-order methods for solving linearly constrained bilevel problems of the form (1) have
+recently been developed in [26], building upon ideas from [29–31]. However, since [26] utilizes
+the first-order gradients to estimate the Hessian (inverses), the derived convergence guarantees
+either depend on the problem dimension or assume precise access and boundedness of dual
+parameters of the LL problem to achieve an ( ϵ,δ)-Goldstein stationary point. We note that
+ensuring the boundedness of the optimal dual variables and the access to them is not feasible
+in practice. Please see Table 2 for a comparison. To our knowledge, developing algorithms with
+dimension-free finite-time guarantees for solving problem (1) is still an open problem.
+The above discussion serves as a motivation to develop algorithms for solving bilevel problems
+of the form (1) that guarantee dimension-independent finite-time convergence guarantees and
+does not impose restrictive assumptions on the implicit function or the dual variables. Naturally,
+this leads to the development of a“doubly” perturbation-based algorithm where one perturbation
+is utilized for ensuring dimension-independent guarantees [39] while the second perturbation (cf.
+formulation (2)) is used to guarantee differentiablity of the implicit objective circumventing the
+need for restrictive assumptions on the objective or the dual variables.
+7
+
+Table 2: Comparison of the convergence rates of existing works. “Single-level” refers to a
+standard minimization problem; “LC Bilevel” denotes a linearly constrained bilevel problem.
+The highlighted rows represent the bilevel problems. For convergence measures, “S” refers to
+stationarity in Def. 2.1, “G” refers to Goldstein in Def. 2.3, and “M. env.” denotes the gradient
+of the Moreau envelope.
+ALGORITHM PROBLEM SETTING MEASURE CONVERGENCE
+INGD [29], [31] Single level Deterministic G eO(ϵ−3δ
+−1
+)
+Stochastic INGD [29], [31] Single level Stochastic G eO(ϵ−4δ
+−1
+)
+Perturbed INGD [30] Single level Deterministic G eO(ϵ−3δ
+−1
+)
+Perturbed Stochastic INGD [30] Single level Stochastic G eO(ϵ−4δ
+−1
+)
+Proximal Stochastic Subgradient 1 [36] Single level Stochastic M. env. O(ϵ−4)
+[D]SIGD [24] LC Bilevel Deterministic S Asymptotic
+[S]SIGD 2 [24] LC Bilevel Stochastic S O(ϵ−4)
+[26, Algorithm 3] LC Bilevel Deterministic G O(duϵ−3δ
+−1
+)
+Perturbed Inexact GD 3 [26] LC Bilevel Deterministic G O(ϵ−4δ
+−1
+)
+DS-BLO(Ours) 4 LC Bilevel Stochastic G eO(ϵ−4δ
+−1
+)
+1Minimizes F (x) +R(x) where F (·) is a non-smooth Lipchitz but weakly convex function and R(·) is a
+proximable mapping.
+2Under the assumption that the implicit function F (x) is weakly convex.
+3Guarantees hold under the precise access to certain dual variables.
+4Same guarantees hold for the perturbed (2) and the original problem (1) with δ defined as δ +ϵ/eLFq for the
+original problem.
+2.2 Differentiability of (2)
+Next, we will show that the perturbation q⊤y introduced in (2) ensures that at a given x∈ Rdu,
+the strict complementarity (SC) holds for the LL problem with probability 1 (w.p. 1). The SC
+condition will further imply the differentiability of the perturbed objective F (x) (w.p.1) [40].
+To proceed, let us define some notations. For a given x∈ Rdu, defineA(y) as the matrix that
+contains the rows S(y)⊆{ 1,...,k } ofA that correspond to the active constraints of inequality
+Ay≤ b−Bx, and define b(y),B(y) similarly. That is, A(y)y = b(y)−B(y)x. Also, let λ
+∗
+q(x)
+denote the vector of Lagrange multipliers that corresponds to the active constraints at y∗
+q(x).
+We make the following assumption.
+Assumption 3. The following holds for the LL constraints in (2b)
+(a) For every x∈ Rdu, there exists y∈ Rdℓ such that Ay +Bx< b.
+(b) The constraint matrix A(y∗
+q(x)) is full row rank for every x∈ Rdu, where y∗
+q(x) is defined
+in (2b).
+Assumption 3(a) ensures strict feasibility of the LL problem, while Assumption 3(b) implies
+the linear independence constraint qualification (LICQ) is satisfied [41]; LICQ is commonly
+used in practice to ensure that the KKT conditions are satisfied by the problems’s optimal
+solutions [24,26]. The following Lemma says that for the perturbed problem (2), the SC condition
+holds for the LL problem w. p. 1.
+8
+
+Lemma 2.2. [34, Proposition 1] Consider the perturbed problem (2). For a given x∈ Rdu, if
+y∗
+q(x) is a KKT point of problem miny∈Rdℓ{gq(x, y)|Ay +Bx≤ b}, q∼Q is generated from
+a continuous measure, and A(y∗
+q(x)) is full row rank, then the SC condition holds at x, w.p.
+1, i.e., A(y∗
+q(x))y∗
+q(x) = b(y∗
+q(x))−B(y∗
+q(x)) =⇒ λ
+∗
+q(x) > 0 where λ
+∗
+q(x) is the vector of
+Lagrange multipliers corresponding to y∗
+q(x).
+This SC condition implies differentiability of F (x) ( [42, Theorem 2.22]), as will be shown
+next.
+Proposition 2.3. Under Assumptions 1 and 3 the implicit functions F (x) and F (x,ξ ) defined
+in problem (2) are differentiable for every x∈ Rdu and it holds that
+∇F (x) :=∇Eq∼Q[Fq(x)] = Eq∼Q[∇Fq(x)]
+∇F (x,ξ ) :=∇Eq∼Q[Fq(x,ξ )] = Eq∼Q[∇Fq(x,ξ )].
+Further, the gradients can be computed as:
+∇Fq(x) =∇xf(x, y∗
+q(x)) + [∇y∗
+q(x)]T∇yf(x, y∗
+q(x)) (3a)
+∇Fq(x;ξ) =∇xef(x, y∗
+q(x);ξ) + [∇y∗
+q(x)]⊤∇yef(x, y∗
+q(x);ξ). (3b)
+where the Jacobian matrix ∇y∗
+q(x) is given by:
+∇y∗
+q(x) =
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+−∇ 2
+xyg(x, y∗
+q(x))−A
+⊤
+∇λ
+∗
+q(x)
+
+, (4)
+∇λ
+∗
+q(x) =−
+
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1A
+⊤−1
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1∇2
+xyg(x, y∗
+q(x))−B
+
+, (5)
+whereA :=A(y∗
+q(x)), B :=B(y∗
+q(x)), y∗
+q(x) andλ
+∗
+q(x) are defined in Lemma 2.2.
+Proof. The proof follows [24, Lemma 2.4]; see Appendix A.1 for completeness.
+In the following, we will refer to ∇Fq(x) and ∇Fq(x;ξ) as the stochastic and sampled im-
+plicit gradient of the perturbed function F (x), respectively. It is worth noting that without
+the perturbation term in (2b), the SC property would need to be assumed to guarantee the
+differentiability of the implicit function [42, Theorem 2.22]. In contrast, Lemma 2.2 suggests
+that slightly modifying the problem guarantees the SC condition, and thus the differentiability.
+From a practical standpoint, the implicit gradient computation consists of two steps: ①
+obtaining an (approximate) solution to the lower-level problem, and② evaluating the expressions
+in (4) and (5). For ①, there are many efficient and standard methods for solving the LL problem
+since it is a strongly convex problem. However, the requirement of having the exact solution
+y∗
+q(x) is often unrealistic. We will discuss how to relax such a requirement in the next subsection.
+For ②, evaluating (4) and (5) can be computationally intensive, but we can leverage existing
+techniques such as the Neumann series approximation to reduce computational complexity; see,
+e.g., [15, Lemma 3.1].
+Finally, we note that it is possible to extend this work to the case where LL objective,
+g(x, y), is stochastic, i.e. g(x, y) := Eζ∼Dg[eg(x, y;ζ)]. Assuming that the stochastic gradients
+∇eg(x, y;ζ) are available, then the Hessian inverse can be stochastically estimated with arbitrarily
+diminishing bias utilizing the procedure in [43, Algortihm 3], and the variance of these estimates
+can also be bounded in a straightforward manner [16, 43, 44]. However, these errors will make
+the subsequent proofs unnecessarily complicated, so we do not formally consider the variation
+where g(·) is stochastic.
+9
+
+2.3 Approximate stochastic gradients and properties
+Next, let us discuss how to relax the requirement of the exact solution y∗
+q(x) for computing the
+gradients (2). Define the approximated versions of ∇Fq(·) and∇Fq(·;ξ) as:
+b∇Fq(x) :=∇xf(x,byq(x)) + [b∇y∗
+q(x)]T∇yf(x,byq(x)), (6a)
+b∇Fq(x;ξ) :=∇xef(x,byq(x);ξ) + [b∇y∗
+q(x)]⊤∇yef(x,byq(x);ξ), (6b)
+where byq(x) is a suitable approximate solution for the perturbed LL problem (2b); b∇y∗
+q(x) is
+defined by substituting the approximate lower-level solutionbyq(x) in place of the exact solution
+y∗
+q(x) in the expressions (4) and (5). To ensure that (6a) provides a meaningful approximation
+of the exact implicit gradient, we impose several assumptions on the quality of the estimate
+byq(x).
+Assumption 4. The approximate solution of the (perturbed) LL problem (2b), byq(x), satisfies
+the following∀x∈ Rdu and q∼Q
+(a) ∥y∗
+q(x)−byq(x)∥≤ δ for some δ >0,
+(b) byq(x) is a feasible point, i.e., Abyq(x) +Bx≤ b,
+(c) It holds that A(y∗
+q(x)) =A(byq(x)).
+Assumptions 4(a), (b) can be easily satisfied by leveraging standard algorithms such as
+the projected gradient method to solve a strongly convex problem. It is important to note
+that Assumption 4(c) can be satisfied for a “sufficiently accurate” solution byq(x) produced by
+algorithms such as projected gradient; see the remark below.
+Remark 1. From a well-known result [45, Theorem 4.1], if byk
+q (x)∈Y is a sequence that con-
+verges to a non-degenerate (i.e., SC and Assumption 3(b) holds) stationary point y∗
+q(x), then
+there exists an integer k0 such that A(y∗
+q(x)) = A(byk
+q (x)),∀k > k0. Further, in some cases,
+an upper bound for k0 can be obtained. For instance, consider the case of non-negative con-
+straints y≥ 0. Assuming that ∇yig(x, y∗
+q(x)) > 0,∀i∈ S(y∗
+q(x)) it can be shown that after
+Lg
+µg log
+ 
+2Lg∥y0
+q− y∗
+q(x)∥/τ
+
+iterations of projected gradient descent the active set of the approx-
+imate solution byq(x) is the same with the active set of the exact one y∗
+q(x) (see [46, Corollary
+1]), where τ = mini∈S(y∗q (x))∇yig(x, y∗
+q(x)) and y0
+q is the initialization. A similar result can be
+obtained for the case with bound constraints a≤ y≤ b.
+The next three lemmas analyze the properties of b∇Fq(x) and b∇Fq(x;ξ). The proofs of these
+lemmas are provided in Appendix A.1.1 – A.1.3.
+Lemma 2.4 (Approximation bias). Under Assumptions 1-4 the following holds
+∥b∇Fq(x)−∇Fq(x)∥≤ LF·δ ≜δy, ∀ x∈ Rdu.
+Moreover, the following holds:
+∥∇Fq(x)∥≤ LF, ∥b∇Fq(x)∥≤ LF and ∥∇F (x)∥≤ LF, ∀ x∈ Rdu
+whereLF :=Lf +Ly∗Lf +LfLy∗, and LF :=
+ 
+1 +Ly∗
+
+Lf; the constants Ly∗,L y∗ are defined
+in Lemmas A.2, A.4, respectively, provided in the Appendix.
+10
+
+Lemma 2.5 (Variance from q). Under Assumptions 1-4, the following holds
+Eq∼Q∥∇Fq(x)−∇F (x)∥2≤δ2
+v := 4L
+2
+F, ∀ x∈ Rdu.
+We note that the above variance bound is independent of q∼Q , as bounding this variance
+with some constant is sufficient in the subsequent convergence analysis. It is possible to derive
+a bound for the variance that depends on sup q∈Q∥q∥. However, as the analysis is lengthy and
+ultimately unnecessary, we choose not to include it. Next, we characterize the variance incurred
+because of stochastic sampling of the UL objective. To this end, we introduce the following
+standard assumptions.
+Assumption 5. For the UL objective f(x, y) the following hold for some σf > 0:
+Eξ∼Df [∇ef(x, y;ξ)] =∇f(x, y), Eξ∼Df∥∇ef(x, y;ξ)−∇f(x, y)∥2 =σ2
+f.
+Lemma 2.6 (Variance from stochastic sampling). Under Assumptions 1, 2, 4 and 5, the
+stochastic gradient in (3b) satisfies the following:
+Eξ∼Df [b∇Fq(x;ξ)] = b∇Fq(x) and Eq∼Q,ξ∼Df∥∇Fq(x;ξ)−∇F (x)∥2≤δ2
+v,
+whereδ2
+v :=σ2
+F +δ2
+v; σ2
+F := 2σ2
+f + 2Ly∗σ2
+f; Ly∗ is defined in Lemma A.2.
+Note that in Lemmas 2.5 and 2.6, to simplify notation we have used the same δv to denote
+the variance of Fq(x) and Fq(x;ξ).
+3 A doubly stochastic algorithm for linearly constrained bilevel
+optimization (DS-BLO)
+In this section, we develop an algorithm to solve the stochastically perturbed problem (2). Note
+that even though perturbed problem (2) is now differentiable, designing an efficient algorithm
+for it is still challenging since the implicit function F (·) is not Lipschitz smooth. This can
+be observed from Proposition 2.3 which shows that ∇y∗
+q(x) is not a continuous function of x
+because the active set A is discontinuous in x. However, we know from Lemma 2.4 that F (·) is
+a Lipschitz continuous function. This implies that conventional gradient-based algorithms are
+no longer suitable for (2).
+To proceed, we develop a novel doubly stochastic algorithm DS-BLO, which optimizes the
+perturbed problem (2). DS-BLO relies on two kinds of perturbations, one is the vector q∼Q
+introduced in Section 2 to ensure the differentiability of the stochastic objective. The second
+perturbation is necessary to achieve dimension-free convergence guarantees as recently estab-
+lished in [39]. In contrast to [26] where the authors directly tackle the non-smooth problem (1),
+the perturbed reformulation in (2) is differentiable. Even though the function is differentiable,
+the function may still be non-Lipschitz smooth, therefore, we rely on the standard notion of
+(ϵ,δ)-Goldstein stationarity to provide the convergence guarantees.
+We state the algorithm steps in Algorithm 1. Specifically, the algorithm relies on two per-
+turbations: ① In Step 8 of Algorithm 1 for ensuring (almost sure) differentiability of the implicit
+function in problem (1), and ② In Step 7 of Algorithm 1 wherext+1 is chosen uniformly randomly
+from range [ xt, xt+1] to ensure sufficient (expected) descent in each iteration for non-Lipschitz
+smooth objectives. Compared to DS-BLO, the algorithms developed in [26] approximate the
+11
+
+Algorithm 1 Doubly Stochastic Algorithm for Bilevel Optimization (DS-BLO)
+1: Input. x 1, T >K, where K = 1
+ln 1
+β
+ln 32(δv+2LF )
+ϵ , γ1 = K
+δ , γ2 = 4γ1(δv + 2LF ), LL solution
+accuracy δy = min
+n
+ϵ2
+1280(δv+2LF ), 2ϵ
+3,LF,LF·δ
+o
+, β = 1− ϵ2
+960(δ2v+2L2
+F )
+2: Sample q1∼Q and perturb the LL problem in (1);
+3: Find an approximate solution byq1(x1) of (2b) s.t. Assumption 4 is satisfied
+4:
+Compute m1 = g1 with
+(
+Opt I : g1 = b∇Fq1(x1) using (6a)
+Opt II : g1 = b∇Fq1(x1;ξ1); using (6b)
+5: for t∈ [T ] do
+6: Update xt+1 = xt−ηtmt where ηt = 1
+γ1∥mt∥+γ2
+;
+7: Sample xt+1∼U [xt, xt+1];
+8: Sample qt+1∼Q independently from qt and perturb the LL problem in (1);
+9: Find an approx. solution byqt+1(xt+1) of (2b) s.t. Assumption 4 is satisfied
+10:
+Compute
+(
+Opt I : gt+1 = b∇Fqt+1(xt+1) using (6a)
+Opt II : gt+1 = b∇Fqt+1(xt+1;ξt+1) using (6b);
+11: Update mt+1 =βmt + (1−β)gt+1.
+12: end for
+(implicit) gradients using ① The zeroth order oracle where the gradient approximation quality
+degrades as the problem dimension increases, and ② A first-order oracle which requires precise
+knowledge of the dual parameters of the LL problem. In contrast, DS-BLO avoids dimension
+dependence while not requiring any knowledge of the dual parameters of the LL problem (cf.
+Proposition 2.3 for the gradient expression employed by DS-BLO).
+3.1 Convergence guarantees
+This section studies the convergence behavior of DS-BLO. Specifically, we aim to characterize
+the iterations required to achieve an (ϵ,δ)-Goldstein stationary point for some ϵ,δ >0 as given
+in Definition 2.3. First, we establish an intermediate result for DS-BLO which will then be
+utilized to establish the convergence guarantees of DS-BLO.
+Lemma 3.1. Under Assumptions 1-5 the iterates generated by Algorithm 1 for both Options
+I and II satisfy the following:
+1
+T
+TX
+t=1
+E
+
+
+
+tX
+i=t−K+1
+αi∇F (xi)
+
+
+
+≤ϵ for T = eO
+ 1
+δ·ϵ4 max
+
+(δv + 2LF )∆, (δ2
+v + 2L
+2
+F )2	
+,
+where αi := βt−i(1−β)
+1−βK with β defined in Algorithm 1 and ∆ := F (x1)−F∗ with F∗ defined as
+F∗ := inf x∈RduF (x).
+The proof of the above result extends techniques used in [29,30] where the authors establish
+that if the iterates xi for i ∈ [t− K + 1,t ] are sufficiently close to xt−K then the convex
+12
+
+combination of the (stochastic) gradients computed at iterations i∈ [t−K + 1,t ] must belong
+to the Goldstein δ subdifferential set. However, our proof and the presented result have a few
+major differences compared to the ones in [29,30] and other works. First, we must deal with the
+bias that arises in the implicit gradient estimates from approximate LL solutions. Second, our
+analysis needs to tackle the stochastic noises arising because of random perturbation q∼Q and
+the randomization introduced in sampling the iterates xt+1 in Step 7 of Algorithm 1. Third,
+in our case, the objective function of (2) is differentiable (albeit not Lipschitz smooth) and we
+have access to closed-form expressions to compute this (biased) gradient, unlike [24, 26, 29–31]
+where the objective may be non-differentiable.
+Note that the above result in Lemma 3.1 is non-standard in the sense that we have established
+that a convex combination of the implicit gradients is small. Next, we show that this implies
+(ϵ,δ)-Goldstationarity of the perturbed objective.
+Theorem 3.2 (Convergence of DS-BLO) . Under Assumptions 1-5 the iterates generated by
+Algorithm 1 for both Options I and II satisfies
+1
+T
+TX
+t=1
+E[dist(0,∂δF (xt−K))]≤ϵ for T = eO
+ 1
+δ·ϵ4 max
+
+(δv + 2LF )∆, (δ2
+v + 2L
+2
+F )2	
+Proof. To establish the stated result, we first show thatxt−K will be close toxi fori∈ [t−K+1,t ]
+as below:
+∥xt−K− xi∥
+(a)
+≤∥ xt−K− xi−1∥ +∥xi− xi−1∥
+(b)
+≤∥ xt−K− xi−1∥ +∥xi− xi−1∥
+(c)
+≤
+i−1X
+j=t−K
+ηj∥mj∥
+(d)
+≤ K
+γ1
+=δ,
+where (a) follows from the triangle inequality; (b) results from the fact that xi is sampled from
+the range [xi−1, xi]; (c) utilizes the update rule of Step 6 in DS-BLO and the triangle inequality;
+inequality (d) uses the definition of ηj = 1
+γ1∥mj∥+γ2
+and the fact that the summation has less
+than K terms, and the final equality results from the choice of γ1 =K/δ from Algorithm 1.
+Note that this implies that xi for i∈ [t−K + 1,t ] stays within a δ neighborhood of xt−K.
+This implies that the convex combination Pt
+i=t−K+1αi∇F (xi)∈ ∂δF (xt−K). Therefore, we
+have
+dist(0,∂δF (xt−K))≤
+
+
+
+
+tX
+i=t−K+1
+αi∇F (xi)
+
+
+
+
+,
+Taking the expectation on both sizes, summing over t∈ [T ] and multiplying both sides by 1/T ,
+we get
+1
+T
+TX
+t=1
+E[dist(0,∂δF (xt−K))]≤ 1
+T
+TX
+t=1
+E
+
+
+
+
+tX
+i=t−K+1
+αi∇F (xi)
+
+
+
+
+≤ϵ,
+where the last inequality follows from Lemma 3.1 and with the choice ofT given in the statement
+of the Theorem.
+Therefore, we have the proof.
+13
+
+We make the following observations about the result of Theorem 3.1. First, the proof utilizes
+the differentiability of the implicit functionF (·) and the definition of theδ-Goldstein subgradient
+(Definition 2.3) to establish the following fact: the convex combination of (sub) gradients derived
+in Lemma 3.1 belongs to the δ-Goldstein subgradient set if xi’s are sufficiently close to xt−K for
+i∈ [t−K + 1,t ]. This notion is similar to the one utilized in [29,30] for single-level and [26] for
+linearly constrained bilevel optimization where objective functions are non-differentiable. We
+next present an important result that links the solution of the perturbed problem (2) with the
+Goldstein stationary solution of the original problem (1). To do so, we first introduce some
+additional assumptions.
+Assumption 6. We assume that the following hold
+(a) The LL constraint set Y isY ={y∈ Rdℓ| Ay≤ b} and the constraint matrix A is full
+row rank.
+(b) g is Lipschitz in x, i.e.,∥g(x, y)−g(x, y)∥≤ Lg∥x− x∥.
+(c) For any x∈ Rdu, y∈ Rdℓ, δ >0 and a uniformly randomly chosen u∈ Rdu over a unit
+ball centered at 0, define ϑ as: ϑ :=∇yg(x +δu, y)−∇yg(x, y). We assume that ϑ is a
+continuous random variable in Rdℓ space.
+Assumption 6(a) is rather standard in bilevel optimization [24, 27]. Assumption 6(b) is
+relatively mild, and in fact it is similar to the set of assumptions introduced in Assumption
+2. Together, Assumptions 6(a), (b) are used to establish Lipschitz continuity of y∗(x) which
+further implies Lipschitz continuity of the implicit functionF (x) (see Lemma A.6). Notably, the
+Lipschitzness of F (x) allows us to define the notion of δ-Goldstein subgradient for the original
+problem (1). We note that in [26] the Lipschitz continuity of y∗(x) is directly assumed.
+Assumption 6(c) is somewhat unconventional. Note that ϑ is a continuous random vari-
+able since it is a continuous function (since ∇yg(x, y) is continuous, see Assumption 2(c)) of a
+continuous random variable, u. The assumption implies that ϑ has a continuous measure in
+Rdℓ space. For example, it is easy to verify that Assumption 6(c) is satisfied by functions of
+the form g(x, y) = g1(x) + x⊤Qy +g2(y) with ϑ = δ·Q⊤u for full row rank Q; note that
+this example is similar to the ones we used in the numerical experiments for specific choices
+of g1(·) and g2(·) (see Section 4.1). Similarly, for general objectives, one can establish that for
+δ→ 0 we have ϑ≈δ· [∇2
+xyg(x, y)
+⊤u, therefore, Assumption 6(c) is (asymptotically) satisfied
+if∇2
+xyg(x, y) is full row rank. This assumption allows us to (i) establish the SC property for
+the original implicit function F (x) (see Lemma A.7) which is further utilized to compute the
+implicit gradient of y∗(x), and (ii) to bound the distance of the implicit gradient of y∗(x) from
+the (stochastic) gradients of the stochastically perturbed problem (2). Overall, Assumption 6(c)
+allow us to establish the connection between Goldstein stationary solutions of the perturbed
+bilevel problem (2) and the original bilevel problem (1); see the next result with proof provided
+in Appendix A.3.1.
+Proposition 3.3. There exists a continuous measure Q such that for q∼Q with∥q∥≤O (ϵ)
+and q ∈ Uq, where Uq is defined in Appendix A.3.1 and under Assumptions 1-6, an (ϵ,δ)-
+Goldstein stationary point for the perturbed bilevel problem defined in (2) is also a (3ϵ,δ+ϵ/eLFq)-
+Goldstein stationary point for the original bilevel problem (1).
+Next, we compare the presented results with those of the earlier works [26] and [24]. The
+guarantees presented in [26] and [24] only hold for deterministic bilevel problems, in contrast,
+14
+
+DS-BLO provides finite-time guarantees for stochastic bilevel problems. Observe from Table
+2 that the convergence guarantees of [26, Algorithm 3] depend on the problem dimension, in
+Perturbed Inexact GD [26] they rely on the precise access to the dual variables, and in [D]SIGD
+they are asymptotic. DS-BLO is free of all these limitations while being able to tackle stochastic
+bilevel problems. It is also worth noting that DS-BLO matches the performance of Perturbed
+Inexact GD [26] while solving a more challenging stochastic problem. Moreover, DS-BLO also
+matches the performance of algorithms designed to optimize single-level non-Lipschitz smooth
+stochastic objectives [29–31].
+Please see Table 2 for a detailed comparison.
+4 Experiments
+In this section, we evaluate the numerical performance of DS-BLO and compare it against the
+state-of-the-art.
+4.1 Numerical examples
+We first consider a bilevel problem of the form (1)
+f(x, y) =∥x∥2 + 0.1xTQ1y +∥y∥2 + eT
+1 x + eT
+2 y,
+g(x, y) =∥x∥2 + xTQ2y +∥y∥2
+The elements of the matricesQ1,Q 2 are generated at random from a uniform distribution, while
+e1, e2 denotes vectors of all 1s (of appropriate dimensions). The elements of the constraints
+matrices A,B, b are also selected from the random uniform distribution. We solve the above
+problem using three different algorithms: ① [S]SIGD [24], ② Perturbed Inexact GD (PIGD) [26],
+③ DS-BLO (proposed algorithm). The parameters of these algorithms are selected using a
+hyperparameter optimization procedure, where the optimal stepsize is selected in the range
+[10−3, 10−1]. The number of outer iterations is set to 100 for all algorithms, while for the
+solution of the LL problem, we utilize a convex optimization solver.
+In Figure 1, we present the objective value F (x) = f(x, y∗(x)) as a function of time for
+different values of the dimensions du,dl and k. We observe that the [S]SIGD and the proposed
+DS-BLO algorithm converge faster than the PIGD. The difference in runtime can be attributed
+to the different ways the reformulated problem of each algorithm is solved. While [S]SIGD and
+DS-BLO compute the implicit gradient and perform a number of gradient steps, the PIGD solves
+a Lagrangian reformulated problem using a convex optimization solver (cvxpy), which can be
+slower in practice.
+4.2 Adversarial Training
+In this section, we evaluate the performance of DS-BLO via numerical experiments conducted
+on the widely accepted adversarial training problem [10,47] and compare the performance of DS-
+BLO with the recently proposed bilevel optimization methods, including [S]SIGD [24], Perturbed
+Inexact GD [26], and other commonly used adversarial training methods, such as AT [47] and
+TRADES [48]. Adversarial training aims to improve the robustness of deep neural networks
+against adversarial attacks, which are bounded by the ϵ-tolerant ℓ∞-norm attack constraint.
+This can be easily expressed as a bilevel problem with linear inequality constraints in the LL as
+15
+
+0.0 0.5 1.0 1.5
+time (s)
+0
+5
+10
+F(x)
+[S]SIGD
+DS-BLO (ours)
+PIGD
+(a) du =dl = 10,k = 5
+0 1 2
+time (s)
+0
+200
+400
+600
+800
+1000
+F(x)
+[S]SIGD
+DS-BLO (ours)
+PIGD (b) du =dl = 50,k = 10
+Figure 1: The evolution of the objective value F (x) = f(x, y∗(x)) as a function of time for
+different values of the dimensions du,dl and k and three different algorithms.
+follows: Consider the problem of robustly training a model ϕ(x; c), where x denotes the model
+parameters and c the input to the model; let’s denote with {(ci, di)}N
+i=1 the training set where
+ci∈ Rdℓi, di∈ R [10,49]. Then the adversarial training problem can be posed in the form of (1)
+as
+min
+x∈Rdu
+NX
+i=1
+fi(ϕ(x; ci + y∗
+i (x)), di) s.t. y∗(x)∈
+
+
+
+arg min
+yi∈R
+dℓi
+NX
+i=1
+gi(ϕ(x; ci + yi), di)
+s.t. −ϵ· 1≤ y≤ϵ· 1
+,
+where y = [yT
+1,..., yT
+N]T∈ Rdℓ; yi∈ Rdℓi denotes the attack on the ith example and we havePN
+i=1dℓi = dℓ. Moreover, fi : R× R→ R denotes the loss function for learning the model
+parameter x, while gi : R× R→ R denotes the adversarial objective used to design the optimal
+attack y. Note that the linear constraints in the LL problem−ϵ·1≤ y≤ϵ·1 model theϵ-attack
+budget.
+Following prior work [10,24], we consider two representative datasets CIFAR-10/100 [50] and
+adopt the ResNet-18 [51] model. Regarding the perturbation, we studied two widely used [10,
+47, 48, 52] attack budget choicesϵ∈{ 8/255, 16/255}. Table 3 shows the performance overview
+of our experiments. We make the following observations. First, bilevel methods (Perturbed
+Inexact GD, [S]SIGD, and DS-BLO) in general achieve better results than non-bilevel methods
+(AT, TRADES). This is demonstrated by the higher RA and the competitive SA score. Second,
+DS-BLO (our proposed method) demonstrates a better RA-SA trade-off. For example, in the
+setting of (CIFAR-10, ϵ = 8/255), DS-BLO achieved an RA of 51.79 with σ2 = 5e− 5, which is
+the highest value among all the methods. Third, compared to [S]SIGD, DS-BLO demonstrates a
+better robustness against the choice of the Gaussian variance σ2. As we can see, within a larger
+range of σ2, the RA of DS-BLO (the objective of the bilevel optimization) oscillates less than
+[S]SIGD. For example, in the setting of (CIFAR-10, ϵ = 16/255) the RA of [S]SIGD changes
+from 29.19% to 32.73% with a difference of over 3%, while DS-BLO remains the in range from
+32.29% to 33.39%. Therefore, DS-BLO demonstrates a better algorithmic stability.
+16
+
+Table 3: Performance overview of different methods on CIFAR-10 and CIFAR-100 [50] datasets
+with ResNet-18 [51]. The result a±b represents the mean value a with a standard deviation of
+b over 5 random trials. Bilevel methods are denoted with †. “PIGD” refers to the Perturbed
+Inexact GD [26]. The results of [S]SIGD [24] and DS-BLO are reported with different Gaussian
+variance (σ2) values. “PM” denotes the performance metrics. Performance is evaluated in terms
+of standard accuracy (SA) and robust accuracy (RA).
+PM AT TRADESPIGD† [S]SIGD† (σ2) DS-BLO† (σ2)
+2e−5 6 e−5 8 e−5 1e−5 5 e−5 1 e−4
+CIFAR-10,ϵ= 8/255
+SA 80.83±0.24 80.88±0.18 79.43±0.21 80.49±0.31 81.59±0.21 83.33±0.15 80.86±0.24 81.11±0.12 81.19±0.32
+RA 50.63±0.24 51.34±0.24 51.55±0.42 50.79±0.24 50.66±0.16 49.91±0.21 50.86±0.21 51.79±0.15 51.59±0.23
+CIFAR-10,ϵ= 16/255
+SA 70.19±0.12 70.25±0.33 70.11±0.19 71.35±0.23 73.72±0.23 73.14±0.19 71.49±0.21 70.32±0.18 70.85±0.25
+RA 32.31±0.11 33.39±0.29 33.75±0.14 32.73±0.21 29.19±0.54 29.88±0.31 32.29±0.29 33.99±0.17 33.13±0.09
+CIFAR-100,ϵ= 8/255
+SA 53.79±0.14 53.27±0.19 53.77±0.23 53.79±0.18 53.47±0.23 54.34±0.14 53.84±0.21 53.79±0.21 53.94±0.31
+RA 27.39±0.11 28.49±0.24 28.19±0.26 27.98±0.32 28.13±0.13 27.99±0.22 28.29±0.27 28.83±0.17 28.15±0.21
+CIFAR-100,ϵ= 16/255
+SA 42.12±0.21 42.33±0.17 41.12±0.31 44.14±0.21 46.69±0.15 47.05±0.28 42.32±0.12 42.08±0.18 42.25±0.24
+RA 15.33±0.11 16.68±0.13 16.66±0.12 15.63±0.09 13.32±0.44 13.72±0.22 15.32±0.13 15.46±0.21 14.93±0.11
+5 Conclusion
+In this work, we developed a framework for solving a special class of constrained bilevel problems
+where the LL task has linear constraints and a strongly convex objective. The key challenge
+we tackled for solving this class of problems is the non-differentiability of the implicit function,
+which is addressed with the use of a perturbation-based smoothing technique. This allows us to
+compute the gradient of the implicit function in closed form, and develop first-order algorithms
+to compute its stationary points in finite time. In the future, we would be interested in studying
+other special classes of constrained bilevel problems (i.e., problems with different constraint sets)
+and their properties.
+17
+
+References
+[1] S. Dempe and A. Zemkoho, Bilevel optimization. Springer, 2020.
+[2] A. Rajeswaran, C. Finn, S. M. Kakade, and S. Levine, “Meta-learning with implicit gradi-
+ents,” in Advances in Neural Information Processing Systems, vol. 32. Curran Associates,
+Inc., 2019.
+[3] L. Franceschi, P. Frasconi, S. Salzo, R. Grazzi, and M. Pontil, “Bilevel programming for
+hyperparameter optimization and meta-learning,” in International Conference on Machine
+Learning. PMLR, 2018, pp. 1568–1577.
+[4] A. Shaban, C.-A. Cheng, N. Hatch, and B. Boots, “Truncated back-propagation for bilevel
+optimization,” in The 22nd International Conference on Artificial Intelligence and Statis-
+tics. PMLR, 2019, pp. 1723–1732.
+[5] A. Sinha, T. Khandait, and R. Mohanty, “A gradient-based bilevel optimization approach
+for tuning hyperparameters in machine learning,” arXiv preprint arXiv:2007.11022 , 2020.
+[6] L. Franceschi, M. Donini, P. Frasconi, and M. Pontil, “Forward and reverse gradient-based
+hyperparameter optimization,” in International Conference on Machine Learning. PMLR,
+2017, pp. 1165–1173.
+[7] F. Pedregosa, “Hyperparameter optimization with approximate gradient,” in International
+conference on machine learning. PMLR, 2016, pp. 737–746.
+[8] Y. Li, L. Song, X. Wu, R. He, and T. Tan, “Learning a bi-level adversarial network with
+global and local perception for makeup-invariant face verification,” Pattern Recognition,
+vol. 90, pp. 99–108, 2019.
+[9] R. Liu, J. Gao, J. Zhang, D. Meng, and Z. Lin, “Investigating bi-level optimization for
+learning and vision from a unified perspective: A survey and beyond,” IEEE Transactions
+on Pattern Analysis and Machine Intelligence , vol. 44, no. 12, pp. 10 045–10 067, 2021.
+[10] Y. Zhang, G. Zhang, P. Khanduri, M. Hong, S. Chang, and S. Liu, “Revisiting and ad-
+vancing fast adversarial training through the lens of bi-level optimization,” in International
+Conference on Machine Learning. PMLR, 2022, pp. 26 693–26 712.
+[11] A. Migdalas, “Bilevel programming in traffic planning: Models, methods and challenge,”
+Journal of global optimization , vol. 7, no. 4, pp. 381–405, 1995.
+[12] M. Cecchini, J. Ecker, M. Kupferschmid, and R. Leitch, “Solving nonlinear principal-agent
+problems using bilevel programming,” European Journal of Operational Research, vol. 230,
+no. 2, pp. 364–373, 2013.
+[13] M. Didi-Biha, P. Marcotte, and G. Savard, Path-based formulations of a bilevel toll setting
+problem. Boston, MA: Springer US, 2006, pp. 29–50.
+[14] D. V. Kalashnikov, J.-F. Camacho-Vallejo, R. Askin, and N. Kalashnykova, “Comparison
+of algorithms for solving a bi-level toll setting problem,” International journal of innovative
+computing, information & control: IJICIC , vol. 6, pp. 3529–3549, 08 2010.
+18
+
+[15] S. Ghadimi and M. Wang, “Approximation methods for bilevel programming,” arXiv
+preprint arXiv:1802.02246, 2018.
+[16] M. Hong, H.-T. Wai, Z. Wang, and Z. Yang, “A two-timescale stochastic algorithm
+framework for bilevel optimization: Complexity analysis and application to actor-critic,”
+SIAM Journal on Optimization , vol. 33, no. 1, pp. 147–180, 2023. [Online]. Available:
+https://doi.org/10.1137/20M1387341
+[17] P. Khanduri, S. Zeng, M. Hong, H.-T. Wai, Z. Wang, and Z. Yang, “A near-optimal al-
+gorithm for stochastic bilevel optimization via double-momentum,” Advances in Neural
+Information Processing Systems, vol. 34, 2021.
+[18] T. Chen, Y. Sun, and W. Yin, “A single-timescale stochastic bilevel optimization method,”
+arXiv preprint arXiv:2102.04671 , 2021.
+[19] Y. Zhang, P. Khanduri, I. Tsaknakis, Y. Yao, M. Hong, and S. Liu, “An introduction
+to bilevel optimization: Foundations and applications in signal processing and machine
+learning,” IEEE Signal Processing Magazine , vol. 41, no. 1, pp. 38–59, 2024.
+[20] S. Xu and M. Zhu, “Efficient gradient approximation method for constrained bilevel opti-
+mization,” in Proceedings of the AAAI Conference on Artificial Intelligence, vol. 37, no. 10,
+2023, pp. 12 509–12 517.
+[21] Z. Lu and S. Mei, “First-order penalty methods for bilevel optimization,” SIAM Journal
+on Optimization, vol. 34, no. 2, pp. 1937–1969, 2024.
+[22] W. Yao, C. Yu, S. Zeng, and J. Zhang, “Constrained bi-level optimization: Prox-
+imal lagrangian value function approach and hessian-free algorithm,” arXiv preprint
+arXiv:2401.16164, 2024.
+[23] L. Jiang, Q. Xiao, V. M. Tenorio, F. Real-Rojas, A. G. Marques, and T. Chen, “A primal-
+dual-assisted penalty approach to bilevel optimization with coupled constraints,” arXiv
+preprint arXiv:2406.10148, 2024.
+[24] P. Khanduri, I. Tsaknakis, Y. Zhang, J. Liu, S. Liu, J. Zhang, and M. Hong, “Linearly
+constrained bilevel optimization: A smoothed implicit gradient approach,” in International
+Conference on Machine Learning. PMLR, 2023, pp. 16 291–16 325.
+[25] Q. Xiao, H. Shen, W. Yin, and T. Chen, “Alternating projected sgd for equality-constrained
+bilevel optimization,” in International Conference on Artificial Intelligence and Statistics .
+PMLR, 2023, pp. 987–1023.
+[26] G. Kornowski, S. Padmanabhan, K. Wang, Z. Zhang, and S. Sra, “First-order methods for
+linearly constrained bilevel optimization,” arXiv preprint arXiv:2406.12771 , 2024.
+[27] I. Tsaknakis, P. Khanduri, and M. Hong, “An implicit gradient-type method for linearly
+constrained bilevel problems,” in ICASSP 2022-2022 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2022, pp. 5438–5442.
+[28] ——, “An implicit gradient method for constrained bilevel problems using barrier approx-
+imation,” in ICASSP 2023-2023 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP). IEEE, 2023, pp. 1–5.
+19
+
+[29] J. Zhang, H. Lin, S. Jegelka, S. Sra, and A. Jadbabaie, “Complexity of finding station-
+ary points of nonconvex nonsmooth functions,” in International Conference on Machine
+Learning. PMLR, 2020, pp. 11 173–11 182.
+[30] L. Tian, K. Zhou, and A. M.-C. So, “On the finite-time complexity and practical computa-
+tion of approximate stationarity concepts of lipschitz functions,” in International Confer-
+ence on Machine Learning . PMLR, 2022, pp. 21 360–21 379.
+[31] D. Davis, D. Drusvyatskiy, Y. T. Lee, S. Padmanabhan, and G. Ye, “A gradient sampling
+method with complexity guarantees for lipschitz functions in high and low dimensions,”
+Advances in neural information processing systems , vol. 35, pp. 6692–6703, 2022.
+[32] L. Chen, J. Xu, and J. Zhang, “Bilevel optimization without lower-level strong
+convexity from the hyper-objective perspective,” 2024. [Online]. Available: https:
+//openreview.net/forum?id=2fSyBPBfBs
+[33] K. Ji, J. Yang, and Y. Liang, “Bilevel optimization: Convergence analysis and enhanced
+design,” in International Conference on Machine Learning . PMLR, 2021, pp. 4882–4892.
+[34] S. Lu, M. Razaviyayn, B. Yang, K. Huang, and M. Hong, “Finding second-order station-
+ary points efficiently in smooth nonconvex linearly constrained optimization problems,”
+Advances in Neural Information Processing Systems , vol. 33, pp. 2811–2822, 2020.
+[35] F. H. Clarke, Optimization and nonsmooth analysis . SIAM, 1990.
+[36] D. Davis and D. Drusvyatskiy, “Stochastic model-based minimization of weakly convex
+functions,” SIAM Journal on Optimization , vol. 29, no. 1, pp. 207–239, 2019.
+[37] A. A. Goldstein, “Optimization of lipschitz continuous functions,” Mathematical Program-
+ming, vol. 13, pp. 14–22, 1977.
+[38] J. V. Burke, F. E. Curtis, A. S. Lewis, M. L. Overton, and L. E. Sim˜ oes, “Gradient sampling
+methods for nonsmooth optimization,” Numerical nonsmooth optimization: State of the art
+algorithms, pp. 201–225, 2020.
+[39] M. Jordan, G. Kornowski, T. Lin, O. Shamir, and M. Zampetakis, “Deterministic nons-
+mooth nonconvex optimization,” in The Thirty Sixth Annual Conference on Learning The-
+ory. PMLR, 2023, pp. 4570–4597.
+[40] T. L. Friesz and D. Bernstein, Foundations of network optimization and games . Springer,
+2016.
+[41] D. P. Bertsekas, Nonlinear programming, 2nd ed. Athena Scientific Belmont, MA, 1998.
+[42] T. Friesz and D. Bernstein, Foundations of Network Optimization and Games, ser. Complex
+Networks and Dynamic Systems. Springer US, 2015.
+[43] S. Ghadimi and M. Wang, “Approximation methods for bilevel programming,” 2018.
+[44] P. Khanduri, S. Zeng, M. Hong, H.-T. Wai, Z. Wang, and Z. Yang, “A momentum-assisted
+single-timescale stochastic approximation algorithm for bilevel optimization,” 2021.
+20
+
+[45] P. H. Calamai and J. J. Mor´ e, “Projected gradient methods for linearly constrained prob-
+lems,” Mathematical programming, vol. 39, no. 1, pp. 93–116, 1987.
+[46] J. Nutini, M. Schmidt, and W. Hare, ““active-set complexity” of proximal gradient: How
+long does it take to find the sparsity pattern?” Optimization Letters, vol. 13, no. 4, pp.
+645–655, 2019.
+[47] A. Madry, A. Makelov, L. Schmidt, D. Tsipras, and A. Vladu, “Towards deep
+learning models resistant to adversarial attacks,” in International Conference on Learning
+Representations, 2018. [Online]. Available: https://openreview.net/forum?id=rJzIBfZAb
+[48] H. Zhang, Y. Yu, J. Jiao, E. Xing, L. El Ghaoui, and M. Jordan, “Theoretically princi-
+pled trade-off between robustness and accuracy,” in International conference on machine
+learning. PMLR, 2019, pp. 7472–7482.
+[49] I. J. Goodfellow, J. Shlens, and C. Szegedy, “Explaining and harnessing adversarial exam-
+ples,” arXiv preprint arXiv:1412.6572 , 2014.
+[50] A. Krizhevsky, G. Hinton et al. , “Learning multiple layers of features from tiny images,”
+Online, 2009.
+[51] K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning for image recognition,” in
+Proceedings of the IEEE conference on computer vision and pattern recognition , 2016, pp.
+770–778.
+[52] E. Wong, L. Rice, and J. Z. Kolter, “Fast is better than free: Revisiting adversarial
+training,” in International Conference on Learning Representations , 2020. [Online].
+Available: https://openreview.net/forum?id=BJx040EFvH
+[53] A. Shapiro, D. Dentcheva, and A. Ruszczynski, Lectures on Stochastic Programming:
+Modeling and Theory, Third Edition . Philadelphia, PA: Society for Industrial and
+Applied Mathematics, 2021. [Online]. Available: https://epubs.siam.org/doi/abs/10.1137/
+1.9781611976595
+[54] W. Rudin, Principles of mathematical analysis , 3rd ed. McGraw-Hill New York, 1976.
+21
+
+A Appendix
+A.1 Proofs of Section 2
+Proof of proposition 2.3. We will mainly leverage [53, Theorem 7.44] to establish the differen-
+tiability of the stochastic implicit function
+F (x) := Eq∼Q[Fq(x)] := Eq∼Q[f(x, y∗
+q(x))].
+To this end, we are going to show that all the relevant assumptions of [53, Theorem 7.44] are
+satisfied by F (x).
+First, the function F (x) is well-defined and takes finite values for every x∈ Rdu. Next, the
+function Fq(x) is continuous and has bounded gradients (see Lemma 2.4). It then follows that
+Fq(x) is locally Lipschitz continuous at any given x∈ Rdu. Finally, as we discussed in Sec. 2.2,
+Lemma 2.2 implies that the functionFq(x) is almost surely differentiable at every givenx∈ Rdu.
+The conditions of [53, Theorem 7.44] are satisfied. As a result, the function F (x) is differ-
+entiable at every given x∈ Rdu and it holds that
+∇F (x) :=∇Eq∼Q[Fq(x)] = Eq∼Q[∇Fq(x)]. (7)
+The result for the differentiability of ∇F (x,ξ ) follows similarly.
+Next, let us derive the closed-form expressions. First, consider the Lagrangian of the LL
+problem (2b), i.e.,
+L(x, y,λ) =gq(x, y) +λT (Ay +Bx− b).
+Then, for some fixed x∈X , consider a KKT point ( y∗
+q(x),λ∗
+q(x)) of (2b), for which it holds
+that,
+• ∇yL(x, y∗
+q(x),λ∗
+q(x)) =∇ygq(x, y∗
+q(x)) +ATλ∗
+q(x) = 0
+•
+
+λ∗
+q(x)
+T 
+Ay∗
+q(x) +Bx− b
+
+= 0
+• λ∗
+q(x)≥ 0
+• Ay∗
+q(x) +Bx− b≤ 0.
+Now, consider the active constraints at ( y∗
+q(x),λ∗
+q(x)), and to simplify notation let us set A :=
+A(y∗
+q(x)). Using the notations defined in Section 2.2 and the SC property, the KKT conditions
+given above can be equivalently rewritten as
+∇ygq(x, y∗
+q(x)) +A
+T
+λ
+∗
+q(x) = 0, Ay∗
+q(x) +Bx− b = 0, λ
+∗
+q(x)> 0, (8)
+whereλ
+∗
+q(x) is the subvector ofλ∗
+q(x) that contains only the elements whose indices correspond
+to the active constraints at y = y∗
+q(x). Moreover, notice that the point ( y∗
+q(x),λ∗
+q(x)) is unique.
+The uniqueness of y∗
+q(x) follows from the strong convexity of gq(x,·); the uniqueness of λ∗
+q(x)
+results from the fact that matrixA has full row rank (which guarantees regularity, e.g., see [41]).
+As mentioned in section 2.2, the SC condition (from Lemma 2.2) combined with Assumption
+1 implies that the mapping y∗(x) is differentiable almost surely [42, Theorem 2.22]. As a result,
+at any given point x, we can consider a sufficiently small neighborhood around it, such that the
+22
+
+active constraints A remain unchanged. Then, we can compute the gradient of (8) using the
+implicit function theorem as follows
+∇2
+xygq(x, y∗
+q(x)) +∇2
+yygq(x, y∗
+q(x))∇y∗
+q(x) +A
+T
+∇λ
+∗
+q(x) = 0 (9)
+A∇y∗
+q(x) +B = 0. (10)
+Solving the (9) for ∇y∗
+q(x) yields
+∇y∗
+q(x) =
+
+∇2
+yygq(x, y∗
+q(x))
+−1h
+−∇2
+xygq(x, y∗
+q(x))−A
+T
+∇λ
+∗
+q(x)
+i
+, (11)
+where we exploited the fact that the Hessian matrix ∇2
+yyg(x, y∗
+q(x)) is positive definite and
+thus invertible. By substituting (11) into (10) and noting that ∇2
+yygq(x, y) =∇2
+yyg(x, y) and
+∇2
+xygq(x, y) =∇2
+xyg(x, y), we obtain the following.
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1h
+−∇2
+xyg(x, y∗
+q(x))−A
+T
+∇λ
+∗
+q(x)
+i
++B = 0 =⇒
+∇λ
+∗
+q(x) =−
+h
+A
+
+∇2
+yyg(x, y∗
+q(x))−1
+A
+Ti−1
+h
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1∇2
+xyg(x, y∗
+q(x))−B
+i
+.
+Finally, note that the KKT point y∗
+q(x) corresponds to the unique global minimum of (2b), due
+to the strong convexity of gq(x,·). The proof is now complete.
+A.1.1 The proof of Lemma 2.4
+We provide several intermediate results below that are necessary to prove Lemma 2.4. Under
+Assumption 4(c) we have that A(y∗
+q(x)) = A(byq(x)). For simplicity, we will refer to these
+matrices simply as A throughout this subsection. Additionally, for any given matrix A we
+denote by LA the maximum value of∥A (byq(x))∥, over all x∈X , LA := Ly
+λmin(A(byq(x))A(byq(x))T)
+and∥B∥ :=LB.
+Lemma A.1. Suppose that Assumptions 1, 2, 3 and 4 hold. Then for any x∈X , we have:
+(a)
+
+
+
+
+∇2
+yyg(x, y)
+−1
+
+
+
+≤ 1
+µg,∀y∈ Rdℓ.
+(b)
+
+
+
+
+∇2
+yyg(x, y∗
+q(x))
+−1−
+
+∇2
+yyg(x,byq(x))
+−1
+
+
+
+≤
+
+1
+µg
+2
+Lgyyδ.
+(c)
+
+
+
+
+h
+A
+
+∇2
+yyg(x, y)
+−1A
+Ti−1
+
+
+
+
+≤LA, ∀y∈ Rdℓ.
+(d)
+
+
+
+
+h
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1A
+Ti−1
+−
+h
+A
+
+∇2
+yyg(x,byq(x))
+−1A
+Ti−1
+
+
+
+
+≤L2
+AL
+2
+A
+1
+µ2g
+Lgyyδ.
+Proof. See proof of [24, Lemma D.6]
+Now let us bound the norm of the gradients of the mappings λ∗
+q(x) and y∗
+q(x).
+23
+
+Lemma A.2. Under Assumptions 1, 2, 3 and 4, the gradients of the mappings λ∗
+q(x) and y∗
+q(x)
+satisfy the following bounds for every x∈X ,
+∥∇λ
+∗
+q(x)∥≤ Lλ∗,
+
+
+
+b∇λ
+∗
+q(x)
+
+
+
+≤Lλ∗
+∥∇y∗
+q(x)∥≤ Ly∗, ∥b∇y∗
+q(x)∥≤ Ly∗
+where Lλ∗ = 1
+µgLALALgxy and Ly∗ = 1
+µy
+ 
+Lgxy +LALλ∗
+
+. Note that b∇λ
+∗
+q(x) and b∇y∗
+q(x) are
+obtained by substituting the estimate byq(x) in place of y∗
+q(x) in the expressions ∇λ
+∗
+q(x) and
+∇y∗
+q(x), respectively (Please see Proposition 2.3).
+Proof. From Proposition 2.3 we have
+∇λ
+∗
+q(x) =−
+h
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+A
+Ti−1h
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+∇2
+xyg(x, y∗
+q(x))−B
+i
+Then, taking the norm of this quantity, we get,
+
+
+
+∇λ
+∗
+q(x)
+
+
+
+=
+
+
+
+
+h
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+A
+Ti−1h
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+∇2
+xyg(x, y∗
+q(x))
+i
+−B
+
+
+
+
+≤
+
+
+
+
+h
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+A
+Ti−1
+
+
+
+
+h
+
+A
+
+
+
+
+
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+
+
+
+
+
+∇2
+xyg(x, y∗
+q(x))
+
+
+ +∥B∥
+i
+≤LA
+
+LA
+1
+µg
+Lgxy +LB
+
+:=Lλ∗,
+where in the last inequality we used Lemma A.1(a), A.1(c) and Assumption 2(f).
+Similarly, we have
+
+
+
+b∇λ
+∗
+q(x)
+
+
+
+≤Lλ∗ we have that
+Moving to the bound of∥∇y∗(x)∥, we know from Lemma 2.3 that the formula of the gradient
+of y∗
+q(x) is
+∇y∗
+q(x) =
+
+∇2
+yyg(x, y∗
+q(x))
+−1h
+−∇2
+xyg(x, y∗
+q(x))−A
+T
+∇λ
+∗
+q(x)
+i
+. (12)
+Then, we have that
+
+
+∇y∗
+q(x)
+
+
+ =
+
+
+
+
+∇2
+yyg(x, y∗
+q(x))
+−1h
+−∇2
+xyg(x, y∗
+q(x))−A
+T
+∇λ
+∗
+q(x)
+i
+
+
+≤
+
+
+
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+
+
+
+
+
+
+h
+−∇2
+xyg(x, y∗
+q(x))−A
+T
+∇λ
+∗
+q(x)
+i
+
+
+≤ 1
+µg
+
+
+∇2
+xyg(x, y∗
+q(x))
+
+
+ +
+
+
+A
+
+
+
+
+
+∇λ
+∗
+q(x)
+
+
+
+
+≤ 1
+µg
+ 
+Lgxy +LALλ∗
+
+:=Ly∗,
+where in the second inequality we used we used Lemma A.1(a); the third inequality follows from
+Assumption 2(f) and the bound for
+
+
+
+∇λ
+∗
+q(x)
+
+
+
+ we derived above.
+Similarly, we have
+
+
+
+b∇yq(x)
+
+
+
+≤Ly∗ we can obtain the following bound
+The proof is now complete.
+In the next two results, we are going to present bounds for the difference of the exact and
+approximate gradients of the mappings λ
+∗
+q(x) and y∗
+q(x).
+24
+
+Lemma A.3. Suppose that Assumptions 1, 2, 3 and 4 hold. Then, the following bound holds
+∥∇λ
+∗
+q(x)−b∇λ
+∗
+q(x)∥≤ Lλ∗δ,
+whereLλ∗ =
+
+1
+µg
+3
+L
+2
+AL3
+ALgyyLgxy + 1
+µgLALALgxy +
+
+1
+µg
+2
+LALALgyyLgxy.
+Proof. Using the derivation of ∇λ
+∗
+q(x) from Proposition 2.3, and its approximation b∇λ
+∗
+q(x)
+where we substitute y∗
+q(x) with byq(x) in the formula of the former, that is,
+b∇λ
+∗
+q(x) =−
+h
+A
+
+∇2
+yyg(x,byq(x))
+−1
+A
+Ti−1h
+A
+
+∇2
+yyg(x,byq(x))
+−1
+∇2
+xyg(x,byq(x))
+i
+,
+we obtain
+
+
+
+∇λ
+∗
+q(x)−b∇λ
+∗
+q(x)
+
+
+
+=
+
+
+
+
+h
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+A
+Ti−1h
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+∇2
+xyg(x, y∗
+q(x))−B
+i
+−
+h
+A
+
+∇2
+yyg(x,byq(x))
+−1
+A
+Ti−1h
+A
+
+∇2
+yyg(x,byq(x))
+−1
+∇2
+xyg(x,byq(x))−B
+i
+
+
+
+.
+Below, we use the following notation in order to simplify the derivations.
+H =
+h
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+A
+Ti
+,G =
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+,M =∇2
+xyg(x, y∗
+q(x))
+bH =
+h
+A
+
+∇2
+yyg(x,byq(x))
+−1
+A
+Ti
+,bG =
+
+∇2
+yyg(x,byq(x))
+−1,cM =∇2
+xyg(x,byq(x))
+Then, we have
+∥∇λ
+∗
+q(x)−b∇λ
+∗
+q(x)∥
+=
+
+
+
+H−1
+AGM−B
+
+− bH−1
+h
+AbGcM−B
+i
+
+
+(a)
+≤
+
+
+
+H−1
+AGM−B
+
+− bH−1
+AGM−B
+
+
+
++
+
+
+
+bH−1
+AGM−B
+
+− bH−1
+h
+AbGcM−B
+i
+
+
+≤
+
+
+
+H−1− bH−1
+
+
+
+
+
+A
+
+
+∥G∥∥M∥−∥ B∥
+
++
+
+
+
+bH−1
+
+
+
+
+
+A
+
+
+
+
+
+GM− bGcM
+
+
+
+(b)
+≤
+
+
+
+H−1− bH−1
+
+
+
+
+
+A
+
+
+∥G∥∥M∥−∥ B∥
+
++
+
+
+
+bH−1
+
+
+
+
+
+A
+
+
+h
+
+
+GM−GcM
+
+
+
++
+
+
+
+GcM− bGcM
+
+
+
+i
+≤
+
+
+
+H−1− bH−1
+
+
+
+
+
+A
+
+
+∥G∥∥M∥−∥ B∥
+
++
+
+
+
+bH−1
+
+
+
+
+
+A
+
+
+∥G∥
+
+
+
+M−cM
+
+
+
+ +
+
+
+
+bH−1
+
+
+
+
+
+A
+
+
+
+
+
+G− bG
+
+
+
+
+
+
+cM
+
+
+
+(c)
+≤
+ 
+L
+2
+AL2
+A
+ 1
+µg
+2
+Lgyy
+ 
+LA
+Lgxy
+µg
++LB
+!
++ 1
+µg
+LALALgxy+
+ 1
+µg
+2
+LALALgyyLgxy
+!
+δ. (13)
+In (a) we add and subtract the term bH−1AGM and apply the triangle inequality. In (b) we
+add and subtract the term GcM and apply the triangle inequality. In (c) we use Lemma A.1(d)
+25
+
+for∥H−1− bH−1∥, the bound∥A∥≤ LA, Lemma A.1(a) for∥G∥, Lemma A.1(c) for∥H−1∥ and
+∥bH−1∥, Assumption 2(f) for∥M∥ and∥cM∥, Assumption 2(e) for∥M−cM∥, and finally Lemma
+A.1(b) for∥G− bG∥.
+The proof is now complete.
+Lemma A.4. Suppose that Assumptions 1, 2, 3 and 4 hold. Then, the following bound holds
+∥∇y∗
+q(x)−b∇yq(x)∥≤ Ly∗δ,
+whereLy∗ =
+
+1
+µg
+2
+LgyyLgxy + 1
+µgLgxy +
+
+1
+µg
+2
+LgyyLALλ∗ + 1
+µgLALλ∗.
+Proof. See proof of [24, Lemma D.9].
+Now we have all the results needed to prove Lemma 2.4.
+Proof of Lemma 2.4. See [24, Lemma 2.8] for the proof of the first three expressions. Moreover,
+for the fourth expression, we apply Jensen’s inequality and obtain
+∥∇F (x)∥ =∥Eq∼Q[∇Fq(x)]∥≤ Eq∼Q[∥∇Fq(x)∥]≤LF.
+A.1.2 Proof of Lemma 2.5
+Proof of Lemma 2.5. From Lemma 2.4 it follows that
+Eq∼Q∥∇Fq(x)−∇F (x)∥2≤ Eq∼Q
+
+2∥∇Fq(x)∥2 + 2∥∇F (x)∥2
+≤ 4L
+2
+F :=δ2
+v
+A.1.3 Proof of Lemma 2.6
+Proof of Lemma 2.6. From the definition of the stochastic gradient in (6b), we have
+b∇Fq(x;ξ) =∇xef(x,byq(x);ξ) + [b∇y∗
+q(x)]T∇yef(x,byq(x);ξ).
+Taking expectation on both sides and utilizing the unbiasedness of the stochastic gradient of the
+UL objective f(x, y) (Assumption 5), we get
+Eξ[b∇Fq(x;ξ)] = Eξ
+
+∇xef(x,byq(x);ξ) + [b∇y∗
+q(x)]T∇yef(x,byq(x);ξ)
+
+= Eξ
+
+∇xef(x,byq(x);ξ)
+
++ [b∇y∗
+q(x)]T Eξ
+
+∇yef(x,byq(x);ξ)
+
+=∇xf(x,byq(x)) + [b∇y∗
+q(x)]T∇yf(x,byq(x))
+= b∇Fq(x).
+Similarly, for the variance of the stochastic implicit gradient, we have
+Eq∼Q,ξ∼Df∥∇Fq(x;ξ)−∇F (x)∥2
+= Eq∼Q,ξ∼Df∥∇Fq(x;ξ)−∇Fq(x) +∇Fq(x)−∇F (x)∥2
+(a)
+≤ 2 Eq∼Q,ξ∼Df∥∇Fq(x;ξ)−∇Fq(x)∥2 + 2 Eq∼Q∥∇Fq(x)−∇F (x)∥2
+≤ 2 Eq∼Q
+
+Eξ∼Df
+
+∥∇Fq(x;ξ)−∇Fq(x)∥2|q
+
++ 2 Eq∼Q∥∇Fq(x)−∇F (x)∥2,
+26
+
+where (a) follows from∥x+y∥2≤ 2∥x∥2+2∥y∥2. We know from Lemma 2.5 that the second term
+Eq∼Q∥∇Fq(x)−∇F (x)∥2≤δ2
+v. Next, upper bounding the first term in the above expression.
+Eξ∼Df∥∇Fq(x;ξ)−∇Fq(x)∥2
+= Eξ
+
+
+∇xef(x, y∗
+q(x);ξ) + [∇y∗
+q(x)]T∇yef(x, y∗
+q(x);ξ)
+−
+
+∇xf(x, y∗
+q(x)) + [∇y∗
+q(x)]T∇yf(x, y∗
+q(x))
+
+
+2
+(a)
+≤ 2 Eξ∥∇xef(x, y∗
+q(x);ξ)−∇xf(x, y∗
+q(x))∥2
++ 2∥∇y∗
+q(x)∥2 Eξ∥∇yef(x, y∗
+q(x);ξ)−∇yf(x, y∗
+q(x))∥2
+(b)
+≤ 2σ2
+f + 2Ly∗σ2
+f :=σ2
+F,
+where (a) follows from ∥x + y∥2≤ 2∥x∥2 + 2∥y∥2 and (b) results from Assumption 5 and the
+application of Lemma A.2. Combining the upper bounds of the two terms and defining new δ2
+v
+as σ2
+F +δ2
+v. The proof is completed.
+A.1.4 Local Lipschitz smoothness of the perturbed LL solution map
+Lemma A.5. Let x be an arbitrary point in the domain Rdu. Then, there exists a neighborhood
+U of x, such that the following holds:
+
+
+∇y∗
+q(x)−∇ y∗
+q(x)
+
+
+≤eLy∗∥x− x∥,∀ x∈U,
+where eLy∗ is defined in eq. (19) and
+∥∇Fq(x)−∇Fq(x)∥≤ eLFq∥x− x∥,∀ x∈U,
+where eLFq is defined in eq. (20).
+Proof. Let x be an arbitrary point in the domain Rdu. We are going to show that there exists
+a neighborhood around x such that the mapping ∇y∗
+q(x) is Lipschitz continuous. Indeed, [40,
+Theorem 2.22] establishes that for any given x∈ Rdu, there exists a neighborhood around x in
+which the active constraints at y∗
+q(x) remain unchanged. It is in this neighborhood U that our
+local Lipschitz continuity property is established. To formalize this result, for any given point
+x∈ Rdu, we pick an arbitrary point x∈U. Then, it holds that A(y∗
+q(x)) =A(y∗
+q(x)) :=A and
+B(y∗
+q(x)) = B(y∗
+q(x)) := B. Moreover, to simplify the calculations we introduce the following
+notation.
+Gyy =∇2
+yyg(x, y∗
+q(x)),Gyy =∇2
+yyg(x, y∗
+q(x))
+Gxy =∇2
+xyg(x, y∗
+q(x)),Gxy =∇2
+xyg(x, y∗
+q(x))
+Then, the implicit gradient formulas of Proposition 2.3 take the following form.
+∇y∗
+q(x) =G−1
+yy
+
+−Gxy−A⊤∇λ
+∗
+q(x)
+
+,
+∇y∗
+q(x) =G
+−1
+yy
+
+−Gxy−A⊤∇λ
+∗
+q(x)
+ (14)
+∇λ
+∗
+q(x) =−
+
+AG−1
+yyA⊤−1
+AG−1
+yyGxy−B
+
+,
+∇λ
+∗
+q(x) =−
+
+AG
+−1
+yyA⊤−1
+AG
+−1
+yyGxy−B
+
+.
+(15)
+27
+
+We begin our derivations with the ∇y∗
+q(x) term.
+
+
+∇y∗
+q(x)−∇ y∗
+q(x)
+
+
+(a)
+≤
+
+
+
+G−1
+yyGxy−G
+−1
+yyGxy
+
+
+
+ +
+
+
+
+G−1
+yyA⊤∇λ
+∗
+q(x)−G
+−1
+yyA⊤∇λ
+∗
+q(x)
+
+
+
+(b)
+≤
+
+
+
+G−1
+yyGxy−G−1
+yyGxy +G−1
+yyGxy−G
+−1
+yyGxy
+
+
+
++
+
+
+
+G−1
+yyA⊤∇λ
+∗
+q(x)−G
+−1
+yyA⊤∇λ
+∗
+q(x) +G
+−1
+yyA⊤∇λ
+∗
+q(x)−G
+−1
+yyA⊤∇λ
+∗
+q(x)
+
+
+
+(c)
+≤
+h
+
+G−1
+yy
+
+
+
+
+Gxy−Gxy
+
+
+ +
+
+
+Gxy
+
+
+
+
+
+G−1
+yy−G
+−1
+yy
+
+
+
+i
++
+
+
+
+G−1
+yy−G
+−1
+yy
+
+
+
+
+
+
+A⊤
+
+
+
+
+
+
+∇λ
+∗
+q(x)
+
+
+
+ +
+
+
+
+G
+−1
+yy
+
+
+
+
+
+
+A⊤
+
+
+
+
+
+
+∇λ
+∗
+q(x)−λ
+∗
+q(x)
+
+
+
+(d)
+≤
+"
+1
+µg
+Lgxy +Lgxy
+ 1
+µg
+2
+Lgyy
+#
+
+∥x− x∥ +
+
+
+y∗
+q(x)− y∗
+q(x)
+
+
+
++Lλ∗LA
+ 1
+µg
+2
+Lgyy
+
+∥x− x∥ +
+
+
+y∗
+q(x)− y∗
+q(x)
+
+
+
++ LA
+µg
+
+
+
+∇λ
+∗
+q(x)−∇λ
+∗
+q(x)
+
+
+
+(e)
+≤
+"
+1
+µg
+Lgxy +Lgxy
+ 1
+µg
+2
+Lgyy +Lλ∗LA
+ 1
+µg
+2
+Lgyy
+#
+
+1 +Ly∗
+
+∥x− x∥
++ LA
+µg
+
+
+
+∇λ
+∗
+q(x)−∇λ
+∗
+q(x)
+
+
+
+ (16)
+In (a) we used the definition of∇y∗
+q(x); in (b) In we add a subtract a number of terms; in (c) we
+use the triangle inequality and the submultiplicative property of matrix norms; in (d) we used
+Lemmas A.1, A.2 and Assumption 2; in (e) we applied Lemma A.2 where the boundedness of
+∇y∗
+q(x) implies the (local) Lipschitz continuity of y∗
+q(x).
+Next we work on the term
+
+
+
+∇λ
+∗
+q(x)−∇λ
+∗
+q(x)
+
+
+
+, which appears in the above expression.
+28
+
+Specifically, we have
+∥∇λ
+∗
+q(x)−∇λ
+∗
+q(x)∥
+(a)
+≤
+
+
+
+−
+
+AG−1
+yyA⊤−1
+AG−1
+yyGxy−B
+
++
+
+AG
+−1
+yyA⊤−1
+AG
+−1
+yyGxy−B
+
+
+
+(b)
+≤
+
+
+
+−
+
+AG−1
+yyA⊤−1
+AG−1
+yyGxy−B
+
++
+
+AG
+−1
+yyA⊤−1
+AG−1
+yyGxy−B
+
+
+
+
+
+
+−
+
+AG
+−1
+yyA⊤−1
+AG−1
+yyGxy−B
+
++
+
+AG
+−1
+yyA⊤−1
+AG
+−1
+yyGxy−B
+
+
+
+(c)
+≤
+
+
+
+AG−1
+yyGxy−B
+
+
+
+
+
+
+AG−1
+yyA⊤−1−
+
+AG
+−1
+yyA⊤−1
+
+
+
++
+
+
+
+
+AG
+−1
+yyA⊤−1
+
+
+
+
+
+
+
+AG−1
+yyGxy−B
+
+−
+
+AG
+−1
+yyGxy−B
+
+
+
+(d)
+≤
+
+
+
+AG−1
+yyGxy−B
+
+
+
+
+
+
+AG−1
+yyA⊤−1−
+
+AG
+−1
+yyA⊤−1
+
+
+
++
+
+
+
+
+AG
+−1
+yyA⊤−1
+
+
+
+∥A∥
+h
+
+G−1
+yy
+
+
+
+
+Gxy−Gxy
+
+
+ +∥Gxy∥
+
+
+
+G−1
+yy−G
+−1
+yy
+
+
+
+i
+(e)
+≤
+ 
+LALgxy
+µg
++LB
+!
+L2
+AL
+2
+A
+1
+µ2g
+Lgyy
+
+∥x− x∥ +
+
+
+y∗
+q(x)− y∗
+q(x)
+
+
+
++LALA
+"
+1
+µg
+Lgxy +Lgxy
+ 1
+µg
+2
+Lgyy
+#
+
+∥x− x∥ +
+
+
+y∗
+q(x)− y∗
+q(x)
+
+
+
+(f )
+≤
+" 
+LALgxy
+µg
++LB
+!
+L2
+AL
+2
+A
+1
+µ2g
+Lgyy +LALA
+ 
+1
+µg
+Lgxy +Lgxy
+ 1
+µg
+2
+Lgyy
+!#
+·
+·
+
+1 +Ly∗
+
+∥x− x∥ (17)
+In (a) we used the definition of∇λ
+∗
+q(x); in (b) we add and subtract a term, and use the triangle
+inequality; in (c) we use the submultiplicative property of matrix norms; in (d) we add and
+subtract a single term and apply the triangle inequality; in (e) we used Lemmas A.1, A.2 and
+Assumption 2; in (f) we applied Lemma A.2 where the boundedness of ∇y∗
+q(x) implies the
+(local) Lipschitz continuity of y∗
+q(x).
+Then, by combining (16) and (17) we can show that
+
+
+∇y∗
+q(x)−∇ y∗
+q(x)
+
+
+≤eLy∗∥x− x∥ (18)
+The Lipschitz constant is defined as
+eLy∗ :=
+"
+1
+µg
+Lgxy +Lgxy
+ 1
+µg
+2
+Lgyy +Lλ∗LA
+ 1
+µg
+2
+Lgyy
+#
+
+1 +Ly∗
+
++ LA
+µg
+" 
+LALgxy
+µg
++LB
+!
+L2
+AL
+2
+A
+1
+µ2g
+Lgyy +LALA
+ 
+1
+µg
+Lgxy +Lgxy
+ 1
+µg
+2
+Lgyy
+!#
+
+1 +Ly∗
+
+. (19)
+29
+
+Finally, we can show the Lipschitz smoothness of ∥∇Fq(x)−∇Fq(x)∥.
+∥∇Fq(x)−∇Fq(x)∥
+(a)
+≤
+
+
+∇xf(x, y∗
+q(x))−∇xf(x, y∗
+q(x))
+
+
++
+
+
+[∇y∗
+q(x)]T∇yf(x, y∗
+q(x))− [∇y∗
+q(x)]T∇yf(x, y∗
+q(x))
+
+
+(b)
+≤ Lf
+
+∥x− x∥ +
+
+
+y∗
+q(x)− y∗
+q(x)
+
+
+
++
+
+
+∇yf(x, y∗
+q(x))
+
+
+
+
+[∇y∗
+q(x)]T− [∇y∗
+q(x)]T
+
++
+
+
+[∇y∗
+q(x)]T
+
+
+
+∇yf(x, y∗
+q(x))−∇yf(x, y∗
+q(x))
+
+
+(c)
+≤
+h
+Lf
+ 
+1 +Ly∗
+
+∥x− x∥ +LfeLy∗ +Ly∗Lf
+ 
+1 +Ly∗
+i
+∥x− x∥
+In (a) we used the definition of ∇Fq(x) and the triangle inequality; in (b) we used Assumption
+2, added and subtracted a term, and used the triangle inequality; in (c) we applied Assumption
+2, eq. (18) and Lemma A.2. We set
+eLFq =Lf
+ 
+1 +Ly∗
+
+∥x− x∥ +LfeLy∗ +Ly∗Lf
+ 
+1 +Ly∗
+
+. (20)
+The proof is complete.
+A.2 Lipschitzness of the LL solution map
+Lemma A.6. Under Assumptions 1(a), 1(c), 2 and 6, the mapping y∗(x) defined for problem
+(1) is Lipschitz continuous with constant 2Lg
+µg and mapping λ∗(x) is Lipschitz continuous with
+constant Lg
+σmin(A)
+
+1 + 2Lg
+µg
+
+.
+Proof. Note that from the definition of y∗(x), for x1, x2∈ Rdu we have
+
+∇yg(x1, y∗(x1)), y1− y∗(x1)
+
+≥ 0 ∀ y1∈Y , (21)
+∇yg(x2, y∗(x2)), y2− y∗(x2)
+
+≥ 0 ∀ y2∈Y , (22)
+whereY :={y :Ay≤ b}.
+Moreover, from the strong-convexity of g(x,·), we have
+g(x1, y∗(x2))≥g(x1, y∗(x1)) +
+
+∇yg(x1, y∗(x1)), y∗(x2)− y∗(x1)
+
+(23)
++ µg
+2∥y∗(x1)− y∗(x2)∥2
+g(x2, y∗(x1))≥g(x2, y∗(x2)) +
+
+∇yg(x2, y∗(x2)), y∗(x1)− y∗(x2)
+
+(24)
++ µg
+2∥y∗(x1)− y∗(x2)∥2.
+Adding (23) and (24), and rearranging the terms, we get
+µg∥y∗(x1)− y∗(x2)∥2 (a)
+≤
+
+g(x1, y∗(x2))−g(x2, y∗(x2))
+
++
+
+g(x2, y∗(x1))−≥ g(x1, y∗(x1))
+
+∥y∗(x1)− y∗(x2)∥2 (b)
+≤ 2Lg
+µg
+∥x1− x2∥.
+30
+
+where (a) follows from the fact that y∗(x1), y∗(x2)∈Y and substituting y1 = y∗(x2) in (21)
+and y2 = y∗(x1) in (22); and (b) results from Assumption 6(b).
+Next, using the Lipschitzness of y∗(·), we establish Lipschitzness of λ∗(·).
+First, note that from Lipschitzness of mapping y∗(x) combined with Assumptions 1(a) and
+2(a) we have that the implicit function F (x) :=f(x, y∗(x)) is also Lipschitz continuous. Next,
+from the KKT stationary condition of the LL problem (1), we have
+∇yg(x, y∗(x)) +A⊤λ∗(x) = 0 =⇒ A⊤λ∗(x) =∇yg(x, y∗(x)),
+Using the above we have for x1, x2∈ Rdu
+A⊤
+λ∗(x1)−λ∗(x2)
+
+=∇yg(x1, y∗(x1))−∇yg(x2, y∗(x2)),
+which implies that we have
+
+
+A⊤
+λ∗(x1)−λ∗(x2)
+
+
+ =∥∇yg(x1, y∗(x1))−∇yg(x2, y∗(x2))∥
+
+
+λ∗(x1)−λ∗(x2)
+
+
+(a)
+≤ 1
+σmin(A)·∥∇yg(x1, y∗(x1))−∇yg(x2, y∗(x2))∥
+(b)
+≤ Lg
+σmin(A)·∥ [x1; y∗(x1))]− [x2; y∗(x2)]∥
+(c)
+≤ Lg
+σmin(A)
+
+1 + 2Lg
+µg
+
+·∥ x1− x2∥,
+where (a) follows from the definition of σmin(A) which is the minimum singular value of the ma-
+trixA and Assumption 6(a); (b) utilizes Assumption 2(c), and (c) results from the Lipschitzness
+of y∗(x).
+Therefore, the map λ∗(x) is also Lipschitz continuous.
+A.3 The SC property of the LL Problem in (1)
+Lemma A.7. Under Assumptions 1-6, given x∈ Rdu, for a randomly generated x∈ Rdu such
+that x := x +δu for some δ > 0 and u∈ Rdu uniformly randomly chosen over a unit ball
+centered at 0, the SC property is satisfied for the LL problem of the original bilevel problem (1).
+Proof. First, let us consider the KKT conditions for the LL problem in (1).
+∇yg(x, y∗(x)) +
+X
+j∈S(y∗(x))
+µ∗
+jA⊤
+j = 0 (25)
+Ajy∗(x) =bj,µ∗
+j≥ 0, ∀j∈S(y∗(x))
+Ajy∗(x)<b j,µ∗
+j = 0, ∀j /∈S(y∗(x))
+where the set S(y∗(x))⊂{ 1,...,k } denotes the set of active constraints at y∗(x), Aj refers to
+the jth row of the constraint matrix A, and µ∗
+j refers to the dual variables. Using x := x +δu,
+and the definition of ϑ from Assumption 6(c), from the first KKT condition in (25), we get
+∇yg(x, y∗(x)) +
+X
+j∈S(y∗(x))
+µ∗
+jA⊤
+j =−∇yg(x +δu, y∗(x)) +∇yg(x, y∗(x)),
+∇yg(x, y∗(x)) +
+X
+j∈S(y∗(x))
+µ∗
+jA⊤
+j =−ϑ, (26)
+31
+
+where the first inequality follows from adding and subtracting ∇yg(x, y∗(x)) to the first KKT
+condition in (25). Note from Assumption 6(c) that the vectorϑ belongs to a continuous measure
+in Rdℓ.
+Beyond this point, the proof follows a similar structure to the proof of [34, Proposition 1],
+where SC is established by contradiction. Specifically, without loss of generality, assuming that
+SC does not hold for the first constraint, i.e., we have A1y∗(x) =b1 andµ1 = 0. Using the same
+argument as [34, Proposition 1], we consider the map from the left hand side of (26)
+Φ(y∗(x),µ∗) =∇yg(x, y∗(x)) +
+X
+j∈S(y∗(x))
+µ∗
+jA⊤
+j ,
+that maps the points of form (y∗(x),µ∗) satisfying the KKT conditions with the first constraint
+satisfyingA1y∗(x) =b1 andµ∗
+1 = 0 to a continuous measure in dℓ dimensional space since from
+Assumption 6(c), ϑ is a continuous measure in Rdℓ space. Let us define the domain of Φ as T ,
+then we have
+T =
+n
+(y∗(x),µ∗)
+ Ajy∗(x) =bj,j ∈S(y∗(x)),Ajy∗(x)<b j,µ∗
+j = 0,j /∈S(y∗(x)),
+µ∗≥ 0,A 1y∗(x) = 0,µ 1 = 0
+o
+Now let us quantify the dimension of T . Recall that all Aj’s with j∈ S(y∗(x)) are linearly
+independent since A is a full row rank matrix. We then have from [34, Proof of Proposition
+1] that the dimension of free space ⋄ of y∗(x) is the rank of A, i.e., dℓ−|S(y∗(x))|. Note that
+|S(y∗(x))| is the number of active constraints, and we have assumed that µ∗
+1 = 0. This implies
+that the dimension of free space of vector µ∗ is|S(y∗(x))|− 1. Therefore, Φ is a mapping that
+maps elements from a (dℓ−1)-dimensional subspace to adℓ-dimensional space, implying that the
+image of the mapping is zero-measure inRdℓ. However, from Assumption 6(c) we know thatϑ on
+the right hand side of (26) is a continuous measure in Rdℓ space which results in a contradiction
+of the assumption that the strict complementarity condition does not hold. Therefore, the SC
+property holds.
+A.3.1 Proof of Proposition 3.3
+Proof. Let us assume that the point x ∈ Rdu is (ϵ,δ)-Goldstein stationary for the implicit
+function F (·) defined for the perturbed problem (2).
+Then from Lemma 3.1 we know that there exists a sequence of points{xi}N
+i=1 for someN∈ N
+with xi∈ Bδ(x), and{αi}N
+i=1 withPN
+i=1αi = 1 such that we have
+
+
+
+
+NX
+i=1
+αi∇F (xi)
+
+
+
+
+≤ϵ. (27)
+In the following, we will establish that (27) implies that
+
+
+PN
+i=1αi∇F (xi)
+
+
+≤ 3ϵ, where F (·) is
+the implicit function of the original bilevel problem in (1) and where each xi is chosen randomly
+from a neighborhood of xi for alli∈ [N]. This implies that x is, in fact, also an (3ϵ,eδ)-Goldstein
+stationary point for the original bilevel problem (1) for some eδ >0 to be defined later. Next,
+we proceed with the proof.
+⋄For the definitions of the free and active space, please see [34, Section 4].
+32
+
+From Lemma A.5, we know that for each xi withi∈ [N], there exists a neighborhood U(xi)
+of xi such that the stochastic function Fq(·) is Lipschitz smooth with constant eLFq within the
+set U(xi). This implies that corresponding to each xi there exists a randomly chosen point
+xi∈U(xi) such that∥xi− xi∥≤ ϵ/eLFq, which implies that, we have
+
+
+∇Fq(xi)−∇Fq(xi)
+
+
+≤ϵ for all i∈ [N] from Lemma A.5. (28)
+Moreover, using Rademacher’s theorem [54], we know that the maps y∗(x),F (x), andλ∗(x) are
+differentiable almost everywhere since they are Lipschtiz continuous (see Lemma A.6). There-
+fore, for xi chosen randomly the mappings y∗(xi),λ
+∗
+(xi) are differentiable and ∇F (xi) exists
+almost surely for all i∈ [N]. Therefore, we evaluate
+
+
+
+
+NX
+i=1
+αi∇F (xi)
+
+
+
+
+(a)
+≤
+
+
+
+
+NX
+i=1
+αi
+
+∇F (xi)−∇F (xi)
+
+
+
+
+ +
+
+
+
+
+NX
+i=1
+αi∇F (xi)
+
+
+
+
+(b)
+≤
+NX
+i=1
+αi
+
+
+∇F (xi)− Eq[∇Fq(xi)]
+
+
+ +ϵ
+(c)
+≤
+NX
+i=1
+αiEq
+
+
+∇F (xi)−∇Fq(xi)
+
+
+ +ϵ
+(d)
+≤
+NX
+i=1
+αiEq
+
+
+∇F (xi)−∇Fq(xi)
+
+
++
+NX
+i=1
+αiEq
+
+
+∇Fq(xi)−∇Fq(xi)
+
+
+ +ϵ
+(e)
+≤
+NX
+i=1
+αiEq
+
+
+∇F (xi)−∇Fq(xi)
+
+
+ + 2ϵ (29)
+where (a) follows from the application of Triangle inequality; (b) uses the first equality in Propo-
+sition 2.3 and the fact that
+
+
+PN
+i=1αi∇F (xi)
+
+
+≤ϵ from (27); (c) utilizes Jensen’s inequality; (d)
+results from Triangle inequality, and (e) results from (28).
+Next, we consider the term
+
+
+∇F (xi)−∇Fq(xi)
+
+
+ in (29). Let us bound this term for a generic
+x∈ Rdu randomly selected in the neighborhood of a corresponding point x∈ Rdu. Note that
+33
+
+the same result will hold for all xi’s for i∈ [N] under the same set of assumptions.
+∥∇F (x)−∇Fq(x)∥ =
+
+
+∇xf(x, y∗(x)) + [∇y∗(x)]⊤∇yf(x, y∗(x))
+−∇ xf(x, y∗
+q(x)) + [∇y∗
+q(x)]⊤∇yf(x, y∗
+q(x))
+
+
+(a)
+≤
+
+
+∇xf(x, y∗(x))−∇ xf(x, y∗
+q(x))∥
++
+
+
+[∇y∗(x)]⊤∇yf(x, y∗(x))− [∇y∗
+q(x)]⊤∇yf(x, y∗
+q(x))
+
+
+(b)
+≤ Lf∥y(x)− yq(x)∥
++∥[∇y∗
+q(x)]⊤∇yf(x, y∗(x))− [∇y∗
+q(x)]⊤∇yf(x, y∗
+q(x))∥
++∥[∇y∗(x)]⊤∇yf(x, y∗(x))− [∇y∗
+q(x)]⊤∇yf(x, y∗(x))∥
+(c)
+≤ (Lf +Ly∗Lf)∥y∗(x)− y∗
+q(x)∥ +Lf∥∇y∗(x)−∇ y∗
+q(x)∥
+(d)
+≤ (Lf +Ly∗Lf)
+µg
+∥q∥ +Lf∥∇y∗(x)−∇ y∗
+q(x)∥. (30)
+where (a) results from the application of the Triangle inequality; (b) uses the Triangle inequality
+and Assumption 2(b); (c) again utilizes Assumption 2(b) and Lemma A.2; (d) utilizes the result
+derived in [24, Appendix D.2.2].
+The above inequality implies that for a differentiable point x∈ Rdu, the distance between
+the gradient of the original implicit function, F (·) in (1) and the perturbed stochastic objective
+Fq(·) in (2) depends on the size of the perturbation ∥q∥ and∥∇y∗(x)−∇ y∗
+q(x)∥. Note that
+we can choose the perturbation q∼Q with a small enough support so that ∥q∥ is bounded.
+Therefore, to bound∥∇F (x)−∇Fq(x)∥ we need to bound ∥∇y∗(x)−∇ y∗
+q(x)∥ in (30).
+Next, we bound the term ∥∇y∗(x)−∇ y∗
+q(x)∥ in (30).
+Recall from Lemma A.7 that given a point x∈ Rdu, SC is satisfied for y∗(x) where x∈ Rdu
+is a random point evaluated in the neighborhood of x. First, note that for q = 0, under SC
+of y∗(x) and the set of Assumptions 1-6, the conditions of [40, Theorem 2.22] are satisfied for
+the LL problem in (2b). Then from [40, Statement (3) of Theorem 2.22], it follows that the
+set of active constraints in the neighborhood of q = 0 is unchanged and SC holds within this
+neighborhood. Let us define this neighborhood of q = 0 as Uq. This implies that there exists a
+distributionQ with support small enough such that for every q∼Q we have q∈ Uq and the
+LL solutions y∗(x) and y∗
+q(x) share the same set of active constraints.
+Therefore, the reduced KKT system for y∗(x) will be similar to y∗
+q(x) and can be written as
+∇yg(x, y∗(x)) +A
+⊤
+λ
+∗
+(x) = 0, Ay∗(x) +Bx− b = 0. (31)
+To differentiate the above set of equations in order to obtain a closed form expression for∇y∗(x),
+we need to ensure differentiability ofy∗(x) andλ
+∗
+(x). Recall, from the discussion after (28) that
+differentiability of y∗(x) andλ
+∗
+(x) at a randomly chosen x∈ Rdu follow from the Rademacher’s
+theorem [54]. Now, utilizing the fact that that y∗(x) and λ
+∗
+(x) are differentiable, i.e., ∇y∗(x)
+and∇λ
+∗
+(x) exists, we can derive a closed-form expression for∇y∗(x) in the same manner as we
+did for∇y∗
+q(x) in (4) of Proposition 2.3. More precisely, following the derivation of Proposition
+2.3 presented in Section A.1, we have
+∇y∗(x) =
+
+∇2
+yyg(x, y∗(x))
+−1
+−∇ 2
+xyg(x, y∗(x))−A
+T
+∇λ
+∗
+(x)
+
+,
+34
+
+where
+∇λ
+∗
+(x) =−
+
+A
+
+∇2
+yyg(x, y∗(x))
+−1A
+⊤−1
+A
+
+∇2
+yyg(x, y∗(x))
+−1∇2
+xyg(x, y∗(x))
+
+,
+Next, utilizing the expressions of ∇y∗
+q(x) and∇y∗(x), we get
+
+
+∇y∗
+q(x)−∇ y∗(x)
+
+
+(a)
+=
+
+
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+−∇ 2
+xyg(x, y∗
+q(x))−A
+T
+∇λ
+∗
+q(x)
+
+−
+
+∇2
+yyg(x, y∗(x))
+−1
+−∇ 2
+xyg(x, y∗(x))−A
+T
+∇λ
+∗
+(x)
+
+
+≤
+
+
+
+∇2
+yyg(x, y∗
+q(x))
+−1∇2
+xyg(x, y∗
+q(x))−
+
+∇2
+yyg(x, y∗(x))
+−1∇2
+xyg(x, y∗(x))
+
+
++
+
+
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+A
+T
+∇λ
+∗
+q(x)
+
+−
+
+∇2
+yyg(x, y∗(x))
+−1
+A
+T
+∇λ
+∗
+(x)
+
+
+(b)
+≤
+
+
+
+∇2
+yyg(x, y∗
+q(x))
+−1−
+
+∇2
+yyg(x, y∗(x))
+−1
+
+
+
+∇2
+xyg(x, y∗
+q(x))
+
+
++
+
+
+
+∇2
+yyg(x, y∗(x))
+−1
+
+
+
+∇2
+xyg(x)(x, y∗
+q(x))−∇ 2
+xyg(x, y∗(x))
+
+
++
+
+
+
+
+∇2
+yyg(x, y∗
+q(x))
+−1−
+
+∇2
+yyg(x, y∗(x))
+−1
+
+
+
+
+
+
+A
+T
+∇λ
+∗
+q(x)
+
+
+
++
+
+
+
+∇2
+yyg(x, y∗(x))
+−1A
+T
+
+
+
+∇λ
+∗
+q(x)−∇λ
+∗
+(x)
+
+
+.
+In (a) we used the gradient formula of Proposition 2.3. In (b) we added and subtracted certain
+terms, applied the triangle inequality, and finally used the submultiplicative property of matrix
+norms. By applying Lemmas A.1, A.2 and Assumption 2 to the above derivation, we obtain the
+following:
+∥∇y∗
+q(x)−∇ y∗(x)∥
+≤
+ 1
+µg
+2
+LgyyLgxy∥y∗
+q(x)− y∗(x)∥ + 1
+µg
+Lgxy∥y∗
+q(x)− y∗(x)∥
++
+ 1
+µg
+2
+LgyyLALλ∗∥y∗
+q(x)− y∗(x)∥ + 1
+µg
+LA
+
+
+∇λ
+∗
+q(x)−∇λ
+∗
+(x)
+
+
+. (32)
+To proceed, it is necessary to bound the term ∥∇λ
+∗
+q(x)−∇λ
+∗
+(x)∥, as for the term∥y∗
+q(x)−
+y∗(x)∥, we have ∥y∗
+q(x)− y∗(x)∥≤∥ q∥/µg [24]. Towards this end, we define the following
+notation to simplify our calculations.
+Hq =
+h
+A
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+A
+Ti
+,Gg =
+
+∇2
+yyg(x, y∗
+q(x))
+−1
+,Mq =∇2
+xyg(x, y∗
+q(x))
+H =
+h
+A
+
+∇2
+yyg(x, y∗(x))
+−1
+A
+Ti
+,G =
+
+∇2
+yyg(x, y∗(x))
+−1,M =∇2
+xyg(x, y∗(x))
+Then, we note that the expression ∥∇λ
+∗
+(x)−b∇λ
+∗
+(x)∥ has the same exact form as the one in
+35
+
+(13). Therefore, we can immediately conclude that
+
+
+∇λ
+∗
+q(x)−∇λ
+∗
+(x)
+
+
+≤∥H−1
+q −H−1∥
+
+∥A∥∥Gq∥∥Mq∥−∥ B∥
+
++∥H−1∥∥A∥∥Gq∥∥Mq−M∥ +∥H−1∥∥A∥∥Gq−G∥∥M∥
+≤
+ 
+L
+2
+AL2
+A
+ 1
+µg
+2
+Lgyy
+ 
+LA
+Lgxy
+µg
++LB
+!
++ 1
+µg
+LALALgxy+
+ 1
+µg
+2
+LALALgyyLgxy
+!
+·∥ y∗
+q(x)− y∗(x)∥
+=Lλ∗∥y∗
+q(x)− y∗(x)∥. (33)
+In the second inequality we use Lemma A.1(d) for∥H−1−bH−1∥, the bound∥A∥≤ LA, Lemma
+A.1(a) for ∥G∥, Lemma A.1(c) for ∥H−1∥ and∥bH−1∥, Assumption 2(f) for ∥M∥ and∥cM∥,
+Assumption 2(e) for∥M−cM∥, and finally Lemma A.1(b) for ∥G− bG∥.
+Then combining (32) with (33) results in
+
+
+∇y∗
+q(x)−∇ y∗(x)
+
+
+≤
+" 1
+µg
+2
+LgyyLgxy + 1
+µg
+Lgxy+
+ 1
+µg
+2
+LgyyLALλ∗+ 1
+µg
+LALλ∗
+#
+·
+
+
+y∗
+q(x)− y∗(x)
+
+
+.
+≤
+" 1
+µg
+2
+LgyyLgxy + 1
+µg
+Lgxy+
+ 1
+µg
+2
+LgyyLALλ∗+ 1
+µg
+LALλ∗
+#
+·∥q∥
+µg
+. (34)
+Substituting in the expression of ∥∇F (x)−∇Fq(x)∥ in (30), we get
+∥∇F (x)−∇Fq(x)∥≤C q·∥ q∥,
+where
+Cq :=
+(Lf +Ly∗Lf)
+µg
++Lf
+LgyyLgxy
+µ2g
++ Lgxy
+µg
++LgyyLALλ∗
+µ2g
++LALλ∗
+µg
+
+.
+Next, we choose q∼Q s.t.
+∥q∥≤ ϵ
+Cq
+=⇒ ∥∇F (x)−∇Fq(x)∥≤ ϵ.
+Recall that in addition to ∥q∥≤ ϵ
+Cq above we also require q∈ Uq (see discussion before (31)).
+Finally, substituting everything in the bound for
+
+
+PN
+i=1αi∇F (xi)
+
+
+ in (29) and utilizing the
+above result for individual xi’s for i∈ [N], we get
+
+
+
+
+NX
+i=1
+αi∇F (xi)
+
+
+
+
+≤ 3ϵ.
+This further implies that x will be a (3ϵ,δ +ϵ/eLFq)-Goldstein stationary solution for the original
+problem (1) since xi’s are at most δ +ϵ/eLFq distance away from the original ( ϵ,δ)-Goldstein
+stationary point x of the perturbed problem (2).
+Hence, the proof is complete.
+36
+
+A.4 Proofs of Section 3
+Theorem A.8 (Convergence of DS-BLO) . Under Assumptions 1-4 the iterates generated by
+Algorithm 1 for both Options I and II satisfies
+1
+T
+TX
+t=1
+E
+
+
+
+
+tX
+i=t−K+1
+αi∇F (xi)
+
+
+
+
+≤ϵ for eO
+ 1
+δ·ϵ4 max
+
+(δv + 2LF )∆, (δ2
+v + 2L
+2
+F )2	
+,
+whereαi = βt−i(1−β)
+1−βK , K = 1
+ln 1
+β
+ln
+32
+ 
+δy+δv+LF
+
+ϵ , and ∆ =F (x1)−F∗.
+Proof. From the definition of mt+1 =βmt + (1−β)gt+1, we have
+∥mt+1∥2 =β2∥mt∥2 + 2β(1−β)⟨gt+1, mt⟩ + (1−β)2∥gt+1∥2 (35)
+Multiplying the step-size ηt on both sides, taking expectation, and rearranging the terms, we
+get the following
+E[ηt∥mt+1∥2−β2ηt∥mt∥2]
+= 2β(1−β)E[⟨gt+1,ηtmt⟩] + (1−β)2E[ηt∥gt+1∥2] (36)
+Next, we define
+T1 := E[⟨gt+1,ηtmt⟩] (37)
+T2 := E[ηt∥gt+1∥2] (38)
+Next, we bound each term above separately. First, let us consider T2 in (38), we have
+T2 := E[ηt∥gt+1∥2]
+(a)
+= E[ηt∥b∇Fqt+1(xt+1)∥2]
+(b)
+≤ 1
+γ2
+E∥b∇Fqt+1(xt+1)∥2
+(c)
+≤ 3
+γ2
+E∥b∇Fqt+1(xt+1)−∇Fqt+1(xt+1)∥2
++ 3
+γ2
+E∥∇Fqt+1(xt+1)−∇Fqt+1(xt+1)∥2 + 3
+γ2
+E∥∇Fqt+1(xt+1)∥2
+(d)
+≤ 3
+γ2
+δ2
+y + 3
+γ2
+δ2
+v + 3
+γ2
+L
+2
+F (39)
+where (a) above follows from the definition of gt+1; (b) utilizes the fact that by definition of the
+step-size ηt, we have ηt = 1
+γ1∥mt∥+γ2
+≤ 1
+γ2
+; (c) utilizes∥PK
+k=1 ak∥2≤KPK
+k=1∥ak∥2 for a set of
+vectors{ak}K
+k=1∈ Rdu; and (d) results from the application of Lemmas 2.4 and 2.5.
+Next, let us consider the term T1 in (37), we have
+T1 := E[⟨gt+1,ηtmt⟩]
+(a)
+= E⟨b∇Fqt+1(xt+1),ηtmt⟩
+(b)
+≤ E
+
+∥b∇Fqt+1(xt+1)−∇Fqt+1(xt+1)∥ηt∥mt∥
+
++ E⟨∇Fqt+1(xt+1),ηtmt⟩
+(c)
+≤ δy
+γ1
+− E⟨∇Fqt+1(xt+1), xt+1− xt⟩ (40)
+37
+
+where (a) follows from the definition of gt+1; (b) results by adding and subtracting∇Fqt+1(xt+1)
+to the left term in the inner-product, utilizing the linearity of inner-product, and the Cauchy-
+Schwarz inequality; and (c) utilizes Lemma 2.4, the fact that ηt∥mt∥ = 1
+γ1∥mt∥+γ2
+∥mt∥≤ 1
+γ1
+,
+and the update rule xt+1 = xt−ηtmt.
+We next define T11 as
+T11 := E⟨∇Fqt+1(xt+1), xt+1− xt⟩. (41)
+Before, bounding T11, we define some notations. We define the sigma-algebra generated by the
+sequence of random variables as Gt := σ(g1,..., gt) andXt+1 := σ(g1,..., gt, xt+1). Next, we
+bound term T11 in the following
+T11 := E⟨∇Fqt+1(xt+1), xt+1− xt⟩
+= E
+
+E{xt+1,qt+1}
+hD
+∇Fqt+1(xt+1), xt+1− xt
+EGt
+i
+= E
+
+E{xt+1}
+h
+E{qt+1}
+hD
+∇Fqt+1(xt+1), xt+1− xt
+EXt+1
+iGt
+i
+(a)
+= E
+
+E{xt+1}
+hD
+∇F (xt+1), xt+1− xt
+EGt
+i
+(b)
+= E
+
+F (xt+1)−F (xt)
+
+(42)
+where the equality (a) follows from Proposition 2.3; and ( b) follows from the application of the
+fundamental theorem of calculus as: Denote α(λ) := (1−λ)xt +λxt+1
+E{xt+1}
+hD
+∇F (xt+1), xt+1− xt
+EGt
+i (b1)
+=
+Z 1
+0
+F′(α(λ))dλ
+(b2)
+= F (xt+1)−F (xt)
+where (b1) above follows from the fact thatF′(α(λ)) =⟨∇F (xt+1), xt+1−xt⟩ and the expectation
+over uniformly randomly chosenxt+1∈ [xt, xt+1] is same as uniformly randomly chosenλ∈ [0, 1]
+by definition of α(λ); and (b2) follows from the application of the second fundamental theorem
+of calculus utilizing the fact that F (·) is a continuous function.
+Finally, substituting the bound derived in (42) in (40), we get
+T1≤ δy
+γ1
++ E
+
+F (xt)−F (xt+1)
+
+(43)
+Next, substituting the bounds derived in (39) and (43) in (36), we get
+E[ηt∥mt+1∥2−β2ηt∥mt∥2]
+≤ 2β(1−β)δy
+γ1
++ 2β(1−β)E
+
+F (xt)−F (xt+1)
+
++ 3(1−β)2
+γ2
+(δ2
+y +δ2
+v +L
+2
+F ),
+Summing over t∈ [T ] and multiplying by 1
+T , we get
+1
+T
+TX
+t=1
+E[ηt∥mt+1∥2−β2ηt∥mt∥2]
+(a)
+≤ 2β(1−β)δy
+γ1
++ 2β(1−β)∆
+T + 3(1−β)2
+γ2
+(δ2
+y +δ2
+v +L
+2
+F ), (44)
+38
+
+where inequality ( a) follows from telescoping the sum E
+
+F (xt)−F (xt+1)
+
+over t∈ [T ] and
+defining ∆ :=F (x1)−F∗ where F∗ ≜ minx∈RduF (x).
+Next, substituting the bound derived in Lemma A.9 into (44), we get
+β−β2
+2
+1
+T
+T +1X
+t=1
+E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+− 3β
+γ2
+1
+T (δ2
+y +δ2
+v +L
+2
+F )
+≤ 2β(1−β)δy
+γ1
++ 2β(1−β)∆
+T + 3(1−β)2
+γ2
+(δ2
+y +δ2
+v +L
+2
+F )
+Rearranging the terms and multiplying both sides by 2γ2
+β−β2 , we get
+1
+T
+TX
+t=1
+E
+ γ2∥mt∥2
+γ1∥mt∥ +γ2
+
+≤ 4γ2δy
+γ1
++ 4γ2∆
+T + 6(1−β)
+β (δ2
+y +δ2
+v +L
+2
+F ) + 6
+1−β
+1
+T (δ2
+y +δ2
+v +L
+2
+F ).
+➢ Recall that δy := LF·δ where δ defined in Assumption 4 is a system parameter. With
+some overloading of notation, here we redefine δy to be
+δy := min
+ ϵ2
+1280(δv + 2LF ),LF·δ,LF
+
+⇒δy≤ ϵ2
+1280(δv + 2LF ) and δy≤LF.
+1
+T
+TX
+t=1
+E
+ γ2∥mt∥2
+γ1∥mt∥ +γ2
+
+≤ 4γ2δy
+γ1
++ 4γ2∆
+T + 6(1−β)
+β (δ2
+v + 2L
+2
+F ) + 6
+1−β
+δ2
+v + 2L
+2
+F
+T .
+Recall from Theorem 3.2 that we have γ1 =K/δ, where K is defined in Algorithm 1 as
+K = 1
+ln 1
+β
+ln 32(δv + 2LF )
+ϵ =O
+ 1
+ϵ2 ln 32(δv + 2LF )
+ϵ
+
+.
+Moreover, from (52) in Lemma A.9 we have γ2 = 4γ1(δv + 2LF ).
+➢ Choosing β = 1− ϵ2
+960(δ2v+2L2
+F )
+.
+➢ Moreover, assuming ϵ2≤ 480(δ2
+v + 2L
+2
+F ) s.t. 1
+2≤β≤ 1.
+➢ Choosing the number of iterations T large enough such that
+T =O
+
+max
+1280(δv + 2LF )∆
+δ·ϵ4 ln
+32(δv + 2LF )
+ϵ
+
+, 460, 800(δ2
+v + 2L
+2
+F )2
+ϵ4
+
+= eO
+ 1
+δ·ϵ4 max
+
+(δv + 2LF )∆, (δ2
+v + 2L
+2
+F )2	
+,
+where eO(·) hides the log terms.
+39
+
+The choice of parameters above implies that we have
+1
+T
+TX
+t=1
+E
+ γ2∥mt∥2
+γ1∥mt∥ +γ2
+
+≤ ϵ2
+20≤ ϵ2
+17.
+From the choice of γ2 = 4γ1(δv + 2LF ) we get
+1
+T
+TX
+t=1
+E
+ 4(δv + 2LF )∥mt∥2
+∥mt∥ + 4(δv + 2LF )
+
+≤ ϵ2
+17.
+Next, following the analysis of [29, Equation (15)] and using ϵ≤δv + 2LF we deduce that
+1
+T
+TX
+t=1
+E∥mt∥≤ ϵ
+4. (45)
+Next, we show that 1
+T
+PT
+t=1 E∥mt∥ being small implies that a certain convex combination of the
+gradients of the implicit function F (·) will also be small. We have from Lemma A.10 that
+1
+T
+TX
+t=1
+E
+
+
+
+
+tX
+i=t−K+1
+αi∇F (xi)
+
+
+
+
+≤ 1
+(1−βK)T
+TX
+t=1
+E∥mt∥
++ βK
+1−βK
+ 
+δy +δv +LF
+
++δy,
+where αi = βt−i(1−β)
+1−βK . From (45), we have 1
+T
+PT
+t=1 E∥mt∥≤ ϵ
+4, therefore, we have
+1
+T
+TX
+t=1
+E
+
+
+
+
+tX
+i=t−K+1
+αi∇F (xi)
+
+
+
+
+≤ ϵ
+4(1−βK) + βK
+1−βK
+ 
+δv + 2LF
+
++δy.
+Note that the choice ofK andβ satisfyβK 
+δv+2LF
+
+≤ ϵ
+32 which implies thatK≥ 1
+ln 1
+β
+ln
+32
+ 
+δv+2LF
+
+ϵ .
+Moreover, assuming thatϵ≤
+ 
+δv +2LF
+
+which implies thatβK≤ 1
+32. Substituting these bounds
+in the above, we get
+1
+T
+TX
+t=1
+E
+
+
+
+
+tX
+i=t−K+1
+αi∇F (xi)
+
+
+
+
+≤ 8ϵ
+31 + ϵ
+31 +δy≤ ϵ
+3 +δy.
+Finally, the choice of δy from Algorithm 1 implies that we have
+1
+T
+TX
+t=1
+E
+
+
+
+
+tX
+i=t−K+1
+αi∇F (xi)
+
+
+
+
+≤ϵ.
+Hence, the proof is complete.
+40
+
+Lemma A.9. For the iterates generated by Algorithm 1, the following holds
+TX
+t=1
+E[ηt∥mt+1∥2−β2ηt∥mt∥2]
+≥ β−β2
+2
+T +1X
+t=1
+E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+− 3β
+γ2
+(δ2
+y +δ2
+v +L
+2
+F ),
+where mt and the rest of the parameters are defined in Algorithm 1.
+Proof. First, let us define the term on the left of the inequality as T3, i.e.,
+T3 :=
+TX
+t=1
+E[ηt∥mt+1∥2−β2ηt∥mt∥2] (46)
+Now we lower bound T3 in (46) above. Using the definition of ηt, we have
+T3 :=
+TX
+t=1
+E[ηt∥mt+1∥2−β2ηt∥mt∥2]
+=
+TX
+t=1
+E
+ ∥mt+1∥2
+γ1∥mt∥ +γ2
+−β2 ∥mt∥2
+γ1∥mt∥ +γ2
+
+=
+TX
+t=1
+E
+ ∥mt+1∥2
+γ1∥mt∥ +γ2
+− ∥mt+1∥2
+γ1∥mt+1∥ +γ2
+
++
+TX
+t=1
+E
+ ∥mt+1∥2
+γ1∥mt+1∥ +γ2
+−β2 ∥mt∥2
+γ1∥mt∥ +γ2
+
+(a)
+≥
+TX
+t=1
+E
+ γ1∥mt+1∥2(∥mt+1∥−∥ mt∥)
+(γ1∥mt∥ +γ2)(γ1∥mt+1∥ +γ2)
+
+− E
+
+β2 ∥m1∥2
+γ1∥m1∥ +γ2
+
++ (1−β2)
+T +1X
+t=2
+E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+. (47)
+where (a) follows from subtracting the term β2E
+
+∥mT +1∥2
+γ1∥mT +1∥+γ2
+
+from the second summation on
+the right-hand side of the inequality and separating the term corresponding to t = 1.
+Next, we consider the term
+T31 := γ1∥mt+1∥2(∥mt+1∥−∥ mt∥)
+(γ1∥mt∥ +γ2)(γ1∥mt+1∥ +γ2). (48)
+First, consider the case when ∥mt+1∥≤∥ mt∥. Then, we have
+∥mt∥−∥ mt+1∥
+(a)
+≤∥ mt− mt+1∥
+(b)
+= (1−β)∥mt− gt+1∥
+(c)
+≤ (1−β)
+ 
+∥mt∥ +∥gt+1∥
+
+,
+41
+
+where (a) follows from the reverse triangle inequality; (b) results from the definition of mt+1 in
+Algorithm 1; and (c) uses the triangle inequality. Substituting in (48), we get
+T31 := γ1∥mt+1∥2(∥mt+1∥−∥ mt∥)
+(γ1∥mt∥ +γ2)(γ1∥mt+1∥ +γ2)
+≥−(1−β)γ1∥mt+1∥2 
+∥mt∥ +∥gt+1∥
+
+(γ1∥mt∥ +γ2)(γ1∥mt+1∥ +γ2)
+≥− (1−β) ∥mt+1∥2
+γ1∥mt+1∥ +γ2
+− (1−β)γ1∥gt+1∥
+γ2
+∥mt∥2
+γ1∥mt∥ +γ2
+(49)
+where the last inequality results from the fact thatx→ x2
+γ1x+γ2
+is increasing on R+ and∥mt+1∥≤
+∥mt∥, γ1∥mt∥
+γ1∥mt∥+γ2
+≤ 1, and γ1∥mt∥ +γ2≥γ2. Second, for ∥mt+1∥≥∥ mt∥, the same inequality
+trivially holds since the right-hand side of (49) is negative. Taking expectation on both sides of
+T31 in (48) and using (49), we get
+E
+ γ1∥mt+1∥2(∥mt+1∥−∥ mt∥)
+(γ1∥mt∥ +γ2)(γ1∥mt+1∥ +γ2)
+
+≥− (1−β)E
+ ∥mt+1∥2
+γ1∥mt+1∥ +γ2
+
+− (1−β)γ1
+γ2
+E
+
+∥gt+1∥ ∥mt∥2
+γ1∥mt∥ +γ2
+
+=−(1−β)E
+ ∥mt+1∥2
+γ1∥mt+1∥ +γ2
+
+− (1−β)γ1
+γ2
+E
+
+E
+
+∥gt+1
+Gt∥
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+, (50)
+where the last equality follows from the definition Gt :=σ(g1,..., gt). Let us now consider the
+term
+E
+
+∥gt+1∥
+Gt
+
+= E
+
+∥b∇Fqt+1(xt+1)∥
+Gt
+
+(a)
+≤ E
+
+∥b∇Fqt+1(xt+1)−∇Fqt+1(xt+1)∥
+Gt
+
++ E
+
+∥∇Fqt+1(xt+1)−∇F (xt+1)∥
+Gt
+
++ E
+
+∥∇F (xt+1)∥
+Gt
+
+(b)
+≤ δy +δv +LF, (51)
+where (a) follows from the triangle inequality, and (b) from Lemmas 2.4 and 2.5.
+Next, utilizing (51) to bound the second term in (50), we have
+(1−β)γ1
+γ2
+E
+
+∥gt+1∥ ∥mt∥2
+γ1∥mt∥ +γ2
+
+≤ (1−β)γ1
+γ2
+(δy +δv +LF )E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+≤ β(1−β)
+2 E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+(52)
+where the last inequality follows from δy≤LF and the choice of γ1 = γ2
+4(δv+2LF ) in Algorithm 1
+which ensures that we have γ1(δv+2LF )
+γ2
+≤ β
+2 for the choice of β≥ 1
+2. Next, substituting (52) in
+(50), we get
+42
+
+E
+ γ1∥mt+1∥2(∥mt+1∥−∥ mt∥)
+(γ1∥mt∥ +γ2)(γ1∥mt+1∥ +γ2)
+
+≥− (1−β)E
+ ∥mt+1∥2
+γ1∥mt+1∥ +γ2
+
+− β(1−β)
+2 E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+(53)
+Next, substituting (53) in (47), we get
+T3 :=
+TX
+t=1
+E[ηt∥mt+1∥2−β2ηt∥mt∥2]
+≥− (1−β)
+TX
+t=1
+E
+ ∥mt+1∥2
+γ1∥mt+1∥ +γ2
+
+− β(1−β)
+2
+TX
+t=1
+E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+−β2E
+ ∥m1∥2
+γ1∥m1∥ +γ2
+
++ (1−β2)
+T +1X
+t=2
+E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+Rearranging and combining the terms we get
+T3≥ (β−β2)
+T +1X
+t=2
+E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+− β(1−β)
+2
+TX
+t=1
+E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+−β2E
+ ∥m1∥2
+γ1∥m1∥ +γ2
+
+= (β−β2)
+T +1X
+t=2
+E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+− β−β2
+2
+TX
+t=2
+E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+− β−β2
+2 E
+ ∥m1∥2
+γ1∥m1∥ +γ2
+
+−β2E
+ ∥m1∥2
+γ1∥m1∥ +γ2
+
+(a)
+≥ β−β2
+2
+T +1X
+t=2
+E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+− β +β2
+2 E
+ ∥m1∥2
+γ1∥m1∥ +γ2
+
+(b)
+= β−β2
+2
+T +1X
+t=1
+E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+−βE
+ ∥m1∥2
+γ1∥m1∥ +γ2
+
+(54)
+where (a) follows from subtracting the term E
+
+∥mT +1∥2
+γ1∥mT +1∥+γ2
+
+from the right-hand side of the
+inequality and combining the terms; and ( b) follows from adding and subtracting the term
+β−β2
+2 E
+
+∥m1∥2
+γ1∥m1∥+γ2
+
+on the right-hand side and combining the terms.
+Next, using the fact that 1
+γ1∥m1∥+γ2
+≤ 1
+γ2
+, we get
+T3≥ β−β2
+2
+T +1X
+t=1
+E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+− β
+γ2
+E∥m1∥2 (55)
+43
+
+Finally, using the fact that m1 = g1 = b∇Fq1(x1), we have
+E[∥m1∥2] = E[∥g1∥2] = E[∥b∇Fq1(x1)∥2]
+(a)
+≤ 3E[∥b∇Fq1(x1)−∇Fq1(x1)∥2]
++ 3E[∥∇Fq1(x1)−∇F (x1)∥2] + 3E[∥∇F (x1)∥2]
+(b)
+≤ 3(δ2
+y +δ2
+v +L
+2
+F ), (56)
+where (a) utilizes ∥PK
+k=1 ak∥2≤ KPK
+k=1∥ak∥2 for a set of vectors {ak}K
+k=1∈ Rdu; and ( b)
+results from the application of Lemmas 2.4 and 2.5.
+Substituting (56) in (55), we get
+T3≥ β−β2
+2
+T +1X
+t=1
+E
+ ∥mt∥2
+γ1∥mt∥ +γ2
+
+− 3β
+γ2
+(δ2
+y +δ2
+v +L
+2
+F ).
+Hence, the proof is complete.
+Lemma A.10. For the iterates generated by Algorithm 1, the following holds
+1
+T
+TX
+t=1
+E
+
+
+
+
+tX
+i=t−K+1
+αi∇F (xi)
+
+
+
+
+≤ 1
+(1−βK)T
+TX
+t=1
+E∥mt∥ + βK
+1−βK
+ 
+δy +δv +LF
+
++δy,
+whereαi = βt−i(1−β)
+1−βK and K is defined in Algorithm 1.
+Proof. First, let us observe from the definition of mt that, we have
+mt =βKmt−K + (1−β)
+tX
+i=t−K+1
+βt−igi.
+whereK is defined in Algorithm 1. Rearranging the terms and multiplying both sides by 1
+1−βK ,
+we have
+1
+1−βK
+tX
+i=t−K+1
+(1−β)βt−igi = βK
+1−βK mt−K− 1
+1−βK mt
+Using the definition of gi := b∇Fqi(xi), we get
+tX
+i=t−K+1
+αi
+h
+b∇Fqi(xi)−∇Fqi(xi) +∇Fqi(xi)−∇F (xi) +∇F (xi)
+i
+= βK
+1−βK mt−K− 1
+1−βK mt,
+where we have defined αi = βt−i(1−β)
+1−βK . Rearranging the terms, we get
+tX
+i=t−K+1
+αi∇F (xi) = βK
+1−βK mt−K− 1
+1−βK mt
+−
+tX
+i=t−K+1
+αi
+b∇Fqi(xi)−∇Fqi(xi)
+
+−
+tX
+i=t−K+1
+αi
+
+∇Fqi(xi)−∇F (xi)
+
+,
+44
+
+Taking expectation w.r.t. qi∼Q for i∈ [t−K + 1,t ] on both sides, we get
+tX
+i=t−K+1
+αi∇F (xi) = βK
+1−βK E{qi}t
+t−K+1
+[mt−K]− 1
+1−βK E{qi}t
+t−K+1
+[mt]
+−
+tX
+i=t−K+1
+αiEqi
+b∇Fqi(xi)−∇Fqi(xi)
+
+,
+where we have used the unbiasedness of ∇Fqi(xi) established in Proposition 2.3.
+Taking norm on both sides and utilizing Jensen’s and triangle inequality we get
+
+
+
+
+tX
+i=t−K+1
+αi∇F (xi)
+
+
+
+
+≤ βK
+1−βK E{qi}t
+t−K+1
+∥mt−K∥ + 1
+1−βK E{qi}t
+t−K+1
+∥mt∥
++
+tX
+i=t−K+1
+αiEqi
+
+
+b∇Fqi(xi)−∇Fqi(xi)
+
+
+,
+Next, taking full expectations on both sides, we get
+E
+
+
+
+
+tX
+i=t−K+1
+αi∇F (xi)
+
+
+
+
+ ≤ βK
+1−βK E∥mt−K∥ + 1
+1−βK E∥mt∥
++
+tX
+i=t−K+1
+αiE
+
+
+b∇Fqi(xi)−∇Fqi(xi)
+
+
+,
+Next, using Lemma A.11, we have E∥mt−K∥≤ δy +δv +LF . Substituting in the above, we get
+E
+
+
+
+
+tX
+i=t−K+1
+αi∇F (xi)
+
+
+
+
+ ≤ βK
+1−βK
+ 
+δy +δv +LF
+
++ 1
+1−βK E∥mt∥
++
+tX
+i=t−K+1
+αiE
+
+
+b∇Fqi(xi)−∇Fqi(xi)
+
+
+,
+(a)
+≤ βK
+1−βK
+ 
+δy +δv +LF
+
++ 1
+1−βK E∥mt∥ +δy,
+where (a) follows from Lemmas 2.4 and the fact that Pt
+i=t−K+1αi = 1. Next, summing over
+t∈ [T ] and multiplying both sides by 1
+T , we get
+1
+T
+TX
+t=1
+E
+
+
+
+
+tX
+i=t−K+1
+αi∇F (xi)
+
+
+
+
+≤ 1
+(1−βK)T
+TX
+t=1
+E∥mt∥ + βK
+1−βK
+ 
+δy +δv +LF
+
++δy.
+Hence, the proof is complete.
+Lemma A.11. For mt defined in Algorithm 1, we have E∥mt∥≤ δy +δv +LF for all t∈ [T ].
+Proof. We prove the above statement using induction.
+45
+
+➢ Base case. Fort = 1, we know from the definition of m1 that
+E∥m1∥ = E∥g1∥
+(a)
+≤ δy +δv +LF,
+where inequality (a) follows from (51).
+Therefore, the base case for t = 1 holds.
+➢ Induction hypothesis. We assume that E∥mt∥≤ δy +δv +LF for some t∈ [T ].
+➢ Inductive step. Next, we show that E∥mt+1∥≤ δy +δv +LF .
+Note that from the definition of mt+1 in Algorithm 1, we have
+E∥mt+1∥ = E∥βmt + (1−β)gt+1∥
+(a)
+≤ β E∥mt∥ + (1−β) E∥gt+1∥
+(b)
+≤ β (δy +δv +LF ) + (1−β) (δy +δv +LF )
+=δy +δv +LF,
+where (a) follows from the application of Triangle inequality and (b) utilizes the induction
+hypothesis along with (51).
+Hence, the proof is complete.
+46
