@@ -1,0 +1,32 @@
+{
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "execution_image_digest": "sha256:f669006c1ce0d3761b4017e4c600c3e0424e4670a0b9262ec53cb33d3406a666",
+  "gate": "v0.1.3_causal_proposal_gate",
+  "generation_image_digest": "sha256:64a5804ef49f7cfaaaca42d53e9d2515695e772ce34452a90ba0e52a75defa8f",
+  "model_id": "qwen2.5-7b-instruct",
+  "model_manifest_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "negative_controls_passed": true,
+  "negative_controls_status": "passed",
+  "network_policy": "none",
+  "positive_cases": [
+    [
+      "realpilot_flatness_penalty",
+      false,
+      0.0
+    ],
+    [
+      "realpilot_nonconvex_simple",
+      false,
+      0.0
+    ],
+    [
+      "realpilot_linear_coupling",
+      false,
+      0.0
+    ]
+  ],
+  "positive_status": "failed",
+  "schema_version": 1,
+  "scientific_claims_allowed": false
+}

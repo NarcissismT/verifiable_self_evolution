@@ -1,0 +1,16 @@
+{
+  "case_manifest_digest": "2210e09871f1fb1e915bffae4d75cae6b43e8b90a670945a08f567e1bdf2cdde",
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "execution_container_digest": "sha256:64a5804ef49f7cfaaaca42d53e9d2515695e772ce34452a90ba0e52a75defa8f",
+  "gate": "v0.1.4_executable_proposal_bridge",
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "negative_controls_passed": true,
+  "parser_valid_rate": 1.0,
+  "receipt_digest": "c616f108bd273953e5a1b1daca4e884b5449e559d348af90c7aa408e714f9cdd",
+  "report_digest": "dfd58140c1bc567a6d4d12e0c713a83e3f9bfffed6a300a1a7b777dcc22fcd58",
+  "schema_version": 1,
+  "scientific_claims_allowed": false,
+  "sdk_lock_digest": "b282988b8e0e9b46d1860f24aaeefa0b1c2be70d57749e686d0a91ad6f3cdff6",
+  "valid_solver_result_cases": 1
+}

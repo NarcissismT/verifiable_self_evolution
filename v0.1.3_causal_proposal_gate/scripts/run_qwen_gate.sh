@@ -42,6 +42,7 @@ docker run --rm --gpus device=0 --network none \
   --public-root /public --output-root /output \
   --max-new-tokens 1536 --dtype float16
 
+set +e
 docker run --rm --network none \
   -e VSE_NETWORK_POLICY=none -e PYTHONPATH=/repo \
   -v "$(cd "$ROOT/.." && pwd):/repo:ro" \
@@ -52,8 +53,12 @@ docker run --rm --network none \
   --proposals-root /output/proposals \
   --output-root /output/run \
   --model-digest "$MODEL_DIGEST" \
+  --execution-container-digest "$MODEL_IMAGE_DIGEST" \
   --hmac-key /output/keys/gate_hmac.key
+POSITIVE_STATUS=$?
+set -e
 
+set +e
 docker run --rm --network none \
   -e VSE_NETWORK_POLICY=none -e PYTHONPATH=/repo \
   -v "$(cd "$ROOT/.." && pwd):/repo:ro" \
@@ -64,18 +69,49 @@ docker run --rm --network none \
   --proposals-root /output/proposals \
   --output-root /output/run \
   --model-digest "$MODEL_DIGEST" \
+  --execution-container-digest "$MODEL_IMAGE_DIGEST" \
   --hmac-key /output/keys/gate_hmac.key
+NEGATIVE_STATUS=$?
+set -e
 
-cat > "$OUTPUT_ROOT/gate_environment.json" <<EOF
-{
-  "schema_version": 1,
-  "model_digest": "$MODEL_DIGEST",
-  "generation_image_digest": "$MODEL_IMAGE_DIGEST",
-  "execution_container_digest": "$MODEL_IMAGE_DIGEST",
-  "network_policy": "none",
-  "scientific_claims_allowed": false,
-  "eligible_for_champion": false,
-  "eligible_for_training_library": false
+python - "$OUTPUT_ROOT" "$MODEL_DIGEST" "$MODEL_IMAGE_DIGEST" "$POSITIVE_STATUS" "$NEGATIVE_STATUS" <<'PY'
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+model_digest, image_digest = sys.argv[2:4]
+positive_status, negative_status = map(int, sys.argv[4:6])
+
+def load(name):
+    path = root / "run" / name
+    return json.loads(path.read_text()) if path.exists() else {"status": "missing", "report_path": str(path)}
+
+positive = load("positive_report.json")
+negative = load("negative-controls_report.json")
+environment = {
+    "schema_version": 1,
+    "model_digest": model_digest,
+    "generation_image_digest": image_digest,
+    "execution_container_digest": image_digest,
+    "network_policy": "none",
+    "scientific_claims_allowed": False,
+    "eligible_for_champion": False,
+    "eligible_for_training_library": False,
 }
-EOF
-echo "causal proposal gate completed: $OUTPUT_ROOT/run"
+overall = {
+    "schema_version": 1,
+    "gate": "v0.1.3_causal_proposal_gate",
+    "positive_process_exit": positive_status,
+    "negative_process_exit": negative_status,
+    "positive_report_status": positive.get("status", "missing"),
+    "negative_report_status": negative.get("status", "missing"),
+    "completed_after_positive_failure": positive_status != 0,
+    "negative_controls_completed": negative_status == 0,
+    "execution_container_digest": image_digest,
+    "generation_image_digest": image_digest,
+}
+(root / "gate_environment.json").write_text(json.dumps(environment, indent=2, sort_keys=True) + "\n")
+(root / "run" / "overall_report.json").write_text(json.dumps(overall, indent=2, sort_keys=True) + "\n")
+print(json.dumps(overall, indent=2, sort_keys=True))
+PY
+echo "causal proposal gate completed: $OUTPUT_ROOT/run (positive=$POSITIVE_STATUS negative=$NEGATIVE_STATUS)"
+if [[ "$NEGATIVE_STATUS" -ne 0 ]]; then exit "$NEGATIVE_STATUS"; fi
+if [[ "$POSITIVE_STATUS" -ne 0 ]]; then exit "$POSITIVE_STATUS"; fi

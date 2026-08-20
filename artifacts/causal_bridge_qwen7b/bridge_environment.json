@@ -1,0 +1,10 @@
+{
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "execution_container_digest": "sha256:64a5804ef49f7cfaaaca42d53e9d2515695e772ce34452a90ba0e52a75defa8f",
+  "generation_image_digest": "sha256:64a5804ef49f7cfaaaca42d53e9d2515695e772ce34452a90ba0e52a75defa8f",
+  "network_policy": "none",
+  "schema_version": 1,
+  "scientific_claims_allowed": false,
+  "sdk_lock_digest": "b282988b8e0e9b46d1860f24aaeefa0b1c2be70d57749e686d0a91ad6f3cdff6"
+}

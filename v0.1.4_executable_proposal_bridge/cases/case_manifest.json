@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "study_kind": "executable_proposal_confirmation",
+  "formal_split_eligible": false,
+  "cases": [
+    {
+      "case_id": "confirm_quadratic_1d",
+      "family": "bridge_quadratic",
+      "public_problem": "Return a point minimizing a one-dimensional smooth quadratic on the supplied box.",
+      "problem": {"kind": "quadratic", "dimension": 1, "target": [0.75], "bounds": [[-2.0, 2.0]]}
+    },
+    {
+      "case_id": "confirm_quadratic_2d",
+      "family": "bridge_quadratic",
+      "public_problem": "Return a point minimizing a two-dimensional smooth separable quadratic on the supplied box.",
+      "problem": {"kind": "quadratic", "dimension": 2, "target": [-0.8, 0.9], "bounds": [[-2.0, 2.0], [-2.0, 2.0]]}
+    },
+    {
+      "case_id": "confirm_box_projection_2d",
+      "family": "bridge_box_projection",
+      "public_problem": "Return the box-constrained minimizer of a smooth quadratic; the unconstrained target may be outside the box.",
+      "problem": {"kind": "quadratic", "dimension": 2, "target": [1.4, -1.1], "bounds": [[-0.4, 0.6], [-0.7, 0.5]]}
+    },
+    {
+      "case_id": "confirm_affine_shift_2d",
+      "family": "bridge_affine",
+      "public_problem": "Return the target point after applying a public affine coordinate shift, respecting the supplied box.",
+      "problem": {"kind": "affine_shift", "dimension": 2, "target": [1.0, -1.0], "offset": [0.2, -0.3], "bounds": [[-2.0, 2.0], [-2.0, 2.0]]}
+    },
+    {
+      "case_id": "confirm_seeded_target_2d",
+      "family": "bridge_seeded_quadratic",
+      "public_problem": "Return a finite point for a seeded smooth quadratic using the public target and box; repeated seeds must be reproducible.",
+      "problem": {"kind": "quadratic", "dimension": 2, "target": [0.35, 0.65], "bounds": [[-1.0, 1.0], [-1.0, 1.0]]}
+    }
+  ]
+}

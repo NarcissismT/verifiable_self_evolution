@@ -1,0 +1,16 @@
+{
+  "command": "negative-controls",
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "gate": "v0.1.3_causal_proposal_gate",
+  "report_digest": "1ae325c15623e73a9ab8aff9c3e77b9c72987edcf46c9f0f1a1e534701fbb90e",
+  "results": [
+    {
+      "negative_controls_passed": true
+    }
+  ],
+  "schema_version": 1,
+  "scientific_claims_allowed": false,
+  "status": "passed",
+  "trusted_evaluator_digest": "de2c43f4743ad98db802592d242eb2f7d83c17344f0963d597c797f2dbec69ac"
+}

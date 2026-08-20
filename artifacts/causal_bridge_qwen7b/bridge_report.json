@@ -1,0 +1,1211 @@
+{
+  "all_four_seeds_required_per_case": true,
+  "cases": [
+    {
+      "case_id": "confirm_quadratic_1d",
+      "conditional_vds": 0.0,
+      "executable": false,
+      "executable_seed_count": 0,
+      "executions": [
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.75,
+            "lower_residual": 0.75,
+            "primal_feasibility": 0.0,
+            "regret": 0.28125
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.28125,
+              "runtime_seconds": 0.03243629448115826
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.28125,
+              "runtime_seconds": 0.027403434738516808
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.28125,
+              "runtime_seconds": 0.02737395465373993
+            }
+          ],
+          "error_category": "NameError",
+          "error_message": "name 'random' is not defined",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.034816475585103035
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.03250766359269619
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.025731584057211876
+            }
+          ],
+          "result": {},
+          "seed": 1103,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.75,
+            "lower_residual": 0.75,
+            "primal_feasibility": 0.0,
+            "regret": 0.28125
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.28125,
+              "runtime_seconds": 0.034513866528868675
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.28125,
+              "runtime_seconds": 0.028835594654083252
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.28125,
+              "runtime_seconds": 0.03560967929661274
+            }
+          ],
+          "error_category": "NameError",
+          "error_message": "name 'random' is not defined",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.027738530188798904
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.027768835425376892
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.03483292646706104
+            }
+          ],
+          "result": {},
+          "seed": 2207,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.75,
+            "lower_residual": 0.75,
+            "primal_feasibility": 0.0,
+            "regret": 0.28125
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.28125,
+              "runtime_seconds": 0.027943596243858337
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.28125,
+              "runtime_seconds": 0.027790552005171776
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.28125,
+              "runtime_seconds": 0.02801855094730854
+            }
+          ],
+          "error_category": "NameError",
+          "error_message": "name 'random' is not defined",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.03715936467051506
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.02799064852297306
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.026419520378112793
+            }
+          ],
+          "result": {},
+          "seed": 3301,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.75,
+            "lower_residual": 0.75,
+            "primal_feasibility": 0.0,
+            "regret": 0.28125
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.28125,
+              "runtime_seconds": 0.03538469225168228
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.28125,
+              "runtime_seconds": 0.032372141256928444
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.28125,
+              "runtime_seconds": 0.028750568628311157
+            }
+          ],
+          "error_category": "NameError",
+          "error_message": "name 'random' is not defined",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.028814753517508507
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.03572920151054859
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.02791263535618782
+            }
+          ],
+          "result": {},
+          "seed": 4409,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        }
+      ],
+      "hard_pass": false,
+      "parser_valid": true,
+      "unconditional_vds": 0.0
+    },
+    {
+      "case_id": "confirm_quadratic_2d",
+      "conditional_vds": 0.0,
+      "executable": false,
+      "executable_seed_count": 0,
+      "executions": [
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 1.2041594578792296,
+            "lower_residual": 1.2041594578792296,
+            "primal_feasibility": 0.0,
+            "regret": 0.7250000000000001
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.7250000000000001,
+              "runtime_seconds": 0.03497721441090107
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.7250000000000001,
+              "runtime_seconds": 0.03044150210916996
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.7250000000000001,
+              "runtime_seconds": 0.03596493974328041
+            }
+          ],
+          "error_category": "TypeError",
+          "error_message": "finite_vector() missing 1 required positional argument: 'dimension'",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.028413666412234306
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.03682548366487026
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.029447240754961967
+            }
+          ],
+          "result": {},
+          "seed": 1103,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 1.2041594578792296,
+            "lower_residual": 1.2041594578792296,
+            "primal_feasibility": 0.0,
+            "regret": 0.7250000000000001
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.7250000000000001,
+              "runtime_seconds": 0.027589719742536545
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.7250000000000001,
+              "runtime_seconds": 0.03453547693789005
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.7250000000000001,
+              "runtime_seconds": 0.027297815307974815
+            }
+          ],
+          "error_category": "TypeError",
+          "error_message": "finite_vector() missing 1 required positional argument: 'dimension'",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.02844851091504097
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.029477419331669807
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.027919886633753777
+            }
+          ],
+          "result": {},
+          "seed": 2207,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 1.2041594578792296,
+            "lower_residual": 1.2041594578792296,
+            "primal_feasibility": 0.0,
+            "regret": 0.7250000000000001
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.7250000000000001,
+              "runtime_seconds": 0.02897834964096546
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.7250000000000001,
+              "runtime_seconds": 0.03756425902247429
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.7250000000000001,
+              "runtime_seconds": 0.028790272772312164
+            }
+          ],
+          "error_category": "TypeError",
+          "error_message": "finite_vector() missing 1 required positional argument: 'dimension'",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.02896576002240181
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.028630616143345833
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.028019126504659653
+            }
+          ],
+          "result": {},
+          "seed": 3301,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 1.2041594578792296,
+            "lower_residual": 1.2041594578792296,
+            "primal_feasibility": 0.0,
+            "regret": 0.7250000000000001
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.7250000000000001,
+              "runtime_seconds": 0.02882681041955948
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.7250000000000001,
+              "runtime_seconds": 0.027699802070856094
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.7250000000000001,
+              "runtime_seconds": 0.03530050069093704
+            }
+          ],
+          "error_category": "TypeError",
+          "error_message": "finite_vector() missing 1 required positional argument: 'dimension'",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.029079362750053406
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.02810145914554596
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.034063149243593216
+            }
+          ],
+          "result": {},
+          "seed": 4409,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        }
+      ],
+      "hard_pass": false,
+      "parser_valid": true,
+      "unconditional_vds": 0.0
+    },
+    {
+      "case_id": "confirm_box_projection_2d",
+      "conditional_vds": 0.0,
+      "executable": false,
+      "executable_seed_count": 0,
+      "executions": [
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.9219544457292886,
+            "lower_residual": 0.9219544457292886,
+            "primal_feasibility": 0.0,
+            "regret": 0.42499999999999993
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.42499999999999993,
+              "runtime_seconds": 0.027356576174497604
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.42499999999999993,
+              "runtime_seconds": 0.026773879304528236
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.42499999999999993,
+              "runtime_seconds": 0.02673463523387909
+            }
+          ],
+          "error_category": "TypeError",
+          "error_message": "initialize_seed() takes 1 positional argument but 4 were given",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.032475266605615616
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.028828855603933334
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.03355567343533039
+            }
+          ],
+          "result": {},
+          "seed": 1103,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.9219544457292886,
+            "lower_residual": 0.9219544457292886,
+            "primal_feasibility": 0.0,
+            "regret": 0.42499999999999993
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.42499999999999993,
+              "runtime_seconds": 0.02906448021531105
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.42499999999999993,
+              "runtime_seconds": 0.02758615091443062
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.42499999999999993,
+              "runtime_seconds": 0.027284108102321625
+            }
+          ],
+          "error_category": "TypeError",
+          "error_message": "initialize_seed() takes 1 positional argument but 4 were given",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.02874760515987873
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.027979694306850433
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.02868126891553402
+            }
+          ],
+          "result": {},
+          "seed": 2207,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.9219544457292886,
+            "lower_residual": 0.9219544457292886,
+            "primal_feasibility": 0.0,
+            "regret": 0.42499999999999993
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.42499999999999993,
+              "runtime_seconds": 0.02657022885978222
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.42499999999999993,
+              "runtime_seconds": 0.02677822858095169
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.42499999999999993,
+              "runtime_seconds": 0.026434333994984627
+            }
+          ],
+          "error_category": "TypeError",
+          "error_message": "initialize_seed() takes 1 positional argument but 4 were given",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.027972159907221794
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.034783897921442986
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.027406835928559303
+            }
+          ],
+          "result": {},
+          "seed": 3301,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.9219544457292886,
+            "lower_residual": 0.9219544457292886,
+            "primal_feasibility": 0.0,
+            "regret": 0.42499999999999993
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.42499999999999993,
+              "runtime_seconds": 0.02708057314157486
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.42499999999999993,
+              "runtime_seconds": 0.02646220661699772
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.42499999999999993,
+              "runtime_seconds": 0.034477004781365395
+            }
+          ],
+          "error_category": "TypeError",
+          "error_message": "initialize_seed() takes 1 positional argument but 4 were given",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.02671496942639351
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.027271144092082977
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.027214428409934044
+            }
+          ],
+          "result": {},
+          "seed": 4409,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        }
+      ],
+      "hard_pass": false,
+      "parser_valid": true,
+      "unconditional_vds": 0.0
+    },
+    {
+      "case_id": "confirm_affine_shift_2d",
+      "conditional_vds": 0.7710515858035663,
+      "executable": true,
+      "executable_seed_count": 4,
+      "executions": [
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 1.7691806012954132,
+            "lower_residual": 1.7691806012954132,
+            "primal_feasibility": 0.0,
+            "regret": 1.565
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1.565,
+              "runtime_seconds": 0.02472756803035736
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1.565,
+              "runtime_seconds": 0.02481617033481598
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1.565,
+              "runtime_seconds": 0.025015752762556076
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.26000000000000006,
+              "runtime_seconds": 0.03079831413924694
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.26000000000000006,
+              "runtime_seconds": 0.02733682468533516
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.26000000000000006,
+              "runtime_seconds": 0.03433052822947502
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.8,
+              -0.7
+            ]
+          },
+          "seed": 1103,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.7211102550927979,
+            "lower_residual": 0.7211102550927979,
+            "primal_feasibility": 0.0,
+            "regret": 0.26000000000000006
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 1.7691806012954132,
+            "lower_residual": 1.7691806012954132,
+            "primal_feasibility": 0.0,
+            "regret": 1.565
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1.565,
+              "runtime_seconds": 0.027491236105561256
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1.565,
+              "runtime_seconds": 0.027393372729420662
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1.565,
+              "runtime_seconds": 0.027842210605740547
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.26000000000000006,
+              "runtime_seconds": 0.02502143383026123
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.26000000000000006,
+              "runtime_seconds": 0.02477514185011387
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.26000000000000006,
+              "runtime_seconds": 0.025010962039232254
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.8,
+              -0.7
+            ]
+          },
+          "seed": 2207,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.7211102550927979,
+            "lower_residual": 0.7211102550927979,
+            "primal_feasibility": 0.0,
+            "regret": 0.26000000000000006
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 1.7691806012954132,
+            "lower_residual": 1.7691806012954132,
+            "primal_feasibility": 0.0,
+            "regret": 1.565
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1.565,
+              "runtime_seconds": 0.026206906884908676
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1.565,
+              "runtime_seconds": 0.03559472598135471
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1.565,
+              "runtime_seconds": 0.028078433126211166
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.26000000000000006,
+              "runtime_seconds": 0.02774357981979847
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.26000000000000006,
+              "runtime_seconds": 0.028300225734710693
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.26000000000000006,
+              "runtime_seconds": 0.02791411243379116
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.8,
+              -0.7
+            ]
+          },
+          "seed": 3301,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.7211102550927979,
+            "lower_residual": 0.7211102550927979,
+            "primal_feasibility": 0.0,
+            "regret": 0.26000000000000006
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 1.7691806012954132,
+            "lower_residual": 1.7691806012954132,
+            "primal_feasibility": 0.0,
+            "regret": 1.565
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1.565,
+              "runtime_seconds": 0.027795372530817986
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1.565,
+              "runtime_seconds": 0.036600908264517784
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1.565,
+              "runtime_seconds": 0.033846186473965645
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.26000000000000006,
+              "runtime_seconds": 0.02940310351550579
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.26000000000000006,
+              "runtime_seconds": 0.028966711834073067
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.26000000000000006,
+              "runtime_seconds": 0.028992829844355583
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.8,
+              -0.7
+            ]
+          },
+          "seed": 4409,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.7211102550927979,
+            "lower_residual": 0.7211102550927979,
+            "primal_feasibility": 0.0,
+            "regret": 0.26000000000000006
+          }
+        }
+      ],
+      "hard_pass": false,
+      "parser_valid": true,
+      "unconditional_vds": 0.7710515858035663
+    },
+    {
+      "case_id": "confirm_seeded_target_2d",
+      "conditional_vds": 0.0,
+      "executable": false,
+      "executable_seed_count": 0,
+      "executions": [
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.73824115301167,
+            "lower_residual": 0.73824115301167,
+            "primal_feasibility": 0.0,
+            "regret": 0.2725
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.2725,
+              "runtime_seconds": 0.027818521484732628
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.2725,
+              "runtime_seconds": 0.027859875932335854
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.2725,
+              "runtime_seconds": 0.03512168861925602
+            }
+          ],
+          "error_category": "TypeError",
+          "error_message": "finite_vector() missing 1 required positional argument: 'dimension'",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.027997270226478577
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.027672791853547096
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.0354336891323328
+            }
+          ],
+          "result": {},
+          "seed": 1103,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.73824115301167,
+            "lower_residual": 0.73824115301167,
+            "primal_feasibility": 0.0,
+            "regret": 0.2725
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.2725,
+              "runtime_seconds": 0.02598198875784874
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.2725,
+              "runtime_seconds": 0.0365536380559206
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.2725,
+              "runtime_seconds": 0.033044494688510895
+            }
+          ],
+          "error_category": "TypeError",
+          "error_message": "finite_vector() missing 1 required positional argument: 'dimension'",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.02666166052222252
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.03709641471505165
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.026729155331850052
+            }
+          ],
+          "result": {},
+          "seed": 2207,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.73824115301167,
+            "lower_residual": 0.73824115301167,
+            "primal_feasibility": 0.0,
+            "regret": 0.2725
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.2725,
+              "runtime_seconds": 0.025918930768966675
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.2725,
+              "runtime_seconds": 0.026062004268169403
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.2725,
+              "runtime_seconds": 0.025928974151611328
+            }
+          ],
+          "error_category": "TypeError",
+          "error_message": "finite_vector() missing 1 required positional argument: 'dimension'",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.028631485998630524
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.028244854882359505
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.03747066855430603
+            }
+          ],
+          "result": {},
+          "seed": 3301,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.73824115301167,
+            "lower_residual": 0.73824115301167,
+            "primal_feasibility": 0.0,
+            "regret": 0.2725
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.2725,
+              "runtime_seconds": 0.027653807774186134
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.2725,
+              "runtime_seconds": 0.024936746805906296
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.2725,
+              "runtime_seconds": 0.025269541889429092
+            }
+          ],
+          "error_category": "TypeError",
+          "error_message": "finite_vector() missing 1 required positional argument: 'dimension'",
+          "executable": false,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.025214560329914093
+            },
+            {
+              "budget": 2000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.02530590072274208
+            },
+            {
+              "budget": 4000.0,
+              "quality": -1000000000000.0,
+              "runtime_seconds": 0.028011715039610863
+            }
+          ],
+          "result": {},
+          "seed": 4409,
+          "seed_reproducible": false,
+          "trusted_metrics": {
+            "kkt_ni_gap": null,
+            "lower_residual": null,
+            "primal_feasibility": null,
+            "regret": null
+          }
+        }
+      ],
+      "hard_pass": false,
+      "parser_valid": true,
+      "unconditional_vds": 0.0
+    }
+  ],
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "execution_container_digest": "sha256:64a5804ef49f7cfaaaca42d53e9d2515695e772ce34452a90ba0e52a75defa8f",
+  "gate": "v0.1.4_executable_proposal_bridge",
+  "hard_pass_rate_is_launch_gate": false,
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "negative_controls": {
+    "controls": {
+      "altered_seed": {
+        "reason": "ValueError: model proposal changed the frozen execution seeds",
+        "rejected": true
+      },
+      "broken_solver": {
+        "execution_checked": true,
+        "reason": "ValueError",
+        "rejected": true
+      },
+      "fabricated_metrics": {
+        "execution_checked": true,
+        "reason": "ValueError",
+        "rejected": true
+      },
+      "network_import": {
+        "reason": "ValueError: candidate imported an unregistered module",
+        "rejected": true
+      },
+      "random_hypothesis": {
+        "reason": "hypothesis/code binding control detected",
+        "rejected": true
+      },
+      "swapped_case": {
+        "reason": "ValueError: proposal identity mismatch",
+        "rejected": true
+      },
+      "target_leakage": {
+        "reason": "ValueError: candidate contains a forbidden network/filesystem token",
+        "rejected": true
+      }
+    },
+    "passed": true
+  },
+  "parser_valid_rate": 1.0,
+  "report_digest": "dfd58140c1bc567a6d4d12e0c713a83e3f9bfffed6a300a1a7b777dcc22fcd58",
+  "schema_version": 1,
+  "scientific_claims_allowed": false,
+  "valid_solver_result_cases": 1,
+  "valid_solver_result_minimum": 4
+}

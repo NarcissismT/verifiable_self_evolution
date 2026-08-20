@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "gate": "v0.1.4_executable_proposal_bridge",
+  "study_kind": "executable_proposal_confirmation",
+  "scientific_claims_allowed": false,
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "files": {
+    "bridge_environment.json": "65b0f3a6111d24e896238068fc393442200dd25376d4ffdc8a2823151e7b511c",
+    "bridge_receipt.json": "184a83cf35fd9ca182f9ff21fb05eaf0d9c6e6f10c77ad1c331d8db4b1bf679e",
+    "bridge_report.json": "a2bc08f6a5f9ce66aca1cffe3700f03219d95731ccb4a960c12637e2872a04d1",
+    "generation_report.json": "3c1f0c45dae82629579047a78b375e11bb1df8b2a1d93f60e81e7e24fe436aca"
+  }
+}

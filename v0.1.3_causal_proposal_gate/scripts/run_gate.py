@@ -9,6 +9,7 @@ import hashlib
 import hmac
 import importlib.util
 import json
+import math
 from pathlib import Path
 import re
 import sys
@@ -38,7 +39,6 @@ METRICS = frozenset((
     "oracle_calls", "seed_reproducibility",
 ))
 SCHEDULE = (1000.0, 2000.0, 4000.0)
-EXECUTION_CONTAINER_DIGEST = "sha256:f669006c1ce0d3761b4017e4c600c3e0424e4670a0b9262ec53cb33d3406a666"
 
 
 def load_module(path: Path, name: str):
@@ -122,6 +122,44 @@ def baseline_point(case_id: str, problem: dict[str, Any]) -> list[float]:
     return [0.0, 0.0]
 
 
+BASELINE_CODE = """import json, sys
+payload = json.load(sys.stdin)
+context = payload[\"context\"]
+case_id = context[\"case_id\"]
+problem = context[\"problem\"]
+if case_id == \"realpilot_linear_coupling\":
+    point = [0.0, 0.0, float(problem[\"lower_offset\"][0]), float(problem[\"lower_offset\"][1])]
+else:
+    point = [0.0, 0.0]
+print(json.dumps({\"point\": point, \"oracle_calls\": int(context[\"budget\"])}))
+"""
+
+
+def quality_from_metrics(metrics: dict[str, float], thresholds: dict[str, float]) -> float:
+    return -sum(float(metrics[key]) / max(threshold, 1e-12) for key, threshold in thresholds.items())
+
+
+def independent_unit_tests(
+    candidate: Any,
+    point: Any,
+    oracle_calls: Any,
+    metrics: dict[str, float],
+    expected: int,
+    budget: float,
+) -> tuple[int, int]:
+    """Evaluator-owned tests; candidate-reported unit_tests are deliberately ignored."""
+    tests = (
+        isinstance(candidate, dict) and {"point", "oracle_calls"}.issubset(candidate),
+        isinstance(point, list) and len(point) == expected and all(
+            isinstance(value, (int, float)) and math.isfinite(float(value)) for value in point
+        ),
+        isinstance(oracle_calls, int) and not isinstance(oracle_calls, bool) and 0 <= oracle_calls <= budget,
+        bool(metrics) and all(math.isfinite(float(value)) for value in metrics.values()),
+        not (isinstance(candidate, dict) and "trusted_metrics" in candidate),
+    )
+    return sum(int(value) for value in tests), len(tests)
+
+
 def trusted_execution(
     case_id: str,
     task: Task,
@@ -130,6 +168,10 @@ def trusted_execution(
     evaluator_module: Any,
     evaluator_digest: str,
     problem: dict[str, Any],
+    baseline_metrics: dict[str, float],
+    resource_curve: list[dict[str, float]],
+    seed_reproducibility: float,
+    budget: float,
 ) -> ExecutionResult:
     if execution.exit_code != 0 or execution.timed_out:
         return replace(execution, trusted_metrics={}, trusted_evaluator_digest=evaluator_digest)
@@ -139,17 +181,11 @@ def trusted_execution(
     try:
         point = candidate["point"]
         oracle_calls = int(candidate["oracle_calls"])
-        unit_tests = candidate.get("unit_tests", {})
         expected = 4 if case_id == "realpilot_linear_coupling" else 2
         metrics = evaluator_module.METRICS[case_id](problem, point)
-        finite = all(__import__("math").isfinite(float(value)) for value in point)
+        finite = all(math.isfinite(float(value)) for value in point)
         shape = len(point) == expected
-        budget = 0 <= oracle_calls <= 4000
-        unit_passed = int(finite) + int(shape) + int(budget) + int(
-            isinstance(unit_tests, dict) and int(unit_tests.get("passed", 0)) <= int(unit_tests.get("total", 0))
-        )
-        unit_total = 4
-        baseline_metrics = evaluator_module.METRICS[case_id](problem, baseline_point(case_id, problem))
+        unit_passed, unit_total = independent_unit_tests(candidate, point, oracle_calls, metrics, expected, budget)
         thresholds = {
             "realpilot_flatness_penalty": {"lower_residual": 0.03, "upper_regret": 0.08, "primal_feasibility": 1e-12},
             "realpilot_nonconvex_simple": {"lower_residual": 0.08, "upper_regret": 0.08, "primal_feasibility": 1e-12},
@@ -159,28 +195,23 @@ def trusted_execution(
             __import__("math").isfinite(float(metrics[key])) and float(metrics[key]) <= threshold
             for key, threshold in thresholds.items()
         ) and unit_passed == unit_total
-        quality = -sum(float(metrics[key]) / max(threshold, 1e-12) for key, threshold in thresholds.items())
-        baseline_quality = -sum(float(baseline_metrics[key]) / max(threshold, 1e-12) for key, threshold in thresholds.items())
+        quality = quality_from_metrics(metrics, thresholds)
+        baseline_quality = quality_from_metrics(baseline_metrics, thresholds)
         trusted = {
             **{key: float(value) for key, value in metrics.items()},
             "oracle_calls": float(oracle_calls),
-            "seed_reproducibility": 1.0,
+            "seed_reproducibility": float(seed_reproducibility),
             "unit_tests_passed": unit_passed,
             "unit_tests_total": unit_total,
             "quality": quality,
             "baseline_quality": baseline_quality,
-            "resource_quality_curve": [
-                {"budget": budget_value, "quality": quality}
-                for budget_value in proposal.resource_schedule
-            ],
+            "resource_quality_curve": resource_curve,
             "vds_empirical": float(hard),
             "vds_hypothesis": float(bool(proposal.hypothesis.claim and proposal.hypothesis.mechanism)),
             "vds_experiment": float(hard),
             "vds_novelty": 0.0,
             "vds_calibration": float(unit_passed == unit_total),
         }
-        if not hard:
-            trusted["unit_tests_passed"] = min(unit_passed, unit_total - 1)
         return replace(execution, trusted_metrics=trusted, trusted_evaluator_digest=evaluator_digest)
     except (KeyError, TypeError, ValueError, OverflowError):
         return replace(execution, trusted_metrics={}, trusted_evaluator_digest=evaluator_digest)
@@ -210,6 +241,51 @@ def sign_receipt(value: dict[str, Any], key: bytes) -> dict[str, Any]:
     return value
 
 
+def baseline_proposal(task: Task, source_proposal: Any) -> Any:
+    return replace(
+        source_proposal,
+        candidate_id=f"baseline-{task.task_id}",
+        experiment_code=BASELINE_CODE,
+        solution={"api": "stdin_json_context_v1", "algorithm_family": "frozen_base"},
+    )
+
+
+def run_once(
+    runner: CodeRunner,
+    task: Task,
+    proposal: Any,
+    seed: int,
+    case_id: str,
+    problem: dict[str, Any],
+    capsule_hash: str,
+    budget: float,
+) -> ExecutionResult:
+    return runner.execute(
+        task,
+        proposal,
+        seed,
+        extra_input={
+            "case_id": case_id,
+            "problem": problem,
+            "capsule_digest": capsule_hash,
+            "budget": int(budget),
+        },
+    )
+
+
+def point_from_execution(execution: ExecutionResult) -> list[float] | None:
+    if execution.exit_code != 0 or execution.timed_out or not isinstance(execution.candidate_result, dict):
+        return None
+    point = execution.candidate_result.get("point")
+    if not isinstance(point, list):
+        return None
+    try:
+        result = [float(value) for value in point]
+    except (TypeError, ValueError):
+        return None
+    return result if all(math.isfinite(value) for value in result) else None
+
+
 def run_case(
     case_id: str,
     bundle_root: Path,
@@ -219,6 +295,7 @@ def run_case(
     evaluator_module: Any,
     evaluator_digest: str,
     hmac_key: bytes,
+    execution_container_digest: str,
 ) -> dict[str, Any]:
     capsule_path = bundle_root / "run" / "public" / case_id / "capsule.json"
     capsule = json.loads(capsule_path.read_text(encoding="utf-8"))
@@ -229,16 +306,47 @@ def run_case(
     case_output = output_root / case_id
     case_output.mkdir(parents=True, exist_ok=True)
     runner = CodeRunner(RunnerConfig(mode="local_test", timeout_seconds=30.0, memory_bytes=2 * 1024**3))
+    frozen_baseline = baseline_proposal(task, proposal)
     executions: list[ExecutionResult] = []
     for seed in proposal.seeds:
         problem = evaluator_module.make_problem(case_id, seed)
-        execution = runner.execute(
-            task,
-            proposal,
-            seed,
-            extra_input={"case_id": case_id, "problem": problem, "capsule_digest": capsule_digest(capsule)},
+        capsule_hash = capsule_digest(capsule)
+        curve: list[dict[str, float]] = []
+        final_execution: ExecutionResult | None = None
+        final_baseline_metrics: dict[str, float] = {}
+        for budget in proposal.resource_schedule:
+            candidate_execution = run_once(runner, task, proposal, seed, case_id, problem, capsule_hash, budget)
+            baseline_execution = run_once(runner, task, frozen_baseline, seed, case_id, problem, capsule_hash, budget)
+            candidate_point = point_from_execution(candidate_execution)
+            baseline_candidate_point = point_from_execution(baseline_execution)
+            quality = -1.0e12
+            if candidate_point is not None:
+                try:
+                    candidate_metrics = evaluator_module.METRICS[case_id](problem, candidate_point)
+                    thresholds = {
+                        "realpilot_flatness_penalty": {"lower_residual": 0.03, "upper_regret": 0.08, "primal_feasibility": 1e-12},
+                        "realpilot_nonconvex_simple": {"lower_residual": 0.08, "upper_regret": 0.08, "primal_feasibility": 1e-12},
+                        "realpilot_linear_coupling": {"lower_residual": 0.03, "upper_regret": 0.10, "primal_feasibility": 1e-8},
+                    }[case_id]
+                    quality = quality_from_metrics(candidate_metrics, thresholds)
+                except (TypeError, ValueError, OverflowError):
+                    quality = float("-inf")
+            curve.append({"budget": float(budget), "quality": quality})
+            final_execution = candidate_execution
+            if baseline_candidate_point is not None:
+                final_baseline_metrics = evaluator_module.METRICS[case_id](problem, baseline_candidate_point)
+        assert final_execution is not None
+        repeat = run_once(
+            runner, task, proposal, seed, case_id, problem, capsule_hash, proposal.resource_schedule[-1]
         )
-        executions.append(trusted_execution(case_id, task, proposal, execution, evaluator_module, evaluator_digest, problem))
+        reproducible = float(
+            final_execution.exit_code == repeat.exit_code == 0
+            and final_execution.candidate_result == repeat.candidate_result
+        )
+        executions.append(trusted_execution(
+            case_id, task, proposal, final_execution, evaluator_module, evaluator_digest, problem,
+            final_baseline_metrics, curve, reproducible, proposal.resource_schedule[-1],
+        ))
     report = verifier(evaluator_digest).verify(task, tuple(executions))
     record = TrajectoryRecord(
         task=task,
@@ -264,7 +372,7 @@ def run_case(
         "seeds": list(proposal.seeds),
         "baselines": list(proposal.baselines),
         "resource_schedule": list(proposal.resource_schedule),
-        "execution_container_digest": EXECUTION_CONTAINER_DIGEST,
+        "execution_container_digest": execution_container_digest,
         "trusted_evaluator_digest": evaluator_digest,
         "execution_digests": [execution_digest(item) for item in executions],
         "verification_report_digest": report.report_digest,
@@ -281,6 +389,7 @@ def main() -> int:
     parser.add_argument("--proposals-root", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--model-digest", required=True)
+    parser.add_argument("--execution-container-digest", required=True)
     parser.add_argument("--hmac-key", type=Path, required=True)
     args = parser.parse_args()
     evaluator_path = args.bundle_root / "evaluator" / "trusted_evaluator.py"
@@ -291,7 +400,11 @@ def main() -> int:
     results = []
     if args.command == "positive":
         for case_id in CASES:
-            results.append(run_case(case_id, args.bundle_root, args.proposals_root, args.output_root, args.model_digest, evaluator_module, evaluator_digest, key))
+            results.append(run_case(
+                case_id, args.bundle_root, args.proposals_root, args.output_root,
+                args.model_digest, evaluator_module, evaluator_digest, key,
+                args.execution_container_digest,
+            ))
         passed = all(item["accepted"] for item in results)
     else:
         passed = run_negative_controls(args, evaluator_module, evaluator_digest, key)
@@ -385,7 +498,14 @@ def run_negative_controls(args: argparse.Namespace, evaluator_module: Any, evalu
                 problem = evaluator_module.make_problem(CASES[0], seed)
                 item = runner.execute(task, proposal, seed, extra_input={
                     "case_id": CASES[0], "problem": problem, "capsule_digest": capsule_digest(capsule)})
-                executions.append(trusted_execution(CASES[0], task, proposal, item, evaluator_module, evaluator_digest, problem))
+                baseline_metrics = evaluator_module.METRICS[CASES[0]](problem, baseline_point(CASES[0], problem))
+                executions.append(trusted_execution(
+                    CASES[0], task, proposal, item, evaluator_module, evaluator_digest, problem,
+                    baseline_metrics,
+                    [{"budget": float(value), "quality": -1.0e12} for value in proposal.resource_schedule],
+                    0.0,
+                    proposal.resource_schedule[-1],
+                ))
             execution_checked = True
             execution_accepted = verifier(evaluator_digest).verify(task, tuple(executions)).accepted
             if execution_accepted:

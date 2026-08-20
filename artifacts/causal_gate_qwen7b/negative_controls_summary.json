@@ -1,0 +1,48 @@
+{
+  "controls": {
+    "altered_seed": {
+      "execution_accepted": false,
+      "execution_checked": false,
+      "reason": "rejected: ValueError: model proposal changed the frozen execution seeds",
+      "rejected": true
+    },
+    "correct_hypothesis_broken_code": {
+      "execution_accepted": false,
+      "execution_checked": true,
+      "reason": "",
+      "rejected": false
+    },
+    "fabricated_metrics": {
+      "execution_accepted": false,
+      "execution_checked": true,
+      "reason": "",
+      "rejected": false
+    },
+    "network_import": {
+      "execution_accepted": false,
+      "execution_checked": false,
+      "reason": "rejected: ValueError: target leakage or network token in experiment code",
+      "rejected": true
+    },
+    "random_hypothesis_fixed_adapter": {
+      "execution_accepted": false,
+      "execution_checked": true,
+      "reason": "",
+      "rejected": false
+    },
+    "swapped_case_identity": {
+      "execution_accepted": false,
+      "execution_checked": false,
+      "reason": "rejected: ValueError: proposal identity mismatch: /output/run2/negative_controls/swapped_case_identity/proposal.json",
+      "rejected": true
+    },
+    "target_leakage": {
+      "execution_accepted": false,
+      "execution_checked": false,
+      "reason": "rejected: ValueError: target leakage or network token in experiment code",
+      "rejected": true
+    }
+  },
+  "failures": [],
+  "passed": true
+}

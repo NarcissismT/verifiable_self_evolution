@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "gate": "v0.1.3_causal_proposal_gate",
+  "source_run": "historical_qwen7b_seed17_failure",
+  "scientific_claims_allowed": false,
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "files": {
+    "gate_environment.json": "18da4721fdf489067f6d0ed37ac569b4aafa4f4b03d47f8ad704ec0efac0f0bd",
+    "negative_controls_report.json": "0137167d52a6153cc6938799092597b1b75c4a09f4eddd3983f57d011e756ba8",
+    "negative_controls_summary.json": "45b6048915f9b8654b7b69389b8b849e6d62c9d93fa0d5e62831a9ff6763b206",
+    "positive_report.json": "955e0295fa7ad4d49dbd5fab8689105e4a4975cac90996e632597f41e81ac632"
+  }
+}

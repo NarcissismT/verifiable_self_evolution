@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "sdk_version": "v0.1.4-sdk-v1",
+  "allowed_imports": ["execution_sdk", "math", "numpy", "random"],
+  "scipy_allowed": false,
+  "numpy_version": "2.1.2",
+  "candidate_entrypoint": "solve(problem, seed, budget)",
+  "candidate_repairs_maximum": 2
+}

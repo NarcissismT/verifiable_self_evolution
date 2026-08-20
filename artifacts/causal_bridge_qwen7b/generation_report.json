@@ -1,0 +1,44 @@
+{
+  "cases": [
+    {
+      "case_id": "confirm_quadratic_1d",
+      "parser_valid": true,
+      "proposal_digest": "6bcb6dba06fac0d5d498c43fda1c2bb840363999f0d1077b7dc946e0ec0f9646",
+      "public_error": "ValueError: public_runtime_error:NameError:name 'random' is not defined",
+      "public_runtime_valid": false
+    },
+    {
+      "case_id": "confirm_quadratic_2d",
+      "parser_valid": true,
+      "proposal_digest": "5c908477aaa0cb9f9b5c888ace2708b7b5767d15e6c6a442ca98f0771d00b39e",
+      "public_error": "ValueError: public_runtime_error:TypeError:finite_vector() missing 1 required positional argument: 'dimension'",
+      "public_runtime_valid": false
+    },
+    {
+      "case_id": "confirm_box_projection_2d",
+      "parser_valid": true,
+      "proposal_digest": "1a702a3b2f9fb1964cb38b604307aae81d8ce5717577aa1556574d705f5dc834",
+      "public_error": "ValueError: public_runtime_error:TypeError:initialize_seed() takes 1 positional argument but 4 were given",
+      "public_runtime_valid": false
+    },
+    {
+      "case_id": "confirm_affine_shift_2d",
+      "parser_valid": true,
+      "proposal_digest": "d6719b66ace86e007cfba047bdc1390985c5ac1f5d590ce576c7c3ef4e7e84f5",
+      "public_runtime_valid": true
+    },
+    {
+      "case_id": "confirm_seeded_target_2d",
+      "parser_valid": true,
+      "proposal_digest": "e7c89734e2fac404103bf9cef4d54c0eaeb16f03f9149df3a0feb9d219d64cba",
+      "public_error": "ValueError: public_runtime_error:TypeError:finite_vector() missing 1 required positional argument: 'dimension'",
+      "public_runtime_valid": false
+    }
+  ],
+  "gate": "v0.1.4_executable_proposal_bridge",
+  "initial_attempts_per_case": 1,
+  "maximum_repairs_per_case": 2,
+  "parser_valid_rate": 1.0,
+  "public_runtime_valid_rate": 0.2,
+  "schema_version": 1
+}
