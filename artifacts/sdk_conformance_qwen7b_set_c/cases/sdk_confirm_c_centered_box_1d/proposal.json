@@ -1,0 +1,58 @@
+{
+  "baselines": [
+    "sdk_zero_v1"
+  ],
+  "candidate_id": "candidate-96251b55f9d609a1e3f8",
+  "expected_effect": {
+    "direction": "lower",
+    "minimum_delta": 0.0
+  },
+  "experiment_code": "from execution_sdk import project_box\n\ndef solve(problem, seed, budget):\n    del seed, budget\n    point = project_box([0.0] * int(problem['dimension']), problem['bounds'])\n    return {'point': point, 'oracle_calls': 0}",
+  "hypothesis": {
+    "alternative_explanations": [
+      "The target is not necessarily at the center of the box."
+    ],
+    "assumptions": [
+      "The bounds are symmetric around the target."
+    ],
+    "claim": "The center of the box defined by the bounds is the optimal solution for the given quadratic objective function.",
+    "discriminating_observation": "Observing a significant difference between the predicted optimal point and the actual minimizer would reject the hypothesis.",
+    "mechanism": "The objective function is minimized when x is at the center of the feasible region, which is the midpoint of the bounds.",
+    "null_hypothesis": "The center of the box is not the optimal solution.",
+    "predicted_failure_mode": "If the bounds are not symmetric around the target, the algorithm may fail to find the optimal solution."
+  },
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "model_id": "qwen2.5-7b-instruct",
+  "parent_candidate_ids": [],
+  "power_assumptions": {
+    "alpha": 0.05,
+    "target_power": 0.8,
+    "unit": "seed"
+  },
+  "primary_metric": "regret",
+  "resource_schedule": [
+    1000.0,
+    2000.0,
+    4000.0
+  ],
+  "round_index": 0,
+  "secondary_metrics": [
+    "lower_residual",
+    "kkt_ni_gap",
+    "oracle_calls",
+    "seed_reproducibility"
+  ],
+  "seeds": [
+    1103,
+    2207,
+    3301,
+    4409
+  ],
+  "solution": {
+    "algorithm_family": "Target-centered Box Projection",
+    "api": "solve_v1"
+  },
+  "source": "student",
+  "stopping_rule": "return within the supplied budget",
+  "task_id": "sdk_confirm_c_centered_box_1d"
+}

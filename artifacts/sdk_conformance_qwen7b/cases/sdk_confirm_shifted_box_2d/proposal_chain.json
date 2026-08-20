@@ -1,0 +1,38 @@
+{
+  "final_digest": "34b77b0da3650b4783b7a399be1ab2567bb8cddd221ef1afed264c7d5d933d69",
+  "frozen_fields": [
+    "hypothesis",
+    "solution",
+    "seeds",
+    "baselines",
+    "primary_metric",
+    "secondary_metrics",
+    "expected_effect",
+    "power_assumptions",
+    "stopping_rule",
+    "resource_schedule"
+  ],
+  "frozen_fields_digest": "44bfe3722406e9e2d35274497d24f199f1fa06dad5b9feea5e95d94d62d6672e",
+  "initial_digest": "34b77b0da3650b4783b7a399be1ab2567bb8cddd221ef1afed264c7d5d933d69",
+  "repairs": [
+    {
+      "accepted": false,
+      "attempt": 1,
+      "child_digest": "350f78081e497c4f16796a5df887c7f4ea26575d3bf75da5c35b9e4ee8fe1e8d",
+      "code_digest": "9fce6d5b16d1c4aa3f7fd7e7e391f4c1ab6152e713925b7c0d0916e65d7db6c1",
+      "error": "public_linter_error:non_public_sdk_api:initialize_seed is wrapper-owned; use only Budget/project_box",
+      "parent_digest": "34b77b0da3650b4783b7a399be1ab2567bb8cddd221ef1afed264c7d5d933d69",
+      "raw_digest": "936d1944ee5b57c842147eb8dcc49b4da94f213c7771994a33bcf005d2938a60"
+    },
+    {
+      "accepted": false,
+      "attempt": 2,
+      "child_digest": "0545c83e856d26aca489cb30750cb470443bdb37f7a0134983b5d99e94f91543",
+      "code_digest": "b7eabb8ed28517c316d46809a7e063bbc81fcc33fbe66c43c26caa7305bebec3",
+      "error": "public_linter_error:return_schema:a return dict must contain point and oracle_calls",
+      "parent_digest": "34b77b0da3650b4783b7a399be1ab2567bb8cddd221ef1afed264c7d5d933d69",
+      "raw_digest": "501f1d10e491db969f3ba2af6f055ed0223cebddf41971de96435a31597689f5"
+    }
+  ],
+  "schema_version": 1
+}

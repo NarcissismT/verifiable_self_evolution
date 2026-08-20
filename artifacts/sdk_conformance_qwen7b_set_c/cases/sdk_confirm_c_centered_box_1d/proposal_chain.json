@@ -1,0 +1,20 @@
+{
+  "final_digest": "a545239a9e37027aaceec1d105731a803335d2591e00ad269b40f30cb94cd2ca",
+  "frozen_fields": [
+    "hypothesis",
+    "solution",
+    "seeds",
+    "baselines",
+    "primary_metric",
+    "secondary_metrics",
+    "expected_effect",
+    "power_assumptions",
+    "stopping_rule",
+    "resource_schedule"
+  ],
+  "frozen_fields_digest": "6496296879aaab812055baa807e2fc579e5d90b689ecba9913e46ffb76c102cf",
+  "initial_code_encoding_normalized": false,
+  "initial_digest": "a545239a9e37027aaceec1d105731a803335d2591e00ad269b40f30cb94cd2ca",
+  "repairs": [],
+  "schema_version": 1
+}

@@ -1,0 +1,58 @@
+{
+  "baselines": [
+    "sdk_zero_v1"
+  ],
+  "candidate_id": "candidate-e542cf0f058117cc44ab",
+  "expected_effect": {
+    "direction": "lower",
+    "minimum_delta": 0.0
+  },
+  "experiment_code": "normal multi-line Python source encoded as a JSON string",
+  "hypothesis": {
+    "alternative_explanations": [
+      "The solver might converge to different local minima due to slight numerical differences."
+    ],
+    "assumptions": [
+      "The solver will use the provided seed for reproducibility."
+    ],
+    "claim": "The solver will find a point that minimizes the given quadratic function.",
+    "discriminating_observation": "If the solver returns different points for the same seed, it fails the hypothesis.",
+    "mechanism": "The solver uses a deterministic algorithm to find the minimum of the quadratic function based on the seed.",
+    "null_hypothesis": "The solver will return the same point for the same seed.",
+    "predicted_failure_mode": "The solver returns different points for the same seed."
+  },
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "model_id": "qwen2.5-7b-instruct",
+  "parent_candidate_ids": [],
+  "power_assumptions": {
+    "alpha": 0.05,
+    "target_power": 0.8,
+    "unit": "seed"
+  },
+  "primary_metric": "regret",
+  "resource_schedule": [
+    1000.0,
+    2000.0,
+    4000.0
+  ],
+  "round_index": 0,
+  "secondary_metrics": [
+    "lower_residual",
+    "kkt_ni_gap",
+    "oracle_calls",
+    "seed_reproducibility"
+  ],
+  "seeds": [
+    1103,
+    2207,
+    3301,
+    4409
+  ],
+  "solution": {
+    "algorithm_family": "DeterministicQuadraticSolver",
+    "api": "solve_v1"
+  },
+  "source": "student",
+  "stopping_rule": "return within the supplied budget",
+  "task_id": "sdk_confirm_seeded_box_2d"
+}

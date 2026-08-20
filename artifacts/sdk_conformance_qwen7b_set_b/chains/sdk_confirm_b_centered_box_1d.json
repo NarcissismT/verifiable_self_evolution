@@ -1,0 +1,19 @@
+{
+  "final_digest": "",
+  "frozen_fields": [
+    "hypothesis",
+    "solution",
+    "seeds",
+    "baselines",
+    "primary_metric",
+    "secondary_metrics",
+    "expected_effect",
+    "power_assumptions",
+    "stopping_rule",
+    "resource_schedule"
+  ],
+  "frozen_fields_digest": "",
+  "initial_digest": "",
+  "repairs": [],
+  "schema_version": 1
+}

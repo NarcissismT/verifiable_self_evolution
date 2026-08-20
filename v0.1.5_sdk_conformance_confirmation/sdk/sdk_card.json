@@ -1,0 +1,6 @@
+{
+  "initialize_seed": "initialize_seed(seed: int) -> None",
+  "finite_vector": "finite_vector(values, dimension: int) -> list[float]",
+  "project_box": "project_box(values, bounds) -> list[float]",
+  "Budget": "Budget(limit: int); consume(amount=1); remaining"
+}

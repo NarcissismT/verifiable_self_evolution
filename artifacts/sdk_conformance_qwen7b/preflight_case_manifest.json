@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "study_kind": "sdk_conformance_confirmation",
+  "formal_split_eligible": false,
+  "permanent_exclusion_reason": "development-only SDK discoverability and code-repair confirmation; never train/dev/promotion/heldout/OOD",
+  "public_math_contract": "minimize 0.5 * ||x - (target + offset)||^2 subject to lower_i <= x_i <= upper_i",
+  "cases": [
+    {
+      "case_id": "sdk_confirm_quadratic_box_1d",
+      "family": "sdk_quadratic_box",
+      "public_problem": "Solve min_x 0.5 ||x - (target + offset)||^2 subject to lower <= x <= upper. Return the finite constrained minimizer.",
+      "problem": {"kind": "quadratic_box", "dimension": 1, "target": [0.65], "offset": [0.0], "bounds": [[-1.0, 1.0]]}
+    },
+    {
+      "case_id": "sdk_confirm_quadratic_box_2d",
+      "family": "sdk_quadratic_box",
+      "public_problem": "Solve min_x 0.5 ||x - (target + offset)||^2 subject to lower_i <= x_i <= upper_i for i=1,2. Return the finite constrained minimizer.",
+      "problem": {"kind": "quadratic_box", "dimension": 2, "target": [-0.8, 0.7], "offset": [0.0, 0.0], "bounds": [[-1.5, 1.5], [-1.5, 1.5]]}
+    },
+    {
+      "case_id": "sdk_confirm_shifted_box_2d",
+      "family": "sdk_shifted_quadratic_box",
+      "public_problem": "The objective is exactly 0.5 ||x - (target + offset)||^2 with box constraints lower_i <= x_i <= upper_i. Compute its constrained minimizer; the offset is part of the public instance.",
+      "problem": {"kind": "shifted_quadratic_box", "dimension": 2, "target": [0.3, -0.4], "offset": [0.45, -0.35], "bounds": [[-0.2, 0.6], [-0.9, 0.2]]}
+    },
+    {
+      "case_id": "sdk_confirm_asymmetric_box_3d",
+      "family": "sdk_shifted_quadratic_box",
+      "public_problem": "Minimize 0.5 ||x - (target + offset)||^2 under the three independent public box constraints lower_i <= x_i <= upper_i. Return the coordinatewise constrained minimizer.",
+      "problem": {"kind": "shifted_quadratic_box", "dimension": 3, "target": [1.2, -1.3, 0.1], "offset": [-0.2, 0.4, 0.8], "bounds": [[-0.5, 0.7], [-1.0, 0.0], [-0.2, 0.6]]}
+    },
+    {
+      "case_id": "sdk_confirm_seeded_box_2d",
+      "family": "sdk_seed_reproducibility",
+      "public_problem": "For a seeded execution, solve the same public box-constrained quadratic min_x 0.5 ||x - (target + offset)||^2. Repeated calls with the same seed must return the same finite point.",
+      "problem": {"kind": "seeded_quadratic_box", "dimension": 2, "target": [0.25, -0.75], "offset": [0.0, 0.0], "bounds": [[-1.0, 1.0], [-1.0, 1.0]]}
+    }
+  ]
+}

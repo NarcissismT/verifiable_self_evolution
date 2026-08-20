@@ -1,0 +1,38 @@
+{
+  "final_digest": "9ad0efe902df0860a581c49411d60167ae1e75bb231c1dd15286e1e05f63b9df",
+  "frozen_fields": [
+    "hypothesis",
+    "solution",
+    "seeds",
+    "baselines",
+    "primary_metric",
+    "secondary_metrics",
+    "expected_effect",
+    "power_assumptions",
+    "stopping_rule",
+    "resource_schedule"
+  ],
+  "frozen_fields_digest": "eedcb815983d2a46e73f74a9133f2605bee08ce2635937a2e384ee750f22ab7c",
+  "initial_digest": "9ad0efe902df0860a581c49411d60167ae1e75bb231c1dd15286e1e05f63b9df",
+  "repairs": [
+    {
+      "accepted": false,
+      "attempt": 1,
+      "child_digest": "8d85af91404cb98ef6711d3d118ee877ea8e9e49a26a53ae2940fbc34323c040",
+      "code_digest": "b5aceea17cf2e355ea5927b90c0ef45d479c3b3001f589543df6f070d4c6648e",
+      "error": "public_linter_error:syntax_error:invalid syntax",
+      "parent_digest": "9ad0efe902df0860a581c49411d60167ae1e75bb231c1dd15286e1e05f63b9df",
+      "raw_digest": "e91fbb2a12cecb5a134a4b933ab38fb568cc856494ec052c9d5b95d1953743cc"
+    },
+    {
+      "accepted": false,
+      "attempt": 2,
+      "child_digest": "8d85af91404cb98ef6711d3d118ee877ea8e9e49a26a53ae2940fbc34323c040",
+      "code_digest": "b5aceea17cf2e355ea5927b90c0ef45d479c3b3001f589543df6f070d4c6648e",
+      "error": "public_linter_error:syntax_error:invalid syntax",
+      "parent_digest": "9ad0efe902df0860a581c49411d60167ae1e75bb231c1dd15286e1e05f63b9df",
+      "raw_digest": "e91fbb2a12cecb5a134a4b933ab38fb568cc856494ec052c9d5b95d1953743cc"
+    }
+  ],
+  "schema_version": 1
+}

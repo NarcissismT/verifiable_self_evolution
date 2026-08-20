@@ -1,0 +1,58 @@
+{
+  "baselines": [
+    "sdk_zero_v1"
+  ],
+  "candidate_id": "candidate-3f474725c6b60973812d",
+  "expected_effect": {
+    "direction": "lower",
+    "minimum_delta": 0.0
+  },
+  "experiment_code": "normal multi-line Python source encoded as a JSON string",
+  "hypothesis": {
+    "alternative_explanations": [
+      "The solver might find a point that is not the global minimum due to local optima or numerical issues."
+    ],
+    "assumptions": [
+      "The solver will converge to the global minimum given enough iterations."
+    ],
+    "claim": "The solver will find the point that minimizes the quadratic function within the given constraints.",
+    "discriminating_observation": "If the solver returns a point with a higher objective value than the target point, it fails the experiment.",
+    "mechanism": "The solver uses gradient descent to iteratively approach the minimum of the quadratic function while respecting the constraints.",
+    "null_hypothesis": "The solver cannot find the global minimum of the quadratic function within the given constraints.",
+    "predicted_failure_mode": "The solver might get stuck in a local minimum or fail to converge due to numerical instability."
+  },
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "model_id": "qwen2.5-7b-instruct",
+  "parent_candidate_ids": [],
+  "power_assumptions": {
+    "alpha": 0.05,
+    "target_power": 0.8,
+    "unit": "seed"
+  },
+  "primary_metric": "regret",
+  "resource_schedule": [
+    1000.0,
+    2000.0,
+    4000.0
+  ],
+  "round_index": 0,
+  "secondary_metrics": [
+    "lower_residual",
+    "kkt_ni_gap",
+    "oracle_calls",
+    "seed_reproducibility"
+  ],
+  "seeds": [
+    1103,
+    2207,
+    3301,
+    4409
+  ],
+  "solution": {
+    "algorithm_family": "gradient_descent",
+    "api": "solve_v1"
+  },
+  "source": "student",
+  "stopping_rule": "return within the supplied budget",
+  "task_id": "sdk_confirm_quadratic_box_2d"
+}

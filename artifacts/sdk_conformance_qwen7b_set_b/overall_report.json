@@ -1,0 +1,9 @@
+{
+  "gate": "v0.1.5_sdk_conformance_confirmation",
+  "gate_completed": true,
+  "gate_process_exit": 2,
+  "generation_completed": true,
+  "generation_process_exit": 2,
+  "qlora_launch_allowed": false,
+  "schema_version": 1
+}

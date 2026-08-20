@@ -1,0 +1,58 @@
+{
+  "baselines": [
+    "sdk_zero_v1"
+  ],
+  "candidate_id": "candidate-be3c7939a16157457093",
+  "expected_effect": {
+    "direction": "lower",
+    "minimum_delta": 0.0
+  },
+  "experiment_code": "from execution_sdk import project_box\n\ndef solve(problem, seed, budget):\n    del seed, budget\n    point = project_box([0.0] * int(problem['dimension']), problem['bounds'])\n    return {'point': point, 'oracle_calls': 0}\n",
+  "hypothesis": {
+    "alternative_explanations": [
+      "The algorithm might fail if the initial guess is outside the feasible region due to incorrect handling of constraints."
+    ],
+    "assumptions": [
+      "The initial guess is within the feasible region."
+    ],
+    "claim": "The proposed algorithm will find the minimum point within the given box constraints.",
+    "discriminating_observation": "A point returned by the algorithm that satisfies all box constraints and has a lower objective function value than the initial guess.",
+    "mechanism": "By projecting the initial guess onto the feasible region defined by the box constraints.",
+    "null_hypothesis": "The algorithm will not find the correct minimum point.",
+    "predicted_failure_mode": "The algorithm will return a point that does not satisfy all box constraints."
+  },
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "model_id": "qwen2.5-7b-instruct",
+  "parent_candidate_ids": [],
+  "power_assumptions": {
+    "alpha": 0.05,
+    "target_power": 0.8,
+    "unit": "seed"
+  },
+  "primary_metric": "regret",
+  "resource_schedule": [
+    1000.0,
+    2000.0,
+    4000.0
+  ],
+  "round_index": 0,
+  "secondary_metrics": [
+    "lower_residual",
+    "kkt_ni_gap",
+    "oracle_calls",
+    "seed_reproducibility"
+  ],
+  "seeds": [
+    1103,
+    2207,
+    3301,
+    4409
+  ],
+  "solution": {
+    "algorithm_family": "Projected Constrained Minimizer",
+    "api": "solve_v1"
+  },
+  "source": "student",
+  "stopping_rule": "return within the supplied budget",
+  "task_id": "sdk_confirm_c_boundary_clip_3d"
+}

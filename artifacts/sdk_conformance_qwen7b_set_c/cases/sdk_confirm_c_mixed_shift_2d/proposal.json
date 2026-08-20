@@ -1,0 +1,59 @@
+{
+  "baselines": [
+    "sdk_zero_v1"
+  ],
+  "candidate_id": "candidate-8d7579f35415a0ecd0c9",
+  "expected_effect": {
+    "direction": "lower",
+    "minimum_delta": 0.0
+  },
+  "experiment_code": "from execution_sdk import project_box\n\ndef solve(problem, seed, budget):\n    del seed, budget\n    target = problem['target']\n    offset = problem['offset']\n    point = project_box([t + o for t, o in zip(target, offset)], problem['bounds'])\n    return {'point': point, 'oracle_calls': 0}'",
+  "hypothesis": {
+    "alternative_explanations": [
+      "The solver might fail if the target plus offset is outside the box constraints."
+    ],
+    "assumptions": [
+      "The solver assumes that the input problem has valid dimensions and box constraints.",
+      "The solver assumes that the target and offset values are within the box constraints."
+    ],
+    "claim": "The solver will find the point that minimizes the given quadratic function within the specified box constraints.",
+    "discriminating_observation": "Observing the returned point to ensure it lies within the box constraints and is close to the expected minimizer.",
+    "mechanism": "By projecting the unconstrained minimum onto the feasible region defined by the box constraints.",
+    "null_hypothesis": "The solver will return a point that does not minimize the function within the box constraints.",
+    "predicted_failure_mode": "The solver might return a point that is not within the specified bounds."
+  },
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "model_id": "qwen2.5-7b-instruct",
+  "parent_candidate_ids": [],
+  "power_assumptions": {
+    "alpha": 0.05,
+    "target_power": 0.8,
+    "unit": "seed"
+  },
+  "primary_metric": "regret",
+  "resource_schedule": [
+    1000.0,
+    2000.0,
+    4000.0
+  ],
+  "round_index": 0,
+  "secondary_metrics": [
+    "lower_residual",
+    "kkt_ni_gap",
+    "oracle_calls",
+    "seed_reproducibility"
+  ],
+  "seeds": [
+    1103,
+    2207,
+    3301,
+    4409
+  ],
+  "solution": {
+    "algorithm_family": "Projection",
+    "api": "solve_v1"
+  },
+  "source": "student",
+  "stopping_rule": "return within the supplied budget",
+  "task_id": "sdk_confirm_c_mixed_shift_2d"
+}

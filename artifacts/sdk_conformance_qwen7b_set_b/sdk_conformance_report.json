@@ -1,0 +1,97 @@
+{
+  "all_four_seeds_required_per_case": true,
+  "candidate_supplied_metrics_trusted": false,
+  "cases": [
+    {
+      "case_id": "sdk_confirm_b_centered_box_1d",
+      "conditional_vds": 0.0,
+      "error": "ValueError: final proposal is missing",
+      "executable": false,
+      "parser_valid": false,
+      "unconditional_vds": 0.0
+    },
+    {
+      "case_id": "sdk_confirm_b_centered_box_3d",
+      "conditional_vds": 0.0,
+      "executable": false,
+      "execution_error": "ValueError: syntax_error@1: unterminated string literal (detected at line 1)",
+      "parser_valid": true,
+      "unconditional_vds": 0.0
+    },
+    {
+      "case_id": "sdk_confirm_b_positive_shift_2d",
+      "conditional_vds": 0.0,
+      "error": "ValueError: final proposal is missing",
+      "executable": false,
+      "parser_valid": false,
+      "unconditional_vds": 0.0
+    },
+    {
+      "case_id": "sdk_confirm_b_boundary_clip_2d",
+      "conditional_vds": 0.0,
+      "error": "ValueError: final proposal is missing",
+      "executable": false,
+      "parser_valid": false,
+      "unconditional_vds": 0.0
+    },
+    {
+      "case_id": "sdk_confirm_b_seed_replay_3d",
+      "conditional_vds": 0.0,
+      "executable": false,
+      "execution_error": "ValueError: syntax_error@1: unterminated string literal (detected at line 1)",
+      "parser_valid": true,
+      "unconditional_vds": 0.0
+    }
+  ],
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "execution_container_digest": "sha256:64a5804ef49f7cfaaaca42d53e9d2515695e772ce34452a90ba0e52a75defa8f",
+  "execution_rate_after_repair": 0.0,
+  "gate": "v0.1.5_sdk_conformance_confirmation",
+  "hypothesis_frozen_during_repair": true,
+  "initial_execution_rate": 0.0,
+  "maximum_code_repairs": 2,
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "negative_controls": {
+    "controls": {
+      "altered_seed": {
+        "reason": "ValueError: model proposal changed the frozen execution seeds",
+        "rejected": true
+      },
+      "broken_solver": {
+        "reason": "ValueError: proposal payload mismatch",
+        "rejected": true
+      },
+      "fabricated_metrics": {
+        "reason": "ValueError: proposal payload mismatch",
+        "rejected": true
+      },
+      "network_import": {
+        "reason": "ValueError: proposal payload mismatch",
+        "rejected": true
+      },
+      "random_hypothesis": {
+        "reason": "ValueError: proposal payload mismatch",
+        "rejected": true
+      },
+      "swapped_case": {
+        "reason": "ValueError: proposal identity mismatch",
+        "rejected": true
+      },
+      "target_leakage": {
+        "reason": "ValueError: proposal payload mismatch",
+        "rejected": true
+      }
+    },
+    "passed": true
+  },
+  "parser_valid_rate": 0.4,
+  "report_digest": "86edf73fc150158e47df22e81f61fe7ceff2ba61893ba00eb3479597d9bf0df8",
+  "schema_version": 1,
+  "scientific_claims_allowed": false,
+  "scientific_hard_pass_launch_gate": false,
+  "sdk_binding_digest": "571f96534d99e17a1e196c829c4fd966a415e00fa124ddeccd532d332fb77109",
+  "sdk_binding_error": "",
+  "valid_solver_result_cases": 0,
+  "valid_solver_result_minimum": 4
+}

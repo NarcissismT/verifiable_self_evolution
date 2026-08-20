@@ -1,0 +1,38 @@
+{
+  "final_digest": "006aa6b1dad5189341fcddd3759b3ab36b165d121d53dbf76132f5f0d20e19c7",
+  "frozen_fields": [
+    "hypothesis",
+    "solution",
+    "seeds",
+    "baselines",
+    "primary_metric",
+    "secondary_metrics",
+    "expected_effect",
+    "power_assumptions",
+    "stopping_rule",
+    "resource_schedule"
+  ],
+  "frozen_fields_digest": "1a374e35d01c1a4b1843eae02a90fbfe408a7ccb25520c75fa0a0db8aacb1c06",
+  "initial_digest": "006aa6b1dad5189341fcddd3759b3ab36b165d121d53dbf76132f5f0d20e19c7",
+  "repairs": [
+    {
+      "accepted": false,
+      "attempt": 1,
+      "child_digest": "f200b2a816ab50832eccb38dcd74760ddb2baf4860d6cc5901a2013f09e2a277",
+      "code_digest": "fce89a72fc509e405a495b26420859189a32179662cf54064c3f42bb242d2e18",
+      "error": "public_linter_error:return_schema:a return dict must contain point and oracle_calls",
+      "parent_digest": "006aa6b1dad5189341fcddd3759b3ab36b165d121d53dbf76132f5f0d20e19c7",
+      "raw_digest": "733f879c90d5bb56f581af6cd0a34e6df722cb6853024b8a42db7dbfe480732f"
+    },
+    {
+      "accepted": false,
+      "attempt": 2,
+      "child_digest": "70a7cbc24818b0f336f2745c1eb197089369f914292932501a08178713f42b62",
+      "code_digest": "efb70fcf333e3222601df37aae24acbf537c1b46659b1bd96c2b1befdd594947",
+      "error": "public_linter_error:syntax_error:invalid syntax",
+      "parent_digest": "006aa6b1dad5189341fcddd3759b3ab36b165d121d53dbf76132f5f0d20e19c7",
+      "raw_digest": "508eaaf7c255c7f4db1859e5c42154543e2b1d81f5cea6ac0d215050f71f5843"
+    }
+  ],
+  "schema_version": 1
+}

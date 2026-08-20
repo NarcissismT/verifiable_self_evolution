@@ -1,0 +1,20 @@
+{
+  "candidate_supplied_metrics_trusted": false,
+  "case_manifest_digest": "62e3528fbfe41fba4562c704fa911daca8724be379e00fee04f7432c02d05505",
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "execution_container_digest": "sha256:64a5804ef49f7cfaaaca42d53e9d2515695e772ce34452a90ba0e52a75defa8f",
+  "execution_rate_after_repair": 0.0,
+  "gate": "v0.1.5_sdk_conformance_confirmation",
+  "initial_execution_rate": 0.0,
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "negative_controls_passed": true,
+  "parser_valid_rate": 0.4,
+  "receipt_digest": "17d1f0d51d775387e17b90c87149c8090910a3325b58774037c925c15fe6fc2a",
+  "report_digest": "86edf73fc150158e47df22e81f61fe7ceff2ba61893ba00eb3479597d9bf0df8",
+  "schema_version": 1,
+  "scientific_claims_allowed": false,
+  "scientific_hard_pass_launch_gate": false,
+  "sdk_binding_digest": "571f96534d99e17a1e196c829c4fd966a415e00fa124ddeccd532d332fb77109",
+  "valid_solver_result_cases": 0
+}

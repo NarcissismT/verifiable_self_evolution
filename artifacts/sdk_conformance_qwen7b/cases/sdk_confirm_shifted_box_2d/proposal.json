@@ -1,0 +1,59 @@
+{
+  "baselines": [
+    "sdk_zero_v1"
+  ],
+  "candidate_id": "candidate-d88dc40f37601a6221ed",
+  "expected_effect": {
+    "direction": "lower",
+    "minimum_delta": 0.0
+  },
+  "experiment_code": "solve_v1",
+  "hypothesis": {
+    "alternative_explanations": [
+      "The solver might converge to a point outside the feasible region due to the shifted target."
+    ],
+    "assumptions": [
+      "The solver can handle quadratic functions with linear constraints.",
+      "The offset does not significantly alter the solution space."
+    ],
+    "claim": "The solver will find the minimizer of the shifted quadratic function within the given box constraints.",
+    "discriminating_observation": "If the returned point is not close to the expected minimizer, the hypothesis is rejected.",
+    "mechanism": "By solving the shifted quadratic function, the solver aims to find the closest point to the target within the box constraints.",
+    "null_hypothesis": "The solver fails to find a point that is significantly better than the baseline.",
+    "predicted_failure_mode": "The solver might return a point that is not within the box constraints."
+  },
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "model_id": "qwen2.5-7b-instruct",
+  "parent_candidate_ids": [],
+  "power_assumptions": {
+    "alpha": 0.05,
+    "target_power": 0.8,
+    "unit": "seed"
+  },
+  "primary_metric": "regret",
+  "resource_schedule": [
+    1000.0,
+    2000.0,
+    4000.0
+  ],
+  "round_index": 0,
+  "secondary_metrics": [
+    "lower_residual",
+    "kkt_ni_gap",
+    "oracle_calls",
+    "seed_reproducibility"
+  ],
+  "seeds": [
+    1103,
+    2207,
+    3301,
+    4409
+  ],
+  "solution": {
+    "algorithm_family": "gradient_descent",
+    "api": "solve_v1"
+  },
+  "source": "student",
+  "stopping_rule": "return within the supplied budget",
+  "task_id": "sdk_confirm_shifted_box_2d"
+}

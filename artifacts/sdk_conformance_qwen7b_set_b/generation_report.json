@@ -1,0 +1,62 @@
+{
+  "cases": [
+    {
+      "case_id": "sdk_confirm_b_centered_box_1d",
+      "final_error": "KeyError: 'solution'",
+      "initial_error": "KeyError: 'solution'",
+      "initial_execution_valid": false,
+      "parser_valid": false,
+      "proposal_digest": "",
+      "public_runtime_valid": false,
+      "repairs_used": 0
+    },
+    {
+      "case_id": "sdk_confirm_b_centered_box_3d",
+      "final_error": "public_linter_error:syntax_error:unterminated string literal (detected at line 1)",
+      "initial_error": "public_linter_error:syntax_error:unexpected character after line continuation character",
+      "initial_execution_valid": false,
+      "parser_valid": true,
+      "proposal_digest": "311d19f56dc2efb3315cdf73f2947c4b16e7aba88af10137aa8c042cef132542",
+      "public_runtime_valid": false,
+      "repairs_used": 2
+    },
+    {
+      "case_id": "sdk_confirm_b_positive_shift_2d",
+      "final_error": "KeyError: 'solution'",
+      "initial_error": "KeyError: 'solution'",
+      "initial_execution_valid": false,
+      "parser_valid": false,
+      "proposal_digest": "",
+      "public_runtime_valid": false,
+      "repairs_used": 0
+    },
+    {
+      "case_id": "sdk_confirm_b_boundary_clip_2d",
+      "final_error": "KeyError: 'solution'",
+      "initial_error": "KeyError: 'solution'",
+      "initial_execution_valid": false,
+      "parser_valid": false,
+      "proposal_digest": "",
+      "public_runtime_valid": false,
+      "repairs_used": 0
+    },
+    {
+      "case_id": "sdk_confirm_b_seed_replay_3d",
+      "final_error": "public_linter_error:syntax_error:unterminated string literal (detected at line 1)",
+      "initial_error": "public_linter_error:syntax_error:unexpected character after line continuation character",
+      "initial_execution_valid": false,
+      "parser_valid": true,
+      "proposal_digest": "daa647006d31ec2ba2116e09aa6e787334e0baa6bb1cdd934a3ed10873e29944",
+      "public_runtime_valid": false,
+      "repairs_used": 2
+    }
+  ],
+  "execution_rate_after_repair": 0.0,
+  "gate": "v0.1.5_sdk_conformance_confirmation",
+  "hypothesis_frozen_during_repair": true,
+  "initial_execution_rate": 0.0,
+  "maximum_code_repairs": 2,
+  "parser_valid_rate": 0.4,
+  "schema_version": 1,
+  "scientific_hard_pass_launch_gate": false
+}

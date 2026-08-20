@@ -1,0 +1,100 @@
+{
+  "cases": [
+    {
+      "case_id": "sdk_confirm_c_centered_box_1d",
+      "final_error": "",
+      "hydrated_frozen_protocol_fields": [
+        "resource_schedule"
+      ],
+      "initial_code_encoding_normalized": false,
+      "initial_error": "",
+      "initial_execution_valid": true,
+      "parser_valid": true,
+      "proposal_digest": "a545239a9e37027aaceec1d105731a803335d2591e00ad269b40f30cb94cd2ca",
+      "public_runtime_valid": true,
+      "raw_schema_complete": false,
+      "repairs_used": 0
+    },
+    {
+      "case_id": "sdk_confirm_c_centered_box_2d",
+      "final_error": "",
+      "hydrated_frozen_protocol_fields": [
+        "resource_schedule"
+      ],
+      "initial_code_encoding_normalized": false,
+      "initial_error": "",
+      "initial_execution_valid": true,
+      "parser_valid": true,
+      "proposal_digest": "0073519b9b722a04917bb1aa79035a10a2cb435d430b2833f43d21c4ef1ddbaa",
+      "public_runtime_valid": true,
+      "raw_schema_complete": false,
+      "repairs_used": 0
+    },
+    {
+      "case_id": "sdk_confirm_c_mixed_shift_2d",
+      "final_error": "public_linter_error:syntax_error:unterminated string literal (detected at line 8)",
+      "hydrated_frozen_protocol_fields": [
+        "resource_schedule"
+      ],
+      "initial_code_encoding_normalized": true,
+      "initial_error": "public_linter_error:syntax_error:unterminated string literal (detected at line 8)",
+      "initial_execution_valid": false,
+      "parser_valid": true,
+      "proposal_digest": "dcda02c6105afa388e7c51cc6dcaca0772d58945ecb5032abec7eb5d017915f5",
+      "public_runtime_valid": false,
+      "raw_schema_complete": false,
+      "repairs_used": 0
+    },
+    {
+      "case_id": "sdk_confirm_c_boundary_clip_3d",
+      "final_error": "",
+      "hydrated_frozen_protocol_fields": [
+        "resource_schedule"
+      ],
+      "initial_code_encoding_normalized": true,
+      "initial_error": "",
+      "initial_execution_valid": true,
+      "parser_valid": true,
+      "proposal_digest": "ac99e9212c4250c48c9036f19c36b58eed324ad7277c37fa928d3ba3eddc2204",
+      "public_runtime_valid": true,
+      "raw_schema_complete": false,
+      "repairs_used": 0
+    },
+    {
+      "case_id": "sdk_confirm_c_seed_replay_2d",
+      "final_error": "",
+      "hydrated_frozen_protocol_fields": [
+        "resource_schedule"
+      ],
+      "initial_code_encoding_normalized": false,
+      "initial_error": "",
+      "initial_execution_valid": true,
+      "parser_valid": true,
+      "proposal_digest": "40b4df1ca6a5894d57e5e9953c9fc90b5137dd54ecd9741d6ad8223ae9a69081",
+      "public_runtime_valid": true,
+      "raw_schema_complete": false,
+      "repairs_used": 0
+    }
+  ],
+  "execution_rate_after_repair": 0.8,
+  "frozen_protocol_field_hydration": [
+    "baselines",
+    "expected_effect",
+    "power_assumptions",
+    "primary_metric",
+    "resource_schedule",
+    "secondary_metrics",
+    "seeds",
+    "stopping_rule"
+  ],
+  "gate": "v0.1.5_sdk_conformance_confirmation",
+  "hypothesis_frozen_during_repair": true,
+  "initial_execution_rate": 0.8,
+  "maximum_code_repairs": 2,
+  "model_calls_during_replay": 0,
+  "parser_valid_rate": 1.0,
+  "raw_schema_complete_rate": 0.0,
+  "replay_of_frozen_raw_outputs": true,
+  "schema_version": 1,
+  "scientific_hard_pass_launch_gate": false
+}

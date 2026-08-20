@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "sdk_version": "v0.1.5-sdk-v1",
+  "candidate_public_imports": ["Budget", "project_box"],
+  "allowed_imports": ["execution_sdk", "math", "numpy", "random"],
+  "scipy_allowed": false,
+  "candidate_entrypoint": "solve(problem, seed, budget)",
+  "maximum_code_repairs": 2,
+  "numpy_version": "2.1.2",
+  "network_policy": "none",
+  "scientific_hard_pass_launch_gate": false
+}

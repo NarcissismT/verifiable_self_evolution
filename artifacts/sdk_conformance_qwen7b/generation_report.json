@@ -1,0 +1,62 @@
+{
+  "cases": [
+    {
+      "case_id": "sdk_confirm_quadratic_box_1d",
+      "final_error": "public_linter_error:return_schema:a return dict must contain point and oracle_calls",
+      "initial_error": "public_linter_error:return_schema:a return dict must contain point and oracle_calls",
+      "initial_execution_valid": false,
+      "parser_valid": true,
+      "proposal_digest": "60c69db6e234d2ee2357b0c24ec08a740f03f88f6530a99f126d172dd674dce8",
+      "public_runtime_valid": false,
+      "repairs_used": 2
+    },
+    {
+      "case_id": "sdk_confirm_quadratic_box_2d",
+      "final_error": "public_linter_error:syntax_error:invalid syntax",
+      "initial_error": "public_linter_error:syntax_error:invalid syntax",
+      "initial_execution_valid": false,
+      "parser_valid": true,
+      "proposal_digest": "825954a31fb6ad678d3abe749f74a832bf2bbf4e0b3ba2bb156ffdbc8b0ef156",
+      "public_runtime_valid": false,
+      "repairs_used": 2
+    },
+    {
+      "case_id": "sdk_confirm_shifted_box_2d",
+      "final_error": "public_linter_error:return_schema:a return dict must contain point and oracle_calls",
+      "initial_error": "public_linter_error:return_schema:a return dict must contain point and oracle_calls",
+      "initial_execution_valid": false,
+      "parser_valid": true,
+      "proposal_digest": "34b77b0da3650b4783b7a399be1ab2567bb8cddd221ef1afed264c7d5d933d69",
+      "public_runtime_valid": false,
+      "repairs_used": 2
+    },
+    {
+      "case_id": "sdk_confirm_asymmetric_box_3d",
+      "final_error": "public_linter_error:syntax_error:invalid syntax",
+      "initial_error": "public_linter_error:syntax_error:invalid syntax",
+      "initial_execution_valid": false,
+      "parser_valid": true,
+      "proposal_digest": "9ad0efe902df0860a581c49411d60167ae1e75bb231c1dd15286e1e05f63b9df",
+      "public_runtime_valid": false,
+      "repairs_used": 2
+    },
+    {
+      "case_id": "sdk_confirm_seeded_box_2d",
+      "final_error": "public_linter_error:syntax_error:invalid syntax",
+      "initial_error": "public_linter_error:syntax_error:invalid syntax",
+      "initial_execution_valid": false,
+      "parser_valid": true,
+      "proposal_digest": "006aa6b1dad5189341fcddd3759b3ab36b165d121d53dbf76132f5f0d20e19c7",
+      "public_runtime_valid": false,
+      "repairs_used": 2
+    }
+  ],
+  "execution_rate_after_repair": 0.0,
+  "gate": "v0.1.5_sdk_conformance_confirmation",
+  "hypothesis_frozen_during_repair": true,
+  "initial_execution_rate": 0.0,
+  "maximum_code_repairs": 2,
+  "parser_valid_rate": 1.0,
+  "schema_version": 1,
+  "scientific_hard_pass_launch_gate": false
+}

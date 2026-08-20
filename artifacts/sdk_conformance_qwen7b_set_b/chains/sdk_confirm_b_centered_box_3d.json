@@ -1,0 +1,36 @@
+{
+  "final_digest": "311d19f56dc2efb3315cdf73f2947c4b16e7aba88af10137aa8c042cef132542",
+  "frozen_fields": [
+    "hypothesis",
+    "solution",
+    "seeds",
+    "baselines",
+    "primary_metric",
+    "secondary_metrics",
+    "expected_effect",
+    "power_assumptions",
+    "stopping_rule",
+    "resource_schedule"
+  ],
+  "frozen_fields_digest": "86f84618d344243f61d2e2f989baf489587dab497ac810f9329188fb601def64",
+  "initial_digest": "53261ac96e8b79132106c923047557ff7c03e62aa60ae48bd1c74c2ec97324ef",
+  "repairs": [
+    {
+      "attempt": 1,
+      "error": "no complete JSON object with required fields",
+      "parent_digest": "53261ac96e8b79132106c923047557ff7c03e62aa60ae48bd1c74c2ec97324ef",
+      "public_runtime_valid": false,
+      "raw_digest": "170adae83d099536085b5e041acdf61d12489c6f7280794ccfe23ed71be6766e"
+    },
+    {
+      "attempt": 2,
+      "child_digest": "311d19f56dc2efb3315cdf73f2947c4b16e7aba88af10137aa8c042cef132542",
+      "code_digest": "d20220598f022f29b881307efdebca99ff12eed2d51bbec95955d39e986975d8",
+      "error": "public_linter_error:syntax_error:unterminated string literal (detected at line 1)",
+      "parent_digest": "53261ac96e8b79132106c923047557ff7c03e62aa60ae48bd1c74c2ec97324ef",
+      "public_runtime_valid": false,
+      "raw_digest": "84e5b449f4a57172dda9b2f446c44a8a01e95abfb36372278df04b6232099940"
+    }
+  ],
+  "schema_version": 1
+}

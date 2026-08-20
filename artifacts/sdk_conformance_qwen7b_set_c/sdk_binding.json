@@ -1,0 +1,11 @@
+{
+  "execution_image_digest": "sha256:64a5804ef49f7cfaaaca42d53e9d2515695e772ce34452a90ba0e52a75defa8f",
+  "network_policy": "none",
+  "numpy_version": "2.1.2",
+  "schema_version": 1,
+  "sdk_card_digest": "32d30b6c465174e2963b7adcf91f76a115274f5f4ed2f466b48feeef2585ad0c",
+  "sdk_lock_digest": "78e607e122c8860a1a5d56929d7858b82501f7c5e68a71a0d40365bb5a2eb5a0",
+  "sdk_source_digest": "1282f04159826eb1e3e83bdfc9d3eb35476b7088964b1ad93c44b4d565650aaf",
+  "sdk_version": "v0.1.5-sdk-v1",
+  "wrapper_digest": "5157f3397622d790c90100df54f16acb6f601c328a467036e3c7fff7ebb7447b"
+}

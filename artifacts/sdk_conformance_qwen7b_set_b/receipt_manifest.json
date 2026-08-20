@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "gate": "v0.1.5_sdk_conformance_confirmation",
+  "status": "protocol_development_fixture",
+  "formal_split_eligible": false,
+  "files": {
+    "case_manifest.json": "62e3528fbfe41fba4562c704fa911daca8724be379e00fee04f7432c02d05505",
+    "chains/sdk_confirm_b_boundary_clip_2d.json": "87370ea21a6c367452d1ecc2020358f3739803bd651e4625afe23bac8bb28c93",
+    "chains/sdk_confirm_b_centered_box_1d.json": "87370ea21a6c367452d1ecc2020358f3739803bd651e4625afe23bac8bb28c93",
+    "chains/sdk_confirm_b_centered_box_3d.json": "a801fce737dc68ace4c432f9dddbd7da2e8ac2aed6b33ab99743987265c3568f",
+    "chains/sdk_confirm_b_positive_shift_2d.json": "87370ea21a6c367452d1ecc2020358f3739803bd651e4625afe23bac8bb28c93",
+    "chains/sdk_confirm_b_seed_replay_3d.json": "bd993bd8573d11456a34c7f5189e1737777d88a6251c960e284060c833baece9",
+    "generation_report.json": "c490cdb10f5f1bd66691f682c75e4dfc5df75a9e2e812a4d60a877631aacc6a7",
+    "overall_report.json": "7a2ca5ff2d94145912597bf7ccf30bbddb33de5d7786cf4c27ae319e1a7ba119",
+    "sdk_binding.json": "571f96534d99e17a1e196c829c4fd966a415e00fa124ddeccd532d332fb77109",
+    "sdk_conformance_environment.json": "0d12e5cbcc748ff9c7a2e76213c15776a0c870e4a5f28e1ee173dcf129978bd9",
+    "sdk_conformance_receipt.json": "7e94b6543c67b5d14d3762b2da4ec85ef39bd199355040db032dd316ffc71848",
+    "sdk_conformance_report.json": "3b84a48bf768d682acfe7e9ab54b9a52e47890445393d28b6b0e01a7a8a2c044"
+  }
+}

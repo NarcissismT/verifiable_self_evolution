@@ -1,0 +1,1084 @@
+{
+  "all_four_seeds_required_per_case": true,
+  "candidate_supplied_metrics_trusted": false,
+  "cases": [
+    {
+      "case_id": "sdk_confirm_c_centered_box_1d",
+      "conditional_vds": 0.9155777428619776,
+      "executable": true,
+      "executable_seed_count": 4,
+      "executions": [
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.42,
+            "lower_residual": 0.42,
+            "primal_feasibility": 0.0,
+            "regret": 0.08819999999999999
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.1013918835669756
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10333842039108276
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.08888483606278896
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.11443929933011532
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10285437665879726
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.0889065619558096
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0
+            ]
+          },
+          "seed": 1103,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.42,
+            "lower_residual": 0.42,
+            "primal_feasibility": 0.0,
+            "regret": 0.08819999999999999
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.42,
+            "lower_residual": 0.42,
+            "primal_feasibility": 0.0,
+            "regret": 0.08819999999999999
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10294558107852936
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.11292202398180962
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10447863675653934
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10617347434163094
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10177566483616829
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10560883581638336
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0
+            ]
+          },
+          "seed": 2207,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.42,
+            "lower_residual": 0.42,
+            "primal_feasibility": 0.0,
+            "regret": 0.08819999999999999
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.42,
+            "lower_residual": 0.42,
+            "primal_feasibility": 0.0,
+            "regret": 0.08819999999999999
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10472275130450726
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10401408560574055
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10544515401124954
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10452588461339474
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10474298149347305
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10541590116918087
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0
+            ]
+          },
+          "seed": 3301,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.42,
+            "lower_residual": 0.42,
+            "primal_feasibility": 0.0,
+            "regret": 0.08819999999999999
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.42,
+            "lower_residual": 0.42,
+            "primal_feasibility": 0.0,
+            "regret": 0.08819999999999999
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.0918306689709425
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.105461111292243
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.08989323116838932
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.103711673989892
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10444670543074608
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.08819999999999999,
+              "runtime_seconds": 0.10418079234659672
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0
+            ]
+          },
+          "seed": 4409,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.42,
+            "lower_residual": 0.42,
+            "primal_feasibility": 0.0,
+            "regret": 0.08819999999999999
+          }
+        }
+      ],
+      "hard_pass": false,
+      "parser_valid": true,
+      "unconditional_vds": 0.9155777428619776
+    },
+    {
+      "case_id": "sdk_confirm_c_centered_box_2d",
+      "conditional_vds": 0.8249768117600328,
+      "executable": true,
+      "executable_seed_count": 4,
+      "executions": [
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.6203224967708328,
+            "lower_residual": 0.6203224967708328,
+            "primal_feasibility": 0.0,
+            "regret": 0.19239999999999996
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10452967882156372
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.08967201597988605
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.08799774385988712
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10606233216822147
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10484237782657146
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.08777009136974812
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 1103,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.6203224967708328,
+            "lower_residual": 0.6203224967708328,
+            "primal_feasibility": 0.0,
+            "regret": 0.19239999999999996
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.6203224967708328,
+            "lower_residual": 0.6203224967708328,
+            "primal_feasibility": 0.0,
+            "regret": 0.19239999999999996
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10283395648002625
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10344824939966202
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10255539044737816
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10215327143669128
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10237083211541176
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10685734637081623
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 2207,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.6203224967708328,
+            "lower_residual": 0.6203224967708328,
+            "primal_feasibility": 0.0,
+            "regret": 0.19239999999999996
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.6203224967708328,
+            "lower_residual": 0.6203224967708328,
+            "primal_feasibility": 0.0,
+            "regret": 0.19239999999999996
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.09016172587871552
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10486535541713238
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10340003669261932
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10274933651089668
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.11374584585428238
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10359263233840466
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 3301,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.6203224967708328,
+            "lower_residual": 0.6203224967708328,
+            "primal_feasibility": 0.0,
+            "regret": 0.19239999999999996
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.6203224967708328,
+            "lower_residual": 0.6203224967708328,
+            "primal_feasibility": 0.0,
+            "regret": 0.19239999999999996
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.09042605198919773
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.08975213207304478
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.11339333653450012
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10185118392109871
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.10472049750387669
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.19239999999999996,
+              "runtime_seconds": 0.14835983514785767
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 4409,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.6203224967708328,
+            "lower_residual": 0.6203224967708328,
+            "primal_feasibility": 0.0,
+            "regret": 0.19239999999999996
+          }
+        }
+      ],
+      "hard_pass": false,
+      "parser_valid": true,
+      "unconditional_vds": 0.8249768117600328
+    },
+    {
+      "case_id": "sdk_confirm_c_mixed_shift_2d",
+      "conditional_vds": 0.0,
+      "executable": false,
+      "execution_error": "ValueError: syntax_error@8: unterminated string literal (detected at line 8)",
+      "parser_valid": true,
+      "unconditional_vds": 0.0
+    },
+    {
+      "case_id": "sdk_confirm_c_boundary_clip_3d",
+      "conditional_vds": 0.3743739929746928,
+      "executable": true,
+      "executable_seed_count": 4,
+      "executions": [
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 1.4017845768876187,
+            "lower_residual": 1.4017845768876187,
+            "primal_feasibility": 0.0,
+            "regret": 0.9825000000000002
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.08877119049429893
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.08898988738656044
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.1033267229795456
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.10434206016361713
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.08829143457114697
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.08871415257453918
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 1103,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 1.4017845768876187,
+            "lower_residual": 1.4017845768876187,
+            "primal_feasibility": 0.0,
+            "regret": 0.9825000000000002
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 1.4017845768876187,
+            "lower_residual": 1.4017845768876187,
+            "primal_feasibility": 0.0,
+            "regret": 0.9825000000000002
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.10453718900680542
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.10452434048056602
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.1043374240398407
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.10396253317594528
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.08906065113842487
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.09030169621109962
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 2207,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 1.4017845768876187,
+            "lower_residual": 1.4017845768876187,
+            "primal_feasibility": 0.0,
+            "regret": 0.9825000000000002
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 1.4017845768876187,
+            "lower_residual": 1.4017845768876187,
+            "primal_feasibility": 0.0,
+            "regret": 0.9825000000000002
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.10200897976756096
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.0891896914690733
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.14628110453486443
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.10261962376534939
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.10280266404151917
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.10211482644081116
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 3301,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 1.4017845768876187,
+            "lower_residual": 1.4017845768876187,
+            "primal_feasibility": 0.0,
+            "regret": 0.9825000000000002
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 1.4017845768876187,
+            "lower_residual": 1.4017845768876187,
+            "primal_feasibility": 0.0,
+            "regret": 0.9825000000000002
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.1045464538037777
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.10440597869455814
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.09810814075171947
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.10463187098503113
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.10514963045716286
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.9825000000000002,
+              "runtime_seconds": 0.08934052847325802
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 4409,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 1.4017845768876187,
+            "lower_residual": 1.4017845768876187,
+            "primal_feasibility": 0.0,
+            "regret": 0.9825000000000002
+          }
+        }
+      ],
+      "hard_pass": false,
+      "parser_valid": true,
+      "unconditional_vds": 0.3743739929746928
+    },
+    {
+      "case_id": "sdk_confirm_c_seed_replay_2d",
+      "conditional_vds": 0.9317879608485343,
+      "executable": true,
+      "executable_seed_count": 4,
+      "executions": [
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.37589892258425006,
+            "lower_residual": 0.37589892258425006,
+            "primal_feasibility": 0.0,
+            "regret": 0.07065
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.08960024453699589
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.11257772147655487
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.09058263339102268
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.11631529219448566
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10558221861720085
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10649683699011803
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 1103,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.37589892258425006,
+            "lower_residual": 0.37589892258425006,
+            "primal_feasibility": 0.0,
+            "regret": 0.07065
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.37589892258425006,
+            "lower_residual": 0.37589892258425006,
+            "primal_feasibility": 0.0,
+            "regret": 0.07065
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.0914368350058794
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10444599203765392
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10366888530552387
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10710426419973373
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.11673230491578579
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10214046388864517
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 2207,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.37589892258425006,
+            "lower_residual": 0.37589892258425006,
+            "primal_feasibility": 0.0,
+            "regret": 0.07065
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.37589892258425006,
+            "lower_residual": 0.37589892258425006,
+            "primal_feasibility": 0.0,
+            "regret": 0.07065
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.0888640284538269
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10516971349716187
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10352698899805546
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10243593528866768
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10829069279134274
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10555010847747326
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 3301,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.37589892258425006,
+            "lower_residual": 0.37589892258425006,
+            "primal_feasibility": 0.0,
+            "regret": 0.07065
+          }
+        },
+        {
+          "baseline_metrics": {
+            "kkt_ni_gap": 0.37589892258425006,
+            "lower_residual": 0.37589892258425006,
+            "primal_feasibility": 0.0,
+            "regret": 0.07065
+          },
+          "baseline_resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10503554902970791
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10588840022683144
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.09095798805356026
+            }
+          ],
+          "error_category": "",
+          "error_message": "",
+          "executable": true,
+          "resource_quality_curve": [
+            {
+              "budget": 1000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10333182476460934
+            },
+            {
+              "budget": 2000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10822834819555283
+            },
+            {
+              "budget": 4000.0,
+              "quality": -0.07065,
+              "runtime_seconds": 0.10669748671352863
+            }
+          ],
+          "result": {
+            "oracle_calls": 0,
+            "point": [
+              0.0,
+              0.0
+            ]
+          },
+          "seed": 4409,
+          "seed_reproducible": true,
+          "trusted_metrics": {
+            "kkt_ni_gap": 0.37589892258425006,
+            "lower_residual": 0.37589892258425006,
+            "primal_feasibility": 0.0,
+            "regret": 0.07065
+          }
+        }
+      ],
+      "hard_pass": false,
+      "parser_valid": true,
+      "unconditional_vds": 0.9317879608485343
+    }
+  ],
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "execution_container_digest": "sha256:64a5804ef49f7cfaaaca42d53e9d2515695e772ce34452a90ba0e52a75defa8f",
+  "execution_rate_after_repair": 0.8,
+  "frozen_protocol_field_hydration": [
+    "baselines",
+    "expected_effect",
+    "power_assumptions",
+    "primary_metric",
+    "resource_schedule",
+    "secondary_metrics",
+    "seeds",
+    "stopping_rule"
+  ],
+  "gate": "v0.1.5_sdk_conformance_confirmation",
+  "hypothesis_frozen_during_repair": true,
+  "initial_execution_rate": 0.8,
+  "maximum_code_repairs": 2,
+  "model_calls_during_replay": 0,
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "negative_controls": {
+    "controls": {
+      "altered_seed": {
+        "reason": "ValueError: model proposal changed the frozen execution seeds",
+        "rejected": true
+      },
+      "broken_solver": {
+        "reason": "ValueError: proposal payload mismatch",
+        "rejected": true
+      },
+      "fabricated_metrics": {
+        "reason": "ValueError: proposal payload mismatch",
+        "rejected": true
+      },
+      "network_import": {
+        "reason": "ValueError: proposal payload mismatch",
+        "rejected": true
+      },
+      "random_hypothesis": {
+        "reason": "ValueError: proposal payload mismatch",
+        "rejected": true
+      },
+      "swapped_case": {
+        "reason": "ValueError: proposal identity mismatch",
+        "rejected": true
+      },
+      "target_leakage": {
+        "reason": "ValueError: proposal payload mismatch",
+        "rejected": true
+      }
+    },
+    "passed": true
+  },
+  "parser_valid_rate": 1.0,
+  "raw_schema_complete_rate": 0.0,
+  "replay_of_frozen_raw_outputs": true,
+  "report_digest": "5ffd5a06a4e60e8b41dab3db772e87794bd00ca6b05acc756b756c1d1b08161d",
+  "schema_version": 1,
+  "scientific_claims_allowed": false,
+  "scientific_hard_pass_cases": 0,
+  "scientific_hard_pass_launch_gate": false,
+  "sdk_binding_digest": "571f96534d99e17a1e196c829c4fd966a415e00fa124ddeccd532d332fb77109",
+  "sdk_binding_error": "",
+  "sdk_contract_gate_passed": true,
+  "valid_solver_result_cases": 4,
+  "valid_solver_result_minimum": 4
+}

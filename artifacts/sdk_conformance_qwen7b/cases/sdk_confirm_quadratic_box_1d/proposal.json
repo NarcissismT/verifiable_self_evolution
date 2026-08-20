@@ -1,0 +1,58 @@
+{
+  "baselines": [
+    "sdk_zero_v1"
+  ],
+  "candidate_id": "candidate-1e54910db99044e07361",
+  "expected_effect": {
+    "direction": "lower",
+    "minimum_delta": 0.0
+  },
+  "experiment_code": "solve_v1",
+  "hypothesis": {
+    "alternative_explanations": [
+      "The solver might fail to converge to the optimal solution due to numerical instability or incorrect implementation of the optimization algorithm."
+    ],
+    "assumptions": [
+      "The solver will use a first-order method to find the minimum point within the given budget."
+    ],
+    "claim": "The solver will find the minimizer of the quadratic box function within the specified bounds.",
+    "discriminating_observation": "If the returned point does not lie within the bounds or if the objective value is not significantly lower than the initial value, the hypothesis can be rejected.",
+    "mechanism": "The mechanism involves solving a quadratic optimization problem with constraints using a first-order method.",
+    "null_hypothesis": "The solver will not find the minimizer of the quadratic box function within the specified bounds.",
+    "predicted_failure_mode": "The solver might return a point outside the bounds or fail to reduce the objective function value."
+  },
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "model_id": "qwen2.5-7b-instruct",
+  "parent_candidate_ids": [],
+  "power_assumptions": {
+    "alpha": 0.05,
+    "target_power": 0.8,
+    "unit": "seed"
+  },
+  "primary_metric": "regret",
+  "resource_schedule": [
+    1000.0,
+    2000.0,
+    4000.0
+  ],
+  "round_index": 0,
+  "secondary_metrics": [
+    "lower_residual",
+    "kkt_ni_gap",
+    "oracle_calls",
+    "seed_reproducibility"
+  ],
+  "seeds": [
+    1103,
+    2207,
+    3301,
+    4409
+  ],
+  "solution": {
+    "algorithm_family": "gradient_descent",
+    "api": "solve_v1"
+  },
+  "source": "student",
+  "stopping_rule": "return within the supplied budget",
+  "task_id": "sdk_confirm_quadratic_box_1d"
+}

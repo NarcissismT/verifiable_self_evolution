@@ -1,0 +1,58 @@
+{
+  "baselines": [
+    "sdk_zero_v1"
+  ],
+  "candidate_id": "candidate-8de96c1365d01c2d9492",
+  "expected_effect": {
+    "direction": "lower",
+    "minimum_delta": 0.0
+  },
+  "experiment_code": "solve_v1(problem, seed, budget):\n    from execution_sdk import project_box\n    import numpy as np\n    \n    def shifted_quadratic_box(x, target, offset):\n        return 0.5 * np.sum((x - target - offset) ** 2)\n    \n    initialize_seed(seed)\n    target = np.array(problem['target'])\n    offset = np.array(problem['offset'])\n    bounds = problem['bounds']\n    dimension = problem['dimension']\n    \n    point = project_box([0.0] * dimension, bounds)\n    return {'point': point, 'oracle_calls': 0}",
+  "hypothesis": {
+    "alternative_explanations": [
+      "The solver might not converge to the optimal solution if it does not properly handle the asymmetric nature of the box constraints."
+    ],
+    "assumptions": [
+      "The solver will use the provided budget to find a feasible point within the given constraints."
+    ],
+    "claim": "The solver will find a point that satisfies all constraints and minimizes the objective function.",
+    "discriminating_observation": "If the returned point does not satisfy the constraints or the objective function value is not minimized, the hypothesis is false.",
+    "mechanism": "The solver uses a simple projection method to ensure the point lies within the given bounds.",
+    "null_hypothesis": "The solver will fail to find a point that satisfies the constraints and minimizes the objective function.",
+    "predicted_failure_mode": "The solver might return a point that is outside the feasible region or does not minimize the objective function."
+  },
+  "model_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "model_id": "qwen2.5-7b-instruct",
+  "parent_candidate_ids": [],
+  "power_assumptions": {
+    "alpha": 0.05,
+    "target_power": 0.8,
+    "unit": "seed"
+  },
+  "primary_metric": "regret",
+  "resource_schedule": [
+    1000.0,
+    2000.0,
+    4000.0
+  ],
+  "round_index": 0,
+  "secondary_metrics": [
+    "lower_residual",
+    "kkt_ni_gap",
+    "oracle_calls",
+    "seed_reproducibility"
+  ],
+  "seeds": [
+    1103,
+    2207,
+    3301,
+    4409
+  ],
+  "solution": {
+    "algorithm_family": "projection_method",
+    "api": "solve_v1"
+  },
+  "source": "student",
+  "stopping_rule": "return within the supplied budget",
+  "task_id": "sdk_confirm_asymmetric_box_3d"
+}

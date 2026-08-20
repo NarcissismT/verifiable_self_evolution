@@ -1,0 +1,34 @@
+{
+  "hypothesis": {
+    "claim": "The proposed solution will find a point that minimizes the given quadratic function.",
+    "mechanism": "By projecting the initial point to the feasible region defined by the bounds.",
+    "assumptions": [
+      "The input dimensions are within the specified bounds."
+    ],
+    "alternative_explanations": [
+      "The solution might not find the global minimum if the initial point is far from the target."
+    ],
+    "null_hypothesis": "The solution will not find a point that significantly reduces the quadratic function's value.",
+    "predicted_failure_mode": "The algorithm might fail if the bounds are not properly defined or if the target is outside the bounds.",
+    "discriminating_observation": "A comparison of the returned point's value against the known minimum of the quadratic function."
+  },
+  "solution": {
+    "api": "solve_v1",
+    "algorithm_family": "Box Projection"
+  },
+  "experiment_code": "from execution_sdk import project_box\n\ndef solve(problem, seed, budget):\n    del seed, budget\n    point = project_box([0.0] * int(problem['dimension']), problem['bounds'])\n    return {'point': point, 'oracle_calls': 0}",
+  "seeds": [1103, 2207, 3301, 4409],
+  "baselines": ["sdk_zero_v1"],
+  "primary_metric": "regret",
+  "secondary_metrics": ["lower_residual", "kkt_ni_gap", "oracle_calls", "seed_reproducibility"],
+  "expected_effect": {
+    "direction": "lower",
+    "minimum_delta": 0.0
+  },
+  "power_assumptions": {
+    "alpha": 0.05,
+    "target_power": 0.8,
+    "unit": "seed"
+  },
+  "stopping_rule": "return within the supplied budget"
+}

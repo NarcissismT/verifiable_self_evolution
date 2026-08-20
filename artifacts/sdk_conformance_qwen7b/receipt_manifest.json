@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "gate": "v0.1.5_sdk_conformance_confirmation",
+  "study_kind": "sdk_conformance_confirmation",
+  "status": "invalid_protocol_preflight_fail_closed",
+  "scientific_claims_allowed": false,
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "files": {
+    "cases/sdk_confirm_asymmetric_box_3d/proposal.json": "dec622c1dceb033e9e6f92c5e25ea7e116eb5e34e7ac81a7eebc545a81a06f5e",
+    "cases/sdk_confirm_asymmetric_box_3d/proposal_binding.json": "efb085925253715c318747b9fb3dc789210e50ceef9c25c3fc137a7223f324f3",
+    "cases/sdk_confirm_asymmetric_box_3d/proposal_chain.json": "02da0bb2fa57fc3ef210232ba422332e265b34049f859c767889ab6c2616adb1",
+    "cases/sdk_confirm_quadratic_box_1d/proposal.json": "3cdcaddf43ca9a11ae284da182a1ec98edbc706d461e172bd47339c1b5c11554",
+    "cases/sdk_confirm_quadratic_box_1d/proposal_binding.json": "971b8dfc62cb6f7e5d424206910eb7e006b722f6f6c58aa949de95ed718a8d1e",
+    "cases/sdk_confirm_quadratic_box_1d/proposal_chain.json": "b0a2999611edcbec3dcc04b5a4dc20cd346f894527c6d7a592f0f819527563c8",
+    "cases/sdk_confirm_quadratic_box_2d/proposal.json": "51c6ec5c39ce720204b78fad458df765fdcf7ad5a7834ec5a2091304776b9906",
+    "cases/sdk_confirm_quadratic_box_2d/proposal_binding.json": "fc63e4174412adc5486cf0bcd13f09989fda8c3134077068ac02cc8559d370cc",
+    "cases/sdk_confirm_quadratic_box_2d/proposal_chain.json": "f7f7509ae0ba7671c89772486401d36d7e5e933e27fc8658defbf170f6ec1084",
+    "cases/sdk_confirm_seeded_box_2d/proposal.json": "46e48bd2e69323114e24cc77eb481462951c3dbb5ca42cc2191fd345675f09dc",
+    "cases/sdk_confirm_seeded_box_2d/proposal_binding.json": "dff82def8d399694e6dd4f674bedbb6806c89c70fd602f5158517bb9f810c21b",
+    "cases/sdk_confirm_seeded_box_2d/proposal_chain.json": "c1b63b132e9e87b3f20a02764b59b79a74e2ef5d89fad7628f99b903cd8a12ab",
+    "cases/sdk_confirm_shifted_box_2d/proposal.json": "cf505fdc027837035667aadc98e51f0943ea19b2e481c5e03fc2b215de5d874f",
+    "cases/sdk_confirm_shifted_box_2d/proposal_binding.json": "b0cced50ec89542b77825b59bd8d2e237c7261e2467771f2dd3ba644d4eafc67",
+    "cases/sdk_confirm_shifted_box_2d/proposal_chain.json": "c675b5a3264535616e38766366ffcbafa2c59dd05d67b334f158fa0c4872713f",
+    "generation_report.json": "cb40bd527a3fb6a31405b3555006033bab0136da4368a9da3989d0843a984453",
+    "preflight_case_manifest.json": "5bacbb84544b6fd4cdf254d63a02e6711a7960c3e2612ca5b7b3c0f03ce277b5",
+    "sdk_binding.json": "571f96534d99e17a1e196c829c4fd966a415e00fa124ddeccd532d332fb77109",
+    "sdk_conformance_environment.json": "0d12e5cbcc748ff9c7a2e76213c15776a0c870e4a5f28e1ee173dcf129978bd9",
+    "sdk_conformance_receipt.json": "748d04eba6d8f5fe087508eab95db5e4252f3daf4d58302819f9b394993b6d32",
+    "sdk_conformance_report.json": "ef943b080b7ca74d57529453225ac3dd6648b71693a08eb2f692057847e5206a"
+  }
+}
