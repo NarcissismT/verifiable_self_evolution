@@ -1,0 +1,24 @@
+{
+  "adapter_seed": 17,
+  "code_sha256": {
+    "finalize_smoke.py": "2bb73d167a212549a840c6e932f02a2016b76bb2eeb7bbd44d72162430a54e1e",
+    "generate_synthetic_data.py": "cf954ea7e3478a2d423d6caf0337558db263ac7038257b55a0db7c44a1541176",
+    "prepare_smoke_freeze.py": "c0b3e026739c4c17a1f5edfc8f97bc15ce08818e1163d98901196720aaf8932c",
+    "train_and_verify.py": "6446f7d8045da8564dc4d1a71dbc7d923f55d53430ba4012dc4f9fab70c69fb3"
+  },
+  "config_sha256": "8257266e94cfb12124f3d7b064c13c6f56e8fc4952e45ef38d8fa85ed7dacb96",
+  "dataset_manifest_sha256": "27e0e56bf55b4349ca5c56b30503b1d400c503bd3382a5913388fb0550fc8ddd",
+  "dataset_sha256": "58e94f4ccd9f2ffd2ef55594189e53a8c9b681fefe2202956b20e26301128b79",
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "experiment_id": "qwen25_7b_qlora_pipeline_smoke_v0_1",
+  "model_manifest_digest": "6791085ae67e1e7dd6cdff568b903a9698fefd042397c8a0d84c33869afde37e",
+  "model_manifest_file_sha256": "0fd3d574298276595e5e8811ad14b309cfaab434cc3176ed9f51b3f1317d82e8",
+  "model_revision": "d1e200fcf95ef0d4326873ddf63e5562d5f1fdbb",
+  "optimizer_updates": 100,
+  "receipt_digest": "2c984e20af4e3b7558299063f94deea8cccf95d1b1b900fb67be0b8ff11e6efe",
+  "schema_version": 1,
+  "scientific_claims_allowed": false,
+  "study_kind": "qlora_pipeline_smoke",
+  "train_image_digest": "sha256:f669006c1ce0d3761b4017e4c600c3e0424e4670a0b9262ec53cb33d3406a666"
+}

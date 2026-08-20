@@ -1,0 +1,35 @@
+{
+  "checks": {
+    "adapter_hashes_present": true,
+    "adapter_hashes_verified": true,
+    "exact_100_optimizer_updates": true,
+    "finite_nonzero_gradients": true,
+    "four_bit_loaded": true,
+    "fresh_process_reload": true,
+    "offline_inference": true
+  },
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "freeze_receipt_digest": "2c984e20af4e3b7558299063f94deea8cccf95d1b1b900fb67be0b8ff11e6efe",
+  "limitations": [
+    "Synthetic/toy data only.",
+    "One 7B adapter seed only.",
+    "No paper-level VDS, causal comparison, power estimate, promotion, or recursive evolution."
+  ],
+  "metrics": {
+    "cuda_peak_memory_bytes": 8829634048,
+    "gradient_norm_max": 5.348078302927629,
+    "gradient_norm_min": 0.003552688991168966,
+    "loss_first": 3.8211371898651123,
+    "loss_last": 0.0002387454005656764,
+    "optimizer_updates": 100,
+    "trainable_parameter_count": 5046272
+  },
+  "reload_receipt_digest": "89c3736b731a2231c9840bc57a0a97bad13bc9eb609fcf5f2e7fd2fb99af65af",
+  "report_digest": "73f3285aab8e0faced6d0314dd229dc1d1cc4becbe60d3e984fc102d610e91fe",
+  "schema_version": 1,
+  "scientific_claims_allowed": false,
+  "status": "passed",
+  "study_kind": "qlora_pipeline_smoke",
+  "training_receipt_digest": "d00b7341ff421a1158ac222ea50d655d6bc53479d6533b8f9db7e0eb81b126ab"
+}

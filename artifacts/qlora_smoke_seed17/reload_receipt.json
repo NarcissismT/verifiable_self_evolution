@@ -1,0 +1,13 @@
+{
+  "adapter_file_hashes_verified": true,
+  "eligible_for_champion": false,
+  "eligible_for_training_library": false,
+  "fresh_process_reload": true,
+  "inference_sha256": "170b7e252a464071be024f2abfd217ac873e404f832630fde2a68bcf787a2a1b",
+  "offline_inference_passed": true,
+  "receipt_digest": "89c3736b731a2231c9840bc57a0a97bad13bc9eb609fcf5f2e7fd2fb99af65af",
+  "schema_version": 1,
+  "scientific_claims_allowed": false,
+  "study_kind": "qlora_pipeline_smoke",
+  "training_receipt_digest": "d00b7341ff421a1158ac222ea50d655d6bc53479d6533b8f9db7e0eb81b126ab"
+}

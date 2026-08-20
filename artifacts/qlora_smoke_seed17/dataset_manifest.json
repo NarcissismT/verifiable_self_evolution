@@ -1,0 +1,24 @@
+{
+  "dataset_file": "synthetic_train.jsonl",
+  "dataset_kind": "deterministic_synthetic_toy",
+  "dataset_sha256": "58e94f4ccd9f2ffd2ef55594189e53a8c9b681fefe2202956b20e26301128b79",
+  "eligible_for_training_library": false,
+  "forbidden_text_scan": {
+    "passed": true,
+    "patterns": [
+      "beyond value functions",
+      "nonconvex simple bilevel optimization",
+      "linearly constrained bilevel optimization",
+      "neurips",
+      "openreview",
+      "arxiv",
+      "realpilot_",
+      "sealed target"
+    ]
+  },
+  "formal_split_eligible": false,
+  "generation_seed": 20260819,
+  "manifest_digest": "997aabe333985a788add1acecdedbbc6d20323ba8a946d74d958c32face25223",
+  "row_count": 128,
+  "schema_version": 1
+}

@@ -43,13 +43,20 @@ class CodeRunner:
         config.validate()
         self.config = config
 
-    def _command(self, script: Path) -> Sequence[str]:
+    def _command(self, script: Path, workdir: Path) -> Sequence[str]:
         if self.config.mode == "local_test":
             return (sys.executable, "-I", str(script))
-        return tuple(part.replace("{script}", str(script)) for part in self.config.container_command)
+        return tuple(
+            part.replace("{script}", str(script)).replace("{workdir}", str(workdir))
+            for part in self.config.container_command
+        )
 
     def execute(
-        self, task: Task, proposal: ExperimentProposal, seed: int
+        self,
+        task: Task,
+        proposal: ExperimentProposal,
+        seed: int,
+        extra_input: dict[str, object] | None = None,
     ) -> ExecutionResult:
         if task.task_id != proposal.task_id:
             raise ValueError("proposal targets a different task")
@@ -73,12 +80,14 @@ class CodeRunner:
                 "baselines": list(proposal.baselines),
                 "proposal_digest": proposal.digest,
             }
+            if extra_input:
+                input_value["context"] = extra_input
             started = time.monotonic()
             before = resource.getrusage(resource.RUSAGE_CHILDREN)
             timed_out = False
             try:
                 completed = subprocess.run(
-                    self._command(script),
+                    self._command(script, workdir),
                     input=json.dumps(input_value),
                     text=True,
                     capture_output=True,
@@ -87,7 +96,7 @@ class CodeRunner:
                     env={
                         "PATH": os.environ.get("PATH", ""),
                         "PYTHONHASHSEED": str(seed),
-                        "VSE_NETWORK_POLICY": "disabled",
+                        "VSE_NETWORK_POLICY": "none",
                     },
                     preexec_fn=(
                         (lambda: _limit_process(self.config))
